@@ -16,7 +16,7 @@ npm run build      # moon build + vite build
 npm run check      # Type check and format check
 npm run format     # Format MoonBit code
 npm run test       # MoonBit tests (js target)
-npm run test:e2e   # Playwright against a Worker on 8788 with a fresh local D1 (requires .dev.vars)
+npm run test:e2e   # Playwright (desktop, mobile, tablet/WebKit) against a Worker on 8788 with a fresh local D1 (requires .dev.vars)
 ```
 
 ## Quality Checks

@@ -14,6 +14,7 @@ A personal dashboard for life TODOs, built with [MoonBit](https://www.moonbitlan
 
 ```bash
 npm ci
+npx playwright install --with-deps chromium webkit # for E2E
 npm run setup                  # enable git hooks
 cp .dev.vars.example .dev.vars # local auth bypass for localhost
 npm run dev                    # Vite (5173) + Worker with local D1 (8787)
