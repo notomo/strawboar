@@ -25,6 +25,15 @@ export default defineConfig({
       name: "mobile",
       use: { ...devices["Pixel 7"] },
     },
+    // WebKit needs system libraries that are installed only in CI.
+    ...(isCI
+      ? [
+          {
+            name: "tablet",
+            use: { ...devices["iPad Pro 11 landscape"] },
+          },
+        ]
+      : []),
   ],
 
   webServer: {

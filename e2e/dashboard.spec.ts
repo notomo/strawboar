@@ -66,18 +66,26 @@ test("marks a chore as done and undoes it", async ({ page }, testInfo) => {
   await expect(page.locator("#recent", { hasText: title })).toHaveCount(0);
 });
 
-test("switches chores while the panel is open", async ({ page }, testInfo) => {
-  // On mobile the panel covers the whole dashboard.
-  test.skip(testInfo.project.name === "mobile");
+test("closes the panel by tapping outside of it", async ({ page }, testInfo) => {
   const first = uniqueTitle(testInfo, "Clean bath");
   const second = uniqueTitle(testInfo, "Change toothbrush");
   await page.goto("/");
   await addChore(page, first, "7");
   await addChore(page, second, "30");
-  const title = page.getByRole("dialog").getByLabel("Title");
+  const dialog = page.getByRole("dialog");
+  const title = dialog.getByLabel("Title");
 
   await page.locator("#due li", { hasText: first }).getByText(first).click();
   await expect(title).toHaveValue(first);
+
+  // The left edge is outside of the panel on every viewport.
+  if (testInfo.project.use.hasTouch) {
+    await page.touchscreen.tap(8, 300);
+  } else {
+    await page.mouse.click(8, 300);
+  }
+  await expect(dialog).toBeHidden();
+  await expect(page.locator("#editor-backdrop")).toHaveCount(0);
 
   await page.locator("#due li", { hasText: second }).getByText(second).click();
   await expect(title).toHaveValue(second);

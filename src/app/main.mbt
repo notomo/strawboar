@@ -47,6 +47,8 @@ struct Model {
   chores : Array[@core.Chore]
   recent : Array[@core.RecentDone]
   editor : Editor?
+  /// Whether the editor panel is shown. Drives the backdrop that closes it.
+  panel_open : Bool
   undo : Undo?
   notice : String
 } derive(Eq)
@@ -71,6 +73,8 @@ enum Msg {
   Saved(Result[@core.Chore, Error])
   Archive
   Archived(Error?)
+  ClosePanel
+  PanelClosed
 }
 
 ///|
@@ -196,6 +200,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
             error: "",
             history: Fetched([]),
           }),
+          panel_open: true,
         },
         @dialog.show(EDITOR_ID, modal=false),
       )
@@ -214,6 +219,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
                 error: "",
                 history: Loading,
               }),
+              panel_open: true,
             },
             @rabbita.batch([
               @dialog.show(EDITOR_ID, modal=false),
@@ -280,7 +286,12 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
       }
     Saved(Ok(chore)) =>
       (
-        { ..model, chores: upsert(model.chores, chore), notice: "", },
+        {
+          ..model,
+          chores: upsert(model.chores, chore),
+          notice: "",
+          panel_open: false,
+        },
         @dialog.close(EDITOR_ID),
       )
     Saved(Err(_)) =>
@@ -305,7 +316,11 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
     Archived(None) => {
       let id = model.editor.bind(editor => editor.id)
       (
-        { ..model, chores: model.chores.filter(c => Some(c.id) != id), },
+        {
+          ..model,
+          chores: model.chores.filter(c => Some(c.id) != id),
+          panel_open: false,
+        },
         @dialog.close(EDITOR_ID),
       )
     }
@@ -317,6 +332,8 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
         }),
         @rabbita.none,
       )
+    ClosePanel => ({ ..model, panel_open: false, }, @dialog.close(EDITOR_ID))
+    PanelClosed => ({ ..model, panel_open: false, }, @rabbita.none)
   }
 }
 
@@ -336,6 +353,7 @@ fn app() -> Val[Html] {
           chores: [],
           recent: [],
           editor: None,
+          panel_open: false,
           undo: None,
           notice: "",
         },
