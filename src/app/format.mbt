@@ -68,3 +68,36 @@ fn chore_meta(chore : @core.Chore, today : @core.Date) -> String {
   }
   "\{interval_text(chore.interval_days)} · \{last_done_text(chore.last_done, today)}\{due}"
 }
+
+///|
+/// e.g. `Vacuum ×2 · Clean bath`, in order of the latest completion.
+fn recent_text(recent : Array[@core.RecentDone]) -> String {
+  let titles : Array[String] = []
+  let counts : Map[String, Int] = Map([])
+  recent.each(done => {
+    match counts.get(done.title) {
+      Some(count) => counts[done.title] = count + 1
+      None => {
+        titles.push(done.title)
+        counts[done.title] = 1
+      }
+    }
+  })
+  titles
+  .map(title => {
+    match counts.get(title) {
+      Some(count) if count > 1 => "\{title} ×\{count}"
+      _ => title
+    }
+  })
+  .join(" · ")
+}
+
+///|
+fn history_text(dates : Array[@core.Date]) -> String {
+  if dates.is_empty() {
+    "Not done yet."
+  } else {
+    dates.map(short_date).join(" · ")
+  }
+}

@@ -57,11 +57,39 @@ test("marks a chore as done and undoes it", async ({ page }, testInfo) => {
   await expect(page.locator("#undo-toast")).toContainText(`Done: ${title}`);
   await expect(page.locator("#due li", { hasText: title })).toHaveCount(0);
   await expect(page.locator("#later", { hasText: title })).toBeVisible();
+  await expect(page.locator("#recent")).toContainText(title);
 
   await page.locator("#undo-toast").getByRole("button", { name: "Undo" }).click();
 
   await expect(page.locator("#undo-toast")).toBeHidden();
   await expect(page.locator("#due li", { hasText: title })).toBeVisible();
+  await expect(page.locator("#recent", { hasText: title })).toHaveCount(0);
+});
+
+test("shows the history of a chore", async ({ page }, testInfo) => {
+  const title = uniqueTitle(testInfo, "Water plants");
+  await page.goto("/");
+  await addChore(page, title, "4");
+  const dialog = page.getByRole("dialog");
+
+  await page.locator("#due li", { hasText: title }).getByText(title).click();
+  await expect(dialog.locator("#chore-history")).toContainText("Not done yet.");
+  await dialog.getByRole("button", { name: "Close" }).click();
+  await expect(dialog).toBeHidden();
+
+  await page.getByRole("button", { name: `Done: ${title}` }).click();
+  await page.locator("#later").getByText(title).click();
+
+  const [, month, day] = today().split("-").map(Number);
+  const label = `${new Date(2000, month - 1).toLocaleString("en-US", { month: "short" })} ${day}`;
+  await expect(dialog.locator("#chore-history")).toHaveText(`History${label}`);
+});
+
+test("serves the web app manifest", async ({ request }) => {
+  const response = await request.get("/manifest.webmanifest");
+  expect(response.ok()).toBeTruthy();
+  expect(await response.json()).toMatchObject({ name: "strawboar", display: "standalone" });
+  expect((await request.get("/icon-192.png")).ok()).toBeTruthy();
 });
 
 test("postpones, edits and archives a chore", async ({ page }, testInfo) => {

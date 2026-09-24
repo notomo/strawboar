@@ -31,8 +31,7 @@ async fn list_chores(db : @cloudflare.D1Database) -> Array[@core.Chore] {
       "SELECT \{chore_columns} FROM chores WHERE archived = 0 ORDER BY id",
     )
     .all()
-  guard rows is Array(rows) else { return [] }
-  rows.map(decode_chore)
+  decode_rows(rows).map(decode_chore)
 }
 
 ///|
@@ -203,4 +202,55 @@ fn text_or_null(value : Json) -> @cloudflare.D1Param {
     String(s) => Text(s)
     _ => Null
   }
+}
+
+///|
+fn decode_rows(rows : Json) -> Array[Json] {
+  match rows {
+    Array(rows) => rows
+    _ => []
+  }
+}
+
+///|
+async fn list_recent_done(
+  db : @cloudflare.D1Database,
+  since : @core.Date,
+) -> Array[@core.RecentDone] {
+  let rows = db
+    .prepare(
+      "SELECT completions.id AS completion_id, chores.title, completions.done_on FROM completions JOIN chores ON chores.id = completions.chore_id WHERE completions.done_on >= ? ORDER BY completions.done_on DESC, completions.id DESC",
+    )
+    .bind([Text(since.to_string())])
+    .all()
+  decode_rows(rows).map(row => {
+    @json.from_json(row) catch {
+      error => raise InternalError("invalid completion row: \{error}")
+    }
+  })
+}
+
+///|
+let history_limit = 20
+
+///|
+async fn list_history(db : @cloudflare.D1Database, id : Int) -> @core.History {
+  // Also checks that the chore exists.
+  let _ = find_chore(db, id)
+  let rows = db
+    .prepare(
+      "SELECT done_on FROM completions WHERE chore_id = ? ORDER BY done_on DESC, id DESC LIMIT ?",
+    )
+    .bind([Integer(id), Integer(history_limit)])
+    .all()
+  let dates = decode_rows(rows).map(row => {
+    guard row is { "done_on": done_on, .. } else {
+      raise InternalError("invalid history row")
+    }
+    let date : @core.Date = @json.from_json(done_on) catch {
+      error => raise InternalError("invalid history row: \{error}")
+    }
+    date
+  })
+  { dates, }
 }

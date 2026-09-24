@@ -15,6 +15,13 @@ enum Load {
 } derive(Eq)
 
 ///|
+enum HistoryState {
+  Loading
+  Fetched(Array[@core.Date])
+  Unavailable
+} derive(Eq)
+
+///|
 /// Form state of the add/edit dialog. `id` is `None` for a new chore.
 struct Editor {
   id : Int?
@@ -22,6 +29,7 @@ struct Editor {
   interval : String
   next_due : String
   error : String
+  history : HistoryState
 } derive(Eq)
 
 ///|
@@ -35,6 +43,7 @@ struct Model {
   load : Load
   today : @core.Date?
   chores : Array[@core.Chore]
+  recent : Array[@core.RecentDone]
   editor : Editor?
   undo : Undo?
   notice : String
@@ -51,6 +60,7 @@ enum Msg {
   DismissUndo(Int)
   OpenNew
   OpenEdit(Int)
+  HistoryLoaded(Int, Result[@core.History, Error])
   TitleChanged(String)
   IntervalChanged(String)
   NextDueChanged(String)
@@ -101,7 +111,13 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
       )
     Loaded(Ok(list)) =>
       (
-        { ..model, load: Ready, today: Some(list.today), chores: list.chores, },
+        {
+          ..model,
+          load: Ready,
+          today: Some(list.today),
+          chores: list.chores,
+          recent: list.recent,
+        },
         @rabbita.none,
       )
     Loaded(Err(_)) => ({ ..model, load: Failed, }, @rabbita.none)
@@ -121,6 +137,18 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
             completion_id: completed.completion_id,
             title: completed.chore.title,
           }),
+          recent: match completed.chore.last_done {
+            Some(done_on) =>
+              [
+                {
+                  completion_id: completed.completion_id,
+                  title: completed.chore.title,
+                  done_on,
+                },
+                ..model.recent,
+              ]
+            None => model.recent
+          },
         },
         @rabbita.delay(
           emit(DismissUndo(completed.completion_id)),
@@ -132,7 +160,13 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
       match model.undo {
         Some(undo) =>
           (
-            { ..model, undo: None, },
+            {
+              ..model,
+              undo: None,
+              recent: model.recent.filter(r => {
+                r.completion_id != undo.completion_id
+              }),
+            },
             @http.delete("/api/completions/\{undo.completion_id}").expect_json(
               emit.map(result => Undone(result)),
             ),
@@ -159,6 +193,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
             interval: "7",
             next_due,
             error: "",
+            history: Fetched([]),
           }),
         },
         @dialog.show(EDITOR_ID),
@@ -176,11 +211,28 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
                 interval: chore.interval_days.to_string(),
                 next_due: chore.next_due.to_string(),
                 error: "",
+                history: Loading,
               }),
             },
-            @dialog.show(EDITOR_ID),
+            @rabbita.batch([
+              @dialog.show(EDITOR_ID),
+              @http.get("/api/chores/\{id}/completions").expect_json(
+                emit.map(result => HistoryLoaded(id, result)),
+              ),
+            ]),
           )
         None => (model, @rabbita.none)
+      }
+    HistoryLoaded(id, result) =>
+      match model.editor {
+        Some(editor) if editor.id == Some(id) => {
+          let history = match result {
+            Ok(history) => Fetched(history.dates)
+            Err(_) => Unavailable
+          }
+          ({ ..model, editor: Some({ ..editor, history, }), }, @rabbita.none)
+        }
+        _ => (model, @rabbita.none)
       }
     TitleChanged(title) =>
       (model.edit(editor => { ..editor, title, }), @rabbita.none)
@@ -291,6 +343,7 @@ fn app() -> Val[Html] {
           load: Loading,
           today: None,
           chores: [],
+          recent: [],
           editor: None,
           undo: None,
           notice: "",

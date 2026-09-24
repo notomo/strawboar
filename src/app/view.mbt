@@ -56,6 +56,7 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
         section_view("due", "Due", dashboard.due, today, emit),
         section_view("soon", "Soon", dashboard.soon, today, emit),
         later_view(dashboard.later, emit),
+        recent_view(model.recent),
       ])
     }
     (Failed, _) =>
@@ -169,6 +170,40 @@ fn later_view(chores : Array[@core.Chore], emit : Emit[Msg]) -> Html {
 }
 
 ///|
+fn recent_view(recent : Array[@core.RecentDone]) -> Html {
+  if recent.is_empty() {
+    return @html.nothing
+  }
+  @html.section(id="recent", [
+    section_title("Done this week"),
+    p(
+      style=[
+        "margin:0;font-size:0.875rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden",
+        muted,
+      ],
+      recent_text(recent),
+    ),
+  ])
+}
+
+///|
+fn history_view(history : HistoryState) -> Html {
+  let text = match history {
+    Loading => "Loading..."
+    Fetched(dates) => history_text(dates)
+    Unavailable => "Failed to load history."
+  }
+  div(
+    id="chore-history",
+    style=["display:flex;flex-direction:column;gap:0.25rem"],
+    [
+      span(style=["font-size:0.875rem;font-weight:500"], "History"),
+      span(style=["font-size:0.875rem", muted], text),
+    ],
+  )
+}
+
+///|
 fn field_view(id : String, label : String, input : Html) -> Html {
   @rui.field([@rui.field_label(for_=id, label), input])
 }
@@ -243,6 +278,11 @@ fn editor_content(editor : Editor, emit : Emit[Msg]) -> Array[Html] {
           @html.nothing
         } else {
           postpone_view(emit)
+        },
+        if is_new {
+          @html.nothing
+        } else {
+          history_view(editor.history)
         },
         if editor.error == "" {
           @html.nothing

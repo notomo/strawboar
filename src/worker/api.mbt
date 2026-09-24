@@ -69,7 +69,12 @@ async fn route(
     .collect()
   match (request.method_(), segments) {
     ("GET", ["api", "chores"]) => {
-      let list : @core.ChoreList = { today: today(), chores: list_chores(db), }
+      let today = today()
+      let list : @core.ChoreList = {
+        today,
+        chores: list_chores(db),
+        recent: list_recent_done(db, today.add_days(1 - @core.RECENT_DAYS)),
+      }
       json_response(list.to_json(), 200)
     }
     ("POST", ["api", "chores"]) => {
@@ -95,6 +100,8 @@ async fn route(
       let chore = find_chore(db, id).postpone(today(), days)
       json_response(save_schedule(db, chore).to_json(), 200)
     }
+    ("GET", ["api", "chores", id, "completions"]) =>
+      json_response(list_history(db, parse_id(id)).to_json(), 200)
     ("DELETE", ["api", "completions", id]) => {
       let chore = undo_completion(db, parse_id(id))
       json_response(chore.to_json(), 200)

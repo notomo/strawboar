@@ -39,3 +39,24 @@ test "dates" {
   inspect(long_date(test_date("2026-09-24")), content="Thu, Sep 24")
   inspect(short_date(test_date("2026-10-03")), content="Oct 3")
 }
+
+///|
+test "recent_text" {
+  let today = test_date("2026-09-24")
+  let recent : Array[@core.RecentDone] = [
+    { completion_id: 3, title: "Vacuum", done_on: today, },
+    { completion_id: 2, title: "Clean bath", done_on: today, },
+    { completion_id: 1, title: "Vacuum", done_on: today, },
+  ]
+  inspect(recent_text(recent), content="Vacuum ×2 · Clean bath")
+  inspect(recent_text([]), content="")
+}
+
+///|
+test "history_text" {
+  inspect(
+    history_text([test_date("2026-09-24"), test_date("2026-09-17")]),
+    content="Sep 24 · Sep 17",
+  )
+  inspect(history_text([]), content="Not done yet.")
+}

@@ -3,7 +3,43 @@
 pub(all) struct ChoreList {
   today : Date
   chores : Array[Chore]
+  /// Completions of the last `RECENT_DAYS` days, newest first.
+  recent : Array[RecentDone]
 } derive(Eq, ToJson, FromJson)
+
+///|
+pub const RECENT_DAYS : Int = 7
+
+///|
+pub(all) struct RecentDone {
+  completion_id : Int
+  title : String
+  done_on : Date
+} derive(Eq, ToJson, FromJson)
+
+///|
+pub extend RecentDone with Eq::{equal, not_equal}
+
+///|
+pub extend RecentDone with ToJson::{to_json}
+
+///|
+pub extend RecentDone with @json.FromJson::{from_json}
+
+///|
+/// Response of `GET /api/chores/:id/completions`, newest first.
+pub(all) struct History {
+  dates : Array[Date]
+} derive(Eq, ToJson, FromJson)
+
+///|
+pub extend History with Eq::{equal, not_equal}
+
+///|
+pub extend History with ToJson::{to_json}
+
+///|
+pub extend History with @json.FromJson::{from_json}
 
 ///|
 pub extend ChoreList with Eq::{equal, not_equal}
