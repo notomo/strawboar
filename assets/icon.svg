@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Full-bleed background so the icon also works as a maskable icon. -->
+  <rect width="512" height="512" fill="#a16207"/>
+  <path d="M136 368 L256 128 L376 368 Z" fill="#fde68a"/>
+</svg>

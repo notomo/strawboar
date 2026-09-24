@@ -34,6 +34,7 @@ src/
 └── app/         # Rabbita frontend (rui components)
 worker/index.js  # Thin Worker entry that lazily imports src/worker output
 migrations/      # D1 SQL migrations
+assets/icon.svg  # App icon source; run `node scripts/generate-icons.mjs` to update public/*.png
 e2e/             # Playwright tests
 ```
 
