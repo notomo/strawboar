@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "strawboar",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-09-01",
+  "minify": true,
+  "build": {
+    "command": "moon build --target js --release",
+    "watch_dir": "src"
+  },
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "strawboar",
+      "database_id": "a571afe0-a00d-4237-b107-a285f19264ac",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // ACCESS_TEAM_DOMAIN and ACCESS_AUD are set as Worker secrets (`wrangler secret put`).
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": true }
+}

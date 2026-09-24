@@ -1,0 +1,12 @@
+import {
+  "internal/strawboar/auth",
+  "internal/strawboar/cloudflare",
+  "internal/strawboar/core",
+  "moonbitlang/async/js_async",
+}
+
+supported_targets = "js"
+
+options(
+  link: { "js": { "format": "esm", "exports": [ "fetch" ] } },
+)

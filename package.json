@@ -1,0 +1,27 @@
+{
+  "name": "strawboar",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "git config --local include.path ../.gitconfig",
+    "check_all": "npm run format && npm run check && npm run test && npm run build && npm run test:e2e",
+    "check": "moon check && moon fmt --check",
+    "format": "moon fmt",
+    "test": "moon test --target js",
+    "test:e2e": "playwright test",
+    "build": "moon build --target js --release && vite build",
+    "dev": "concurrently -k -n vite,worker \"vite\" \"npm run dev:worker\"",
+    "dev:worker": "npm run db:migrate:local && wrangler dev --port 8787",
+    "preview": "npm run build && npm run dev:worker",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@rabbita/vite": "^0.2.0",
+    "concurrently": "^10.0.5",
+    "vite": "^7.3.6",
+    "wrangler": "^4.137.0"
+  }
+}
