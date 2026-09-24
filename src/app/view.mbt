@@ -9,24 +9,13 @@ let muted = "color:var(--rui-muted-foreground)"
 let panel_width = "24rem"
 
 ///|
-/// Content width plus the panel width. Below this, the panel covers the content.
-let side_by_side_width = "64rem"
-
-///|
 fn view(model : Model, emit : Emit[Msg]) -> Html {
-  // Makes room for the panel only when both fit side by side:
-  // the calc is hugely negative (clamped to 0) on narrow screens.
-  let room_for_panel = match model.editor {
-    Some(_) =>
-      "padding-right:clamp(0px,calc((100vw - \{side_by_side_width}) * 1000),\{panel_width})"
-    None => ""
-  }
   @rui.theme(
     mode=Dark,
     style=[
       "min-height:100dvh;background:var(--rui-background);color:var(--rui-foreground)",
     ],
-    div(style=[room_for_panel], [
+    [
       div(
         style=[
           "box-sizing:border-box;padding:1.25rem 1rem;max-width:40rem;margin:0 auto;display:flex;flex-direction:column;gap:1.5rem",
@@ -35,7 +24,7 @@ fn view(model : Model, emit : Emit[Msg]) -> Html {
       ),
       editor_view(model.editor, emit),
       undo_view(model.undo, emit),
-    ]),
+    ],
   )
 }
 
@@ -282,12 +271,11 @@ fn field_view(id : String, label : String, input : Html) -> Html {
 }
 
 ///|
-/// A non-modal panel on the right, so the dashboard stays visible and usable.
+/// A non-modal panel over the right side of the dashboard.
 fn editor_view(editor : Editor?, emit : Emit[Msg]) -> Html {
   @rui.sheet(
     id=EDITOR_ID,
     side=SheetRight,
-    on_close=emit.map(_ => EditorClosed),
     attrs=@html.Attrs::build().aria_labelledby("chore-editor-title"),
     style=[
       "width:min(\{panel_width},100vw);max-width:100vw;box-shadow:-8px 0 24px rgb(0 0 0 / 0.4)",

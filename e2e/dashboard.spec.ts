@@ -66,6 +66,23 @@ test("marks a chore as done and undoes it", async ({ page }, testInfo) => {
   await expect(page.locator("#recent", { hasText: title })).toHaveCount(0);
 });
 
+test("switches chores while the panel is open", async ({ page }, testInfo) => {
+  // On mobile the panel covers the whole dashboard.
+  test.skip(testInfo.project.name === "mobile");
+  const first = uniqueTitle(testInfo, "Clean bath");
+  const second = uniqueTitle(testInfo, "Change toothbrush");
+  await page.goto("/");
+  await addChore(page, first, "7");
+  await addChore(page, second, "30");
+  const title = page.getByRole("dialog").getByLabel("Title");
+
+  await page.locator("#due li", { hasText: first }).getByText(first).click();
+  await expect(title).toHaveValue(first);
+
+  await page.locator("#due li", { hasText: second }).getByText(second).click();
+  await expect(title).toHaveValue(second);
+});
+
 test("shows the history of a chore", async ({ page }, testInfo) => {
   const title = uniqueTitle(testInfo, "Water plants");
   await page.goto("/");
@@ -80,8 +97,8 @@ test("shows the history of a chore", async ({ page }, testInfo) => {
   await page.getByRole("button", { name: `Done: ${title}` }).click();
   await page.locator("#later").getByText(title).click();
 
-  const [, month, day] = today().split("-").map(Number);
-  const label = `${new Date(2000, month - 1).toLocaleString("en-US", { month: "short" })} ${day}`;
+  const [, month, day] = today().split("-");
+  const label = `${month}/${day}`;
   await expect(dialog.locator("#chore-history")).toHaveText(`History${label}`);
 });
 

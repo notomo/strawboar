@@ -22,7 +22,9 @@ enum HistoryState {
 } derive(Eq)
 
 ///|
-/// Form state of the add/edit dialog. `id` is `None` for a new chore.
+/// Form state of the editor panel. `id` is `None` for a new chore.
+/// It is kept after the panel closes: a close event can arrive after
+/// another chore was opened, and clearing it then would empty the panel.
 struct Editor {
   id : Int?
   title : String
@@ -69,7 +71,6 @@ enum Msg {
   Saved(Result[@core.Chore, Error])
   Archive
   Archived(Error?)
-  EditorClosed
 }
 
 ///|
@@ -279,12 +280,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
       }
     Saved(Ok(chore)) =>
       (
-        {
-          ..model,
-          chores: upsert(model.chores, chore),
-          editor: None,
-          notice: "",
-        },
+        { ..model, chores: upsert(model.chores, chore), notice: "", },
         @dialog.close(EDITOR_ID),
       )
     Saved(Err(_)) =>
@@ -309,11 +305,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
     Archived(None) => {
       let id = model.editor.bind(editor => editor.id)
       (
-        {
-          ..model,
-          chores: model.chores.filter(c => Some(c.id) != id),
-          editor: None,
-        },
+        { ..model, chores: model.chores.filter(c => Some(c.id) != id), },
         @dialog.close(EDITOR_ID),
       )
     }
@@ -325,7 +317,6 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
         }),
         @rabbita.none,
       )
-    EditorClosed => ({ ..model, editor: None, }, @rabbita.none)
   }
 }
 

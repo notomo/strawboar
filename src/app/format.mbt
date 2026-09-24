@@ -30,32 +30,15 @@ fn last_done_text(last_done : @core.Date?, today : @core.Date) -> String {
 }
 
 ///|
-fn month_label(month : Int) -> String {
-  match month {
-    1 => "Jan"
-    2 => "Feb"
-    3 => "Mar"
-    4 => "Apr"
-    5 => "May"
-    6 => "Jun"
-    7 => "Jul"
-    8 => "Aug"
-    9 => "Sep"
-    10 => "Oct"
-    11 => "Nov"
-    _ => "Dec"
-  }
-}
-
-///|
-/// e.g. `Oct 3`
+/// e.g. `10/03`
 fn short_date(date : @core.Date) -> String {
   let (_, month, day) = date.ymd()
-  "\{month_label(month)} \{day}"
+  let pad = (n : Int) => if n < 10 { "0\{n}" } else { n.to_string() }
+  "\{pad(month)}/\{pad(day)}"
 }
 
 ///|
-/// e.g. `Thu, Sep 24`
+/// e.g. `Thu, 09/24`
 fn long_date(date : @core.Date) -> String {
   "\{date.weekday().label()}, \{short_date(date)}"
 }

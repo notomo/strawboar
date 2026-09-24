@@ -52,7 +52,7 @@ e2e/             # Playwright tests
 - **Dates**: chores use local dates (`YYYY-MM-DD`, Asia/Tokyo), not timestamps. "Today" is decided by the Worker and returned from `GET /api/chores`.
 - **Chore scheduling**: urgency, ordering, done and postpone rules live in `src/core/chore.mbt`. Overdue chores are just "Due"; never show how late they are.
 - **API**: routes are in `src/worker/api.mbt`, D1 queries in `src/worker/repository.mbt`.
-- **UI**: use `rui` components (dark theme) and inline `style` for layout. One chore per row; clickable areas must look clickable. Editing happens in a non-modal right-side panel (`rui.sheet`), not a modal. The dashboard must fit in the first view without scrolling on both desktop and mobile (checked in E2E). All UI text is in English.
+- **UI**: use `rui` components (dark theme) and inline `style` for layout. One chore per row; clickable areas must look clickable. Editing happens in a non-modal panel (`rui.sheet`) overlaid on the right, not a modal. Dates are shown as `MM/dd`. The dashboard must fit in the first view without scrolling on both desktop and mobile (checked in E2E). All UI text is in English.
 - **Rabbita**: follow `.mooncakes/moonbit-community/rabbita` conventions (`create_state`, `create_resource`, `@http`); avoid escape hatches such as `@cmd.effect` or `@dom`.
 
 ## Coding Style

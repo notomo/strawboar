@@ -36,15 +36,15 @@ test "chore_meta" {
 
 ///|
 test "dates" {
-  inspect(long_date(test_date("2026-09-24")), content="Thu, Sep 24")
-  inspect(short_date(test_date("2026-10-03")), content="Oct 3")
+  inspect(long_date(test_date("2026-09-24")), content="Thu, 09/24")
+  inspect(short_date(test_date("2026-10-03")), content="10/03")
 }
 
 ///|
 test "history_text" {
   inspect(
     history_text([test_date("2026-09-24"), test_date("2026-09-17")]),
-    content="Sep 24 · Sep 17",
+    content="09/24 · 09/17",
   )
   inspect(history_text([]), content="Not done yet.")
 }
