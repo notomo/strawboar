@@ -15,7 +15,8 @@
     "preview": "npm run build && npm run dev:worker",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "e2e:server": "rm -rf .wrangler/e2e && wrangler d1 migrations apply DB --local --persist-to .wrangler/e2e && wrangler dev --port 8788 --persist-to .wrangler/e2e"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

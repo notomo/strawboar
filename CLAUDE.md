@@ -16,7 +16,7 @@ npm run build      # moon build + vite build
 npm run check      # Type check and format check
 npm run format     # Format MoonBit code
 npm run test       # MoonBit tests (js target)
-npm run test:e2e   # Playwright against `npm run preview` (requires .dev.vars)
+npm run test:e2e   # Playwright against a Worker on 8788 with a fresh local D1 (requires .dev.vars)
 ```
 
 ## Quality Checks
@@ -48,8 +48,10 @@ e2e/             # Playwright tests
 
 - **Global scope in Workers**: MoonBit JS output generates a random hash seed at module load, which Workers disallow in global scope. `worker/index.js` therefore imports the MoonBit module lazily inside the handler. Keep it that way.
 - **Authentication**: every `/api/*` request must pass `authenticate` in `src/worker`. The local bypass (`DEV_AUTH_BYPASS_EMAIL` in `.dev.vars`) only applies to localhost.
-- **Dates**: chores use local dates (`YYYY-MM-DD`, Asia/Tokyo), not timestamps.
-- **UI**: use `rui` components and inline `style` for layout. The dashboard must fit in the first view without scrolling on both desktop and mobile (checked in E2E).
+- **Dates**: chores use local dates (`YYYY-MM-DD`, Asia/Tokyo), not timestamps. "Today" is decided by the Worker and returned from `GET /api/chores`.
+- **Chore scheduling**: urgency, ordering, done and postpone rules live in `src/core/chore.mbt`. Overdue chores are just "Due"; never show how late they are.
+- **API**: routes are in `src/worker/api.mbt`, D1 queries in `src/worker/repository.mbt`.
+- **UI**: use `rui` components and inline `style` for layout. The dashboard must fit in the first view without scrolling on both desktop and mobile (checked in E2E). All UI text is in English.
 - **Rabbita**: follow `.mooncakes/moonbit-community/rabbita` conventions (`create_state`, `create_resource`, `@http`); avoid escape hatches such as `@cmd.effect` or `@dom`.
 
 ## Coding Style

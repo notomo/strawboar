@@ -1,6 +1,7 @@
 import {
   "internal/strawboar/core",
   "moonbit-community/rabbita",
+  "moonbit-community/rabbita/dialog",
   "moonbit-community/rabbita/html",
   "moonbit-community/rabbita/http",
   "moonbit-community/rui",

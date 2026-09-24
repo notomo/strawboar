@@ -21,6 +21,15 @@ pub extern "js" fn Request::header(self : Request, name : String) -> String =
   #| (r, name) => r.headers.get(name) ?? ""
 
 ///|
+extern "js" fn Request::text_ffi(self : Request) -> @js_async.Promise[String] =
+  #| (r) => r.text()
+
+///|
+pub async fn Request::text(self : Request) -> String {
+  self.text_ffi().wait()
+}
+
+///|
 /// A Fetch API `Response` returned from the Worker.
 #external
 pub type Response
@@ -34,6 +43,11 @@ pub extern "js" fn Response::json(body : String, status : Int) -> Response =
   #|     "cache-control": "no-store",
   #|   },
   #| })
+
+///|
+/// A response without body, e.g. `204 No Content`.
+pub extern "js" fn Response::empty(status : Int) -> Response =
+  #| (status) => new Response(null, { status, headers: { "cache-control": "no-store" } })
 
 ///|
 /// Bindings and variables configured in `wrangler.jsonc`.

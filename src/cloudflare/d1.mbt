@@ -18,10 +18,10 @@ pub(all) enum D1Param {
 priv type JsValue
 
 ///|
-extern "js" fn JsValue::text(value : String) -> JsValue = "%identity"
+fn JsValue::text(value : String) -> JsValue = "%identity"
 
 ///|
-extern "js" fn JsValue::integer(value : Int) -> JsValue = "%identity"
+fn JsValue::integer(value : Int) -> JsValue = "%identity"
 
 ///|
 extern "js" fn JsValue::null() -> JsValue =
@@ -94,4 +94,30 @@ extern "js" fn D1PreparedStatement::run_ffi(
 /// Runs the statement and returns the number of changed rows.
 pub async fn D1PreparedStatement::run(self : D1PreparedStatement) -> Int {
   self.run_ffi().wait()
+}
+
+///|
+extern "js" fn D1Database::batch_ffi(
+  self : D1Database,
+  statements : JsArray,
+) -> @js_async.Promise[String] =
+  #| (db, statements) => db.batch(statements).then((results) =>
+  #|   JSON.stringify(results.map((r) => r.results ?? []))
+  #| )
+
+///|
+fn JsValue::statement(value : D1PreparedStatement) -> JsValue = "%identity"
+
+///|
+/// Runs the statements in a single transaction and returns the result rows of each.
+pub async fn D1Database::batch(
+  self : D1Database,
+  statements : Array[D1PreparedStatement],
+) -> Array[Json] {
+  let array = JsArray::new()
+  statements.each(statement => array.push(JsValue::statement(statement)))
+  match @json.parse(self.batch_ffi(array).wait()) {
+    Array(results) => results
+    _ => []
+  }
 }

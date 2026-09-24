@@ -12,13 +12,16 @@ async fn handle(
   request : @cloudflare.Request,
   env : @cloudflare.Env,
 ) -> @cloudflare.Response {
-  let identity = authenticate(request, env) catch {
+  // Only the owner can pass Access, so the identity itself is not used yet.
+  let _identity = authenticate(request, env) catch {
     @auth.AuthError(message) => {
       println("unauthorized: \{message}")
       return error_response("unauthorized", 401)
     }
   }
-  route(request, env, identity) catch {
+  route(request, env.d1("DB")) catch {
+    BadRequest(message) => error_response(message, 400)
+    NotFound => error_response("not found", 404)
     error => {
       println("internal error: \{error}")
       error_response("internal error", 500)
@@ -48,27 +51,6 @@ async fn authenticate(
 ///|
 fn is_local(hostname : String) -> Bool {
   hostname is ("localhost" | "127.0.0.1")
-}
-
-///|
-async fn route(
-  request : @cloudflare.Request,
-  env : @cloudflare.Env,
-  identity : @auth.Identity,
-) -> @cloudflare.Response {
-  let db = env.d1("DB")
-  match (request.method_(), request.pathname()) {
-    ("GET", "/api/summary") => {
-      let rows = db.prepare("SELECT COUNT(*) AS count FROM chores").all()
-      let chore_count = match rows {
-        [{ "count": Number(count, ..), .. }, ..] => count.to_int()
-        _ => 0
-      }
-      let summary : @core.Summary = { email: identity.email, chore_count, }
-      json_response(summary.to_json(), 200)
-    }
-    _ => error_response("not found", 404)
-  }
 }
 
 ///|

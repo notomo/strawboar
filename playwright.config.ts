@@ -1,14 +1,15 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const isCI = !!process.env.CI;
-const baseURL = "http://localhost:8787";
+const baseURL = "http://localhost:8788";
 
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: true,
+  // Tests share one local D1 database.
+  fullyParallel: false,
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
-  workers: isCI ? 1 : undefined,
+  workers: 1,
   reporter: "html",
   use: {
     baseURL,
@@ -27,10 +28,10 @@ export default defineConfig({
   ],
 
   webServer: {
-    // Serves the built assets and the Worker with local D1 (`.dev.vars` is required).
-    command: "npm run preview",
-    url: `${baseURL}/api/summary`,
-    reuseExistingServer: !isCI,
+    // Serves the built assets and the Worker with a fresh local D1 (`.dev.vars` is required).
+    command: "npm run build && npm run e2e:server",
+    url: `${baseURL}/api/chores`,
+    reuseExistingServer: false,
     timeout: 180_000,
   },
 });
