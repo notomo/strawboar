@@ -196,7 +196,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
             history: Fetched([]),
           }),
         },
-        @dialog.show(EDITOR_ID),
+        @dialog.show(EDITOR_ID, modal=false),
       )
     }
     OpenEdit(id) =>
@@ -215,7 +215,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
               }),
             },
             @rabbita.batch([
-              @dialog.show(EDITOR_ID),
+              @dialog.show(EDITOR_ID, modal=false),
               @http.get("/api/chores/\{id}/completions").expect_json(
                 emit.map(result => HistoryLoaded(id, result)),
               ),
