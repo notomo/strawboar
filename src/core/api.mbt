@@ -13,9 +13,22 @@ pub const RECENT_DAYS : Int = 7
 ///|
 pub(all) struct RecentDone {
   completion_id : Int
+  chore_id : Int
   title : String
   done_on : Date
 } derive(Eq, ToJson, FromJson)
+
+///|
+/// Only the latest completion of a chore can be undone, because undoing restores
+/// the schedule from before it. `recent` must be newest first.
+pub fn RecentDone::can_undo(
+  self : RecentDone,
+  recent : Array[RecentDone],
+) -> Bool {
+  recent.iter().find_first(r => r.chore_id == self.chore_id)
+  is Some({ completion_id, .. }) &&
+  completion_id == self.completion_id
+}
 
 ///|
 pub extend RecentDone with Eq::{equal, not_equal}

@@ -4,6 +4,7 @@ pub(all) struct ChoreInput {
   title : String
   interval_days : Int
   next_due : Date
+  labels : Array[String]
 } derive(ToJson, FromJson)
 
 ///|
@@ -17,6 +18,12 @@ pub const MAX_TITLE_LENGTH : Int = 100
 
 ///|
 pub const MAX_INTERVAL_DAYS : Int = 3650
+
+///|
+pub const MAX_LABEL_LENGTH : Int = 30
+
+///|
+pub const MAX_LABELS : Int = 10
 
 ///|
 pub(all) suberror ValidationError {
@@ -40,7 +47,37 @@ pub fn ChoreInput::validate(
       "Interval must be between 1 and \{MAX_INTERVAL_DAYS} days.",
     )
   }
-  { ..self, title, }
+  let labels = normalize_labels(self.labels)
+  guard labels.iter().all(label => label.length() <= MAX_LABEL_LENGTH) else {
+    raise ValidationError(
+      "Each label must be at most \{MAX_LABEL_LENGTH} characters.",
+    )
+  }
+  guard labels.length() <= MAX_LABELS else {
+    raise ValidationError("A chore can have at most \{MAX_LABELS} labels.")
+  }
+  { ..self, title, labels, }
+}
+
+///|
+/// Trims labels and drops empty and duplicate ones, keeping the first order.
+fn normalize_labels(labels : Array[String]) -> Array[String] {
+  labels
+  .map(label => label.trim().to_owned())
+  .filter(label => label != "")
+  .fold(init=[], (acc, label) => {
+    if acc.contains(label) {
+      acc
+    } else {
+      [..acc, label]
+    }
+  })
+}
+
+///|
+/// Parses comma-separated labels typed by a user.
+pub fn parse_labels(input : String) -> Array[String] {
+  normalize_labels(input.split(",").map(label => label.to_owned()).collect())
 }
 
 ///|

@@ -14,6 +14,7 @@ test "chore_meta" {
     interval_days: 7,
     next_due: test_date("2026-09-22"),
     last_done: Some(test_date("2026-09-15")),
+    labels: [],
   }
   inspect(chore_meta(chore, today), content="weekly · done 9 days ago")
   inspect(

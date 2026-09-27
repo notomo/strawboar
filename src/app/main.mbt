@@ -30,6 +30,8 @@ struct Editor {
   title : String
   interval : String
   next_due : String
+  /// Comma-separated labels.
+  labels : String
   error : String
   history : HistoryState
 } derive(Eq)
@@ -49,6 +51,8 @@ struct Model {
   editor : Editor?
   /// Whether the editor panel is shown. Drives the backdrop that closes it.
   panel_open : Bool
+  /// Only chores with this label are shown when set.
+  label_filter : String?
   undo : Undo?
   notice : String
 } derive(Eq)
@@ -59,7 +63,7 @@ enum Msg {
   Loaded(Result[@core.ChoreList, Error])
   Complete(Int)
   Completed(Result[@core.Completed, Error])
-  UndoCompletion
+  UndoCompletion(Int)
   Undone(Result[@core.Chore, Error])
   DismissUndo(Int)
   OpenNew
@@ -68,6 +72,8 @@ enum Msg {
   TitleChanged(String)
   IntervalChanged(String)
   NextDueChanged(String)
+  LabelsChanged(String)
+  FilterByLabel(String?)
   Submit
   Postpone(Int)
   Saved(Result[@core.Chore, Error])
@@ -97,7 +103,12 @@ fn Editor::input(self : Editor) -> @core.ChoreInput raise @core.ValidationError 
   let next_due = @core.Date::parse(self.next_due) catch {
     _ => raise ValidationError("Next due must be a date.")
   }
-  let input : @core.ChoreInput = { title: self.title, interval_days, next_due, }
+  let input : @core.ChoreInput = {
+    title: self.title,
+    interval_days,
+    next_due,
+    labels: @core.parse_labels(self.labels),
+  }
   input.validate()
 }
 
@@ -122,7 +133,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
           today: Some(list.today),
           chores: list.chores,
           recent: list.recent,
-        },
+        }.keep_valid_filter(),
         @rabbita.none,
       )
     Loaded(Err(_)) => ({ ..model, load: Failed, }, @rabbita.none)
@@ -147,6 +158,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
               [
                 {
                   completion_id: completed.completion_id,
+                  chore_id: completed.chore.id,
                   title: completed.chore.title,
                   done_on,
                 },
@@ -161,26 +173,22 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
         ),
       )
     Completed(Err(_)) => failed(model, "Failed to mark as done.")
-    UndoCompletion =>
-      match model.undo {
-        Some(undo) =>
-          (
-            {
-              ..model,
-              undo: None,
-              recent: model.recent.filter(r => {
-                r.completion_id != undo.completion_id
-              }),
-            },
-            @http.delete("/api/completions/\{undo.completion_id}").expect_json(
-              emit.map(result => Undone(result)),
-            ),
-          )
-        None => (model, @rabbita.none)
-      }
+    UndoCompletion(completion_id) =>
+      (
+        {
+          ..model,
+          notice: "",
+          undo: model.undo.filter(undo => undo.completion_id != completion_id),
+          recent: model.recent.filter(r => r.completion_id != completion_id),
+        },
+        @http.delete("/api/completions/\{completion_id}").expect_json(
+          emit.map(result => Undone(result)),
+        ),
+      )
     Undone(Ok(chore)) =>
       ({ ..model, chores: upsert(model.chores, chore), }, @rabbita.none)
-    Undone(Err(_)) => failed(model, "Failed to undo.")
+    // The completion was removed from `recent` optimistically, so reload it.
+    Undone(Err(_)) => ({ ..model, notice: "Failed to undo.", }, emit(Reload))
     DismissUndo(id) =>
       match model.undo {
         Some(undo) if undo.completion_id == id =>
@@ -197,6 +205,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
             title: "",
             interval: "7",
             next_due,
+            labels: model.label_filter.unwrap_or(""),
             error: "",
             history: Fetched([]),
           }),
@@ -216,6 +225,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
                 title: chore.title,
                 interval: chore.interval_days.to_string(),
                 next_due: chore.next_due.to_string(),
+                labels: chore.labels.join(", "),
                 error: "",
                 history: Loading,
               }),
@@ -247,6 +257,9 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
       (model.edit(editor => { ..editor, interval, }), @rabbita.none)
     NextDueChanged(next_due) =>
       (model.edit(editor => { ..editor, next_due, }), @rabbita.none)
+    LabelsChanged(labels) =>
+      (model.edit(editor => { ..editor, labels, }), @rabbita.none)
+    FilterByLabel(label_filter) => ({ ..model, label_filter, }, @rabbita.none)
     Submit =>
       match model.editor {
         Some(editor) =>
@@ -291,7 +304,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
           chores: upsert(model.chores, chore),
           notice: "",
           panel_open: false,
-        },
+        }.keep_valid_filter(),
         @dialog.close(EDITOR_ID),
       )
     Saved(Err(_)) =>
@@ -320,7 +333,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
           ..model,
           chores: model.chores.filter(c => Some(c.id) != id),
           panel_open: false,
-        },
+        }.keep_valid_filter(),
         @dialog.close(EDITOR_ID),
       )
     }
@@ -343,6 +356,25 @@ fn Model::edit(self : Model, f : (Editor) -> Editor) -> Model {
 }
 
 ///|
+/// Clears the label filter when no chore has the label anymore.
+fn Model::keep_valid_filter(self : Model) -> Model {
+  match self.label_filter {
+    Some(label) if !self.chores.iter().any(c => c.has_label(label)) =>
+      { ..self, label_filter: None, }
+    _ => self
+  }
+}
+
+///|
+/// The chore being edited in the open panel, if any.
+fn Model::selected_id(self : Model) -> Int? {
+  match (self.panel_open, self.editor) {
+    (true, Some({ id, .. })) => id
+    _ => None
+  }
+}
+
+///|
 fn app() -> Val[Html] {
   let (model, emit) = @rabbita.create_state_with_init(
     init=emit => {
@@ -354,6 +386,7 @@ fn app() -> Val[Html] {
           recent: [],
           editor: None,
           panel_open: false,
+          label_filter: None,
           undo: None,
           notice: "",
         },

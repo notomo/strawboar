@@ -12,6 +12,7 @@ fn chore(
   interval_days? : Int = 10,
   next_due? : String = "2026-09-24",
   last_done? : String,
+  labels? : Array[String] = [],
 ) -> @core.Chore {
   {
     id,
@@ -19,6 +20,7 @@ fn chore(
     interval_days,
     next_due: date(next_due),
     last_done: last_done.map(date),
+    labels,
   }
 }
 
@@ -101,7 +103,7 @@ test "chore json round trip" {
   inspect(
     json.stringify(),
     content=(
-      #|{"id":1,"title":"chore","interval_days":10,"next_due":"2026-09-24","last_done":"2026-09-14"}
+      #|{"id":1,"title":"chore","interval_days":10,"next_due":"2026-09-24","last_done":"2026-09-14","labels":[]}
     ),
   )
   let decoded : @core.Chore = @json.from_json(json)
@@ -126,6 +128,7 @@ test "validate" {
     title: "  Clean the bath  ",
     interval_days: 7,
     next_due: date("2026-09-24"),
+    labels: [],
   }
   inspect(validation_message(input), content="ok: Clean the bath")
   inspect(
@@ -140,6 +143,53 @@ test "validate" {
     validation_message({ ..input, interval_days: 0, }),
     content="Interval must be between 1 and 3650 days.",
   )
+  let valid = input.validate() catch { _ => abort("invalid") }
+  assert_eq(valid.labels, [])
+  let valid = { ..input, labels: [" bath ", "", "weekly", "bath"], }.validate() catch {
+    _ => abort("invalid")
+  }
+  assert_eq(valid.labels, ["bath", "weekly"])
+  inspect(
+    validation_message({ ..input, labels: ["a".repeat(31)], }),
+    content="Each label must be at most 30 characters.",
+  )
+  inspect(
+    validation_message({ ..input, labels: Array::makei(11, i => "label\{i}"), }),
+    content="A chore can have at most 10 labels.",
+  )
+}
+
+///|
+test "parse_labels" {
+  assert_eq(@core.parse_labels(""), [])
+  assert_eq(@core.parse_labels(" kitchen, bath ,,kitchen "), ["kitchen", "bath"])
+}
+
+///|
+test "all_labels" {
+  let chores = [
+    chore(id=1, labels=["kitchen", "weekly"]),
+    chore(id=2, labels=["bath", "kitchen"]),
+    chore(id=3),
+  ]
+  assert_eq(@core.all_labels(chores), ["bath", "kitchen", "weekly"])
+  assert_true(chores[0].has_label("weekly"))
+  assert_false(chores[1].has_label("weekly"))
+}
+
+///|
+test "can_undo" {
+  let done = (completion_id : Int, chore_id : Int) => {
+    let r : @core.RecentDone = {
+      completion_id,
+      chore_id,
+      title: "chore",
+      done_on: date("2026-09-24"),
+    }
+    r
+  }
+  let recent = [done(3, 1), done(2, 2), done(1, 1)]
+  assert_eq(recent.map(r => r.can_undo(recent)), [true, true, false])
 }
 
 ///|

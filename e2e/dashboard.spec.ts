@@ -18,11 +18,12 @@ function today(): string {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
-async function addChore(page: Page, title: string, interval: string) {
+async function addChore(page: Page, title: string, interval: string, labels = "") {
   await page.getByRole("button", { name: "Add" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Title").fill(title);
   await dialog.getByLabel("Every (days)").fill(interval);
+  await dialog.getByLabel("Labels").fill(labels);
   await dialog.getByRole("button", { name: "Save" }).click();
   await expect(dialog).toBeHidden();
 }
@@ -64,6 +65,90 @@ test("marks a chore as done and undoes it", async ({ page }, testInfo) => {
   await expect(page.locator("#undo-toast")).toBeHidden();
   await expect(page.locator("#due li", { hasText: title })).toBeVisible();
   await expect(page.locator("#recent", { hasText: title })).toHaveCount(0);
+});
+
+test("highlights the chore open in the panel", async ({ page }, testInfo) => {
+  const first = uniqueTitle(testInfo, "Clean bath");
+  const second = uniqueTitle(testInfo, "Change toothbrush");
+  await page.goto("/");
+  await addChore(page, first, "7");
+  await addChore(page, second, "30");
+  const dialog = page.getByRole("dialog");
+  const current = page.locator('li[aria-current="true"]');
+  await expect(current).toHaveCount(0);
+
+  await page.locator("#due li", { hasText: first }).getByText(first).click();
+  await expect(current).toHaveCount(1);
+  await expect(current).toContainText(first);
+
+  await dialog.getByRole("button", { name: "Close" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(current).toHaveCount(0);
+});
+
+test("filters chores by label", async ({ page }, testInfo) => {
+  const bath = uniqueTitle(testInfo, "Clean bath");
+  const fan = uniqueTitle(testInfo, "Clean kitchen fan");
+  await page.goto("/");
+  await expect(page.locator("#label-filter")).toHaveCount(0);
+  await addChore(page, bath, "7", " bath, weekly ,bath");
+  await addChore(page, fan, "90", "kitchen");
+
+  const bathRow = page.locator("#due li", { hasText: bath });
+  await expect(bathRow).toContainText("bath");
+  await expect(bathRow).toContainText("weekly");
+
+  const filter = page.locator("#label-filter");
+  await expect(filter.getByRole("button")).toHaveText(["All", "#bath", "#kitchen", "#weekly"]);
+  await filter.getByRole("button", { name: "#kitchen" }).click();
+  await expect(filter.getByRole("button", { name: "#kitchen" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#due li", { hasText: fan })).toBeVisible();
+  await expect(page.locator("#due li", { hasText: bath })).toHaveCount(0);
+
+  await filter.getByRole("button", { name: "All" }).click();
+  await expect(page.locator("#due li", { hasText: bath })).toBeVisible();
+
+  // Labels are kept after reload and can be edited.
+  await page.reload();
+  await page.locator("#due li", { hasText: fan }).getByText(fan).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByLabel("Labels")).toHaveValue("kitchen");
+  await dialog.getByLabel("Labels").fill("");
+  await dialog.getByRole("button", { name: "Save" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(filter.getByRole("button")).toHaveText(["All", "#bath", "#weekly"]);
+});
+
+test("undoes the latest completion from the recent list", async ({ page, request }, testInfo) => {
+  const title = uniqueTitle(testInfo, "Water plants");
+  const created = await request.post("/api/chores", {
+    data: { title, interval_days: 4, next_due: today(), labels: [] },
+  });
+  const { id } = (await created.json()) as { id: number };
+  const completionIds: number[] = [];
+  for (let i = 0; i < 2; i++) {
+    const response = await request.post(`/api/chores/${id}/complete`);
+    completionIds.push(((await response.json()) as { completion_id: number }).completion_id);
+  }
+  // Only the latest completion can be undone.
+  expect((await request.delete(`/api/completions/${completionIds[0]}`)).status()).toBe(400);
+
+  await page.goto("/");
+  const recent = page.locator("#recent");
+  await expect(recent.locator("li", { hasText: title })).toHaveCount(2);
+  await expect(recent.getByRole("button", { name: `Undo: ${title}` })).toHaveCount(1);
+
+  await recent.getByRole("button", { name: `Undo: ${title}` }).click();
+  await expect(recent.locator("li", { hasText: title })).toHaveCount(1);
+  await expect(page.locator("#later li", { hasText: title })).toBeVisible();
+
+  await recent.getByRole("button", { name: `Undo: ${title}` }).click();
+  await expect(recent.locator("li", { hasText: title })).toHaveCount(0);
+  await expect(page.locator("#due li", { hasText: title })).toBeVisible();
+
+  await page.reload();
+  await expect(page.locator("#due li", { hasText: title })).toContainText("not done yet");
+  await expect(page.locator("#recent li", { hasText: title })).toHaveCount(0);
 });
 
 test("closes the panel by tapping outside of it", async ({ page }, testInfo) => {
@@ -158,7 +243,7 @@ test("fits in the first view without scrolling", async ({ page, request }, testI
   for (const [name, interval, offset] of chores) {
     const next_due = new Date(base + offset * 86_400_000).toISOString().slice(0, 10);
     const response = await request.post("/api/chores", {
-      data: { title: uniqueTitle(testInfo, name), interval_days: interval, next_due },
+      data: { title: uniqueTitle(testInfo, name), interval_days: interval, next_due, labels: [] },
     });
     expect(response.ok()).toBeTruthy();
   }

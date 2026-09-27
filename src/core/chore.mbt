@@ -6,6 +6,7 @@ pub(all) struct Chore {
   interval_days : Int
   next_due : Date
   last_done : Date?
+  labels : Array[String]
 } derive(Eq)
 
 ///|
@@ -70,6 +71,28 @@ pub fn Chore::postpone(self : Chore, today : Date, days : Int) -> Chore {
 }
 
 ///|
+pub fn Chore::has_label(self : Chore, label : String) -> Bool {
+  self.labels.contains(label)
+}
+
+///|
+/// Returns the labels used by any of the chores, sorted and without duplicates.
+pub fn all_labels(chores : Array[Chore]) -> Array[String] {
+  let labels = chores
+    .iter()
+    .flat_map(chore => chore.labels.iter())
+    .fold(init=[], (acc, label) => {
+      if acc.contains(label) {
+        acc
+      } else {
+        [..acc, label]
+      }
+    })
+  labels.sort_by(String::lexical_compare)
+  labels
+}
+
+///|
 pub(all) struct Dashboard {
   due : Array[Chore]
   soon : Array[Chore]
@@ -107,6 +130,7 @@ pub impl ToJson for Chore with fn to_json(self) {
       Some(date) => date.to_json()
       None => Json::null()
     },
+    "labels": self.labels.to_json(),
   }
 }
 
@@ -119,6 +143,7 @@ pub impl @json.FromJson for Chore with fn from_json(json, path) {
       "interval_days": Number(interval_days, ..),
       "next_due": next_due,
       "last_done": last_done,
+      "labels": labels,
       ..
     } else {
     raise @json.JsonDecodeError((path, "invalid chore"))
@@ -132,6 +157,7 @@ pub impl @json.FromJson for Chore with fn from_json(json, path) {
       Null => None
       date => Some(@json.from_json(date, path=path.add_key("last_done")))
     },
+    labels: @json.from_json(labels, path=path.add_key("labels")),
   }
 }
 

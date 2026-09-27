@@ -1,9 +1,17 @@
 ///|
-let chore_columns = "id, title, interval_days, next_due, last_done"
+let chore_columns = "id, title, interval_days, next_due, last_done, labels"
 
 ///|
+/// `labels` is stored as a JSON text column.
 fn decode_chore(row : Json) -> @core.Chore raise ApiError {
-  @json.from_json(row) catch {
+  guard row is Object(fields) && fields.get("labels") is Some(String(labels)) else {
+    raise InternalError("invalid chore row: labels")
+  }
+  let fields = fields.copy()
+  fields["labels"] = @json.parse(labels) catch {
+    error => raise InternalError("invalid chore labels: \{error}")
+  }
+  @json.from_json(Json::object(fields)) catch {
     error => raise InternalError("invalid chore row: \{error}")
   }
 }
@@ -22,6 +30,11 @@ fn date_param(date : @core.Date?) -> @cloudflare.D1Param {
     Some(date) => Text(date.to_string())
     None => Null
   }
+}
+
+///|
+fn labels_param(labels : Array[String]) -> @cloudflare.D1Param {
+  Text(labels.to_json().stringify())
 }
 
 ///|
@@ -53,12 +66,13 @@ async fn insert_chore(
 ) -> @core.Chore {
   let rows = db
     .prepare(
-      "INSERT INTO chores (title, interval_days, next_due) VALUES (?, ?, ?) RETURNING \{chore_columns}",
+      "INSERT INTO chores (title, interval_days, next_due, labels) VALUES (?, ?, ?, ?) RETURNING \{chore_columns}",
     )
     .bind([
       Text(input.title),
       Integer(input.interval_days),
       Text(input.next_due.to_string()),
+      labels_param(input.labels),
     ])
     .all()
   guard first_row(rows) is Some(row) else {
@@ -75,12 +89,13 @@ async fn update_chore(
 ) -> @core.Chore {
   let rows = db
     .prepare(
-      "UPDATE chores SET title = ?, interval_days = ?, next_due = ? WHERE id = ? AND archived = 0 RETURNING \{chore_columns}",
+      "UPDATE chores SET title = ?, interval_days = ?, next_due = ?, labels = ? WHERE id = ? AND archived = 0 RETURNING \{chore_columns}",
     )
     .bind([
       Text(input.title),
       Integer(input.interval_days),
       Text(input.next_due.to_string()),
+      labels_param(input.labels),
       Integer(id),
     ])
     .all()
@@ -155,13 +170,14 @@ async fn complete_chore(
 
 ///|
 /// Deletes the completion and restores the chore to the state before it.
+/// Only the latest completion of a chore can be undone (see `@core.RecentDone::can_undo`).
 async fn undo_completion(
   db : @cloudflare.D1Database,
   completion_id : Int,
 ) -> @core.Chore {
   let rows = db
     .prepare(
-      "SELECT chore_id, previous_next_due, previous_last_done FROM completions WHERE id = ?",
+      "SELECT chore_id, previous_next_due, previous_last_done, (SELECT MAX(latest.id) FROM completions AS latest WHERE latest.chore_id = completions.chore_id) AS latest_id FROM completions WHERE id = ?",
     )
     .bind([Integer(completion_id)])
     .all()
@@ -171,10 +187,14 @@ async fn undo_completion(
         "chore_id": Number(chore_id, ..),
         "previous_next_due": String(_) as previous_next_due,
         "previous_last_done": previous_last_done,
+        "latest_id": Number(latest_id, ..),
         ..
       }
     ) else {
     raise NotFound
+  }
+  guard latest_id.to_int() == completion_id else {
+    raise BadRequest("Only the latest completion of a chore can be undone.")
   }
   let results = db.batch([
     db
@@ -219,7 +239,7 @@ async fn list_recent_done(
 ) -> Array[@core.RecentDone] {
   let rows = db
     .prepare(
-      "SELECT completions.id AS completion_id, chores.title, completions.done_on FROM completions JOIN chores ON chores.id = completions.chore_id WHERE completions.done_on >= ? ORDER BY completions.done_on DESC, completions.id DESC",
+      "SELECT completions.id AS completion_id, completions.chore_id, chores.title, completions.done_on FROM completions JOIN chores ON chores.id = completions.chore_id WHERE completions.done_on >= ? ORDER BY completions.done_on DESC, completions.id DESC",
     )
     .bind([Text(since.to_string())])
     .all()

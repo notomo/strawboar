@@ -50,9 +50,15 @@ fn header_view(model : Model, emit : Emit[Msg]) -> Html {
 fn content_view(model : Model, emit : Emit[Msg]) -> Html {
   match (model.load, model.today) {
     (Ready, Some(today)) => {
-      let dashboard = @core.Dashboard::new(model.chores, today)
+      let chores = match model.label_filter {
+        Some(label) => model.chores.filter(chore => chore.has_label(label))
+        None => model.chores
+      }
+      let dashboard = @core.Dashboard::new(chores, today)
+      let selected = model.selected_id()
       div(style=["display:flex;flex-direction:column;gap:1.5rem"], [
         notice_view(model.notice),
+        label_filter_view(model.chores, model.label_filter, emit),
         if model.chores.is_empty() {
           p(style=["margin:0", muted], "No chores yet. Add one to get started.")
         } else if dashboard.due.is_empty() && dashboard.soon.is_empty() {
@@ -61,15 +67,15 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
           @html.nothing
         },
         chore_section("due", "Due", dashboard.due, chore => {
-          chore_row(chore, today, emit)
+          chore_row(chore, today, selected, emit)
         }),
         chore_section("soon", "Soon", dashboard.soon, chore => {
-          chore_row(chore, today, emit)
+          chore_row(chore, today, selected, emit)
         }),
         chore_section("later", "Later", dashboard.later, chore => {
-          later_row(chore, emit)
+          later_row(chore, selected, emit)
         }),
-        recent_view(model.recent),
+        recent_view(model.recent, emit),
       ])
     }
     (Failed, _) =>
@@ -93,6 +99,36 @@ fn notice_view(notice : String) -> Html {
   } else {
     p(id="notice", style=["margin:0;color:var(--rui-destructive)"], notice)
   }
+}
+
+///|
+/// Filters the dashboard by a label. Hidden until some chore has a label.
+fn label_filter_view(
+  chores : Array[@core.Chore],
+  label_filter : String?,
+  emit : Emit[Msg],
+) -> Html {
+  let labels = @core.all_labels(chores)
+  if labels.is_empty() {
+    return @html.nothing
+  }
+  let chip = (text : String, value : String?) => {
+    let pressed = label_filter == value
+    @rui.button(
+      size=Sm,
+      variant=if pressed { Default } else { Outline },
+      on_click=emit(FilterByLabel(value)),
+      attrs=@html.Attrs::build().aria_pressed(pressed.to_string()),
+      style=["flex-shrink:0"],
+      text,
+    )
+  }
+  div(
+    id="label-filter",
+    attrs=@html.Attrs::build().role("group").aria_label("Filter by label"),
+    style=["display:flex;gap:0.5rem;overflow-x:auto;margin-bottom:-0.5rem"],
+    [chip("All", None), ..labels.map(label => chip("#\{label}", Some(label)))],
+  )
 }
 
 ///|
@@ -133,6 +169,37 @@ fn card_style() -> String {
 }
 
 ///|
+/// A row of a chore. The one open in the editor is highlighted and raised above
+/// the backdrop; it ignores taps so that tapping it closes the panel like the backdrop.
+fn card(chore_id : Int, selected : Int?, content : Array[Html]) -> Html {
+  if selected == Some(chore_id) {
+    li(
+      attrs=@html.Attrs::build().aria_current("true"),
+      style=[
+        card_style(),
+        "position:relative;z-index:11;pointer-events:none;border-color:var(--rui-primary);box-shadow:0 0 0 1px var(--rui-primary);background:var(--rui-accent)",
+      ],
+      content,
+    )
+  } else {
+    li(style=[card_style()], content)
+  }
+}
+
+///|
+fn labels_view(labels : Array[String]) -> Html {
+  if labels.is_empty() {
+    return @html.nothing
+  }
+  span(
+    style=["display:flex;gap:0.25rem;flex-shrink:0"],
+    labels.map(label => {
+      @rui.badge(variant=Secondary, style=["font-weight:400"], label)
+    }),
+  )
+}
+
+///|
 /// The clickable area that opens the editor. It shows a chevron so it reads as a link.
 fn edit_area(chore_id : Int, emit : Emit[Msg], content : Array[Html]) -> Html {
   @rui.button(
@@ -158,20 +225,28 @@ fn edit_area(chore_id : Int, emit : Emit[Msg], content : Array[Html]) -> Html {
 }
 
 ///|
-fn title_text(title : String) -> Html {
-  span(
-    style=[
-      "font-size:1rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap",
-    ],
-    title,
-  )
+fn title_text(title : String, labels : Array[String]) -> Html {
+  span(style=["display:flex;align-items:center;gap:0.5rem;min-width:0"], [
+    span(
+      style=[
+        "font-size:1rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap",
+      ],
+      title,
+    ),
+    labels_view(labels),
+  ])
 }
 
 ///|
-fn chore_row(chore : @core.Chore, today : @core.Date, emit : Emit[Msg]) -> Html {
-  li(style=[card_style()], [
+fn chore_row(
+  chore : @core.Chore,
+  today : @core.Date,
+  selected : Int?,
+  emit : Emit[Msg],
+) -> Html {
+  card(chore.id, selected, [
     edit_area(chore.id, emit, [
-      title_text(chore.title),
+      title_text(chore.title, chore.labels),
       span(style=["font-size:0.8125rem", muted], chore_meta(chore, today)),
     ]),
     @rui.button(
@@ -185,15 +260,15 @@ fn chore_row(chore : @core.Chore, today : @core.Date, emit : Emit[Msg]) -> Html 
 }
 
 ///|
-fn later_row(chore : @core.Chore, emit : Emit[Msg]) -> Html {
-  li(style=[card_style()], [
+fn later_row(chore : @core.Chore, selected : Int?, emit : Emit[Msg]) -> Html {
+  card(chore.id, selected, [
     edit_area(chore.id, emit, [
       div(
         style=[
           "display:flex;align-items:baseline;justify-content:space-between;gap:0.75rem",
         ],
         [
-          title_text(chore.title),
+          title_text(chore.title, chore.labels),
           span(
             style=["font-size:0.8125rem;flex-shrink:0", muted],
             short_date(chore.next_due),
@@ -209,7 +284,7 @@ fn later_row(chore : @core.Chore, emit : Emit[Msg]) -> Html {
 let recent_limit = 5
 
 ///|
-fn recent_view(recent : Array[@core.RecentDone]) -> Html {
+fn recent_view(recent : Array[@core.RecentDone], emit : Emit[Msg]) -> Html {
   if recent.is_empty() {
     return @html.nothing
   }
@@ -225,22 +300,34 @@ fn recent_view(recent : Array[@core.RecentDone]) -> Html {
         .map(done => {
           li(
             style=[
-              "display:flex;justify-content:space-between;gap:0.75rem;padding:0.25rem 0.75rem",
+              "display:flex;align-items:center;gap:0.75rem;min-height:1.75rem;padding:0 0.75rem",
             ],
             [
               span(
                 style=[
-                  "overflow:hidden;text-overflow:ellipsis;white-space:nowrap",
+                  "flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap",
                 ],
                 "✓ \{done.title}",
               ),
+              if done.can_undo(recent) {
+                @rui.button(
+                  size=Xs,
+                  variant=Ghost,
+                  on_click=emit(UndoCompletion(done.completion_id)),
+                  attrs=@html.Attrs::build().aria_label("Undo: \{done.title}"),
+                  style=["flex-shrink:0"],
+                  "Undo",
+                )
+              } else {
+                @html.nothing
+              },
               span(style=["flex-shrink:0"], short_date(done.done_on)),
             ],
           )
         })
         .collect(),
         if hidden > 0 {
-          li(style=["padding:0.25rem 0.75rem"], "and \{hidden} more")
+          li(style=["padding:0 0.75rem"], "and \{hidden} more")
         } else {
           @html.nothing
         },
@@ -361,6 +448,16 @@ fn editor_content(editor : Editor, emit : Emit[Msg]) -> Array[Html] {
             on_input=emit.map(value => NextDueChanged(value)),
           ),
         ),
+        field_view(
+          "chore-labels",
+          "Labels",
+          @rui.input(
+            id="chore-labels",
+            value=editor.labels,
+            placeholder="e.g. kitchen, weekly",
+            on_input=emit.map(value => LabelsChanged(value)),
+          ),
+        ),
         if is_new {
           @html.nothing
         } else {
@@ -428,7 +525,10 @@ fn undo_view(undo : Undo?, emit : Emit[Msg]) -> Html {
         ],
         @rui.toast(open=true, id="undo-toast", [
           @rui.toast_title("Done: \{undo.title}"),
-          @rui.toast_action(on_click=emit(UndoCompletion), "Undo"),
+          @rui.toast_action(
+            on_click=emit(UndoCompletion(undo.completion_id)),
+            "Undo",
+          ),
         ]),
       )
   }
