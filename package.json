@@ -10,6 +10,7 @@
     "test": "moon test --target js",
     "test:e2e": "playwright test",
     "build": "moon build --target js --release && vite build",
+    "start": "concurrently -k -n vite,worker \"vite --open\" \"npm run dev:worker\"",
     "dev": "concurrently -k -n vite,worker \"vite\" \"npm run dev:worker\"",
     "dev:worker": "npm run db:migrate:local && wrangler dev --port 8787",
     "preview": "npm run build && npm run dev:worker",
