@@ -438,16 +438,20 @@ fn editor_content(editor : Editor, emit : Emit[Msg]) -> Array[Html] {
             on_input=emit.map(value => IntervalChanged(value)),
           ),
         ),
-        field_view(
-          "chore-next-due",
-          "Next due",
-          @rui.input(
-            id="chore-next-due",
-            input_type=Date,
-            value=editor.next_due,
-            on_input=emit.map(value => NextDueChanged(value)),
-          ),
-        ),
+        if is_new {
+          field_view(
+            "chore-next-due",
+            "First due",
+            @rui.input(
+              id="chore-next-due",
+              input_type=Date,
+              value=editor.next_due,
+              on_input=emit.map(value => NextDueChanged(value)),
+            ),
+          )
+        } else {
+          @html.nothing
+        },
         field_view(
           "chore-labels",
           "Labels",
@@ -458,11 +462,6 @@ fn editor_content(editor : Editor, emit : Emit[Msg]) -> Array[Html] {
             on_input=emit.map(value => LabelsChanged(value)),
           ),
         ),
-        if is_new {
-          @html.nothing
-        } else {
-          postpone_view(emit)
-        },
         if is_new {
           @html.nothing
         } else {
@@ -494,24 +493,6 @@ fn editor_content(editor : Editor, emit : Emit[Msg]) -> Array[Html] {
       ],
     ),
   ]
-}
-
-///|
-fn postpone_view(emit : Emit[Msg]) -> Html {
-  div(style=["display:flex;flex-direction:column;gap:0.5rem"], [
-    span(style=["font-size:0.875rem;font-weight:500"], "Postpone"),
-    div(
-      style=["display:flex;gap:0.5rem"],
-      [1, 3, 7].map(days => {
-        @rui.button(
-          type_="button",
-          variant=Outline,
-          on_click=emit(Postpone(days)),
-          "+\{days}d",
-        )
-      }),
-    ),
-  ])
 }
 
 ///|

@@ -202,25 +202,37 @@ test("serves the web app manifest", async ({ request }) => {
   expect((await request.get("/icon-192.png")).ok()).toBeTruthy();
 });
 
-test("postpones, edits and archives a chore", async ({ page }, testInfo) => {
+function shortDate(offsetDays: number): string {
+  const date = new Date(new Date(`${today()}T00:00:00Z`).getTime() + offsetDays * 86_400_000);
+  const [, month, day] = date.toISOString().slice(0, 10).split("-");
+  return `${month}/${day}`;
+}
+
+test("edits and archives a chore", async ({ page }, testInfo) => {
   const title = uniqueTitle(testInfo, "Wash sheets");
   const renamed = uniqueTitle(testInfo, "Wash all sheets");
   await page.goto("/");
   await addChore(page, title, "30");
   const dialog = page.getByRole("dialog");
 
-  await page.locator("#due li", { hasText: title }).getByText(title).click();
-  await dialog.getByRole("button", { name: "+3d" }).click();
-  await expect(dialog).toBeHidden();
-  await expect(page.locator("#soon li", { hasText: title })).toContainText("due in 3 days");
+  await page.getByRole("button", { name: `Done: ${title}` }).click();
+  await expect(page.locator("#later li", { hasText: title })).toContainText(shortDate(30));
 
-  await page.locator("#soon li", { hasText: title }).getByText(title).click();
+  // The due date follows the last completion, so a new interval applies right away.
+  await page.locator("#later li", { hasText: title }).getByText(title).click();
+  await expect(dialog.getByLabel("First due")).toHaveCount(0);
   await dialog.getByLabel("Title").fill(renamed);
+  await dialog.getByLabel("Every (days)").fill("20");
   await dialog.getByRole("button", { name: "Save" }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.locator("#soon li", { hasText: renamed })).toBeVisible();
+  await expect(page.locator("#later li", { hasText: renamed })).toContainText(shortDate(20));
 
-  await page.locator("#soon li", { hasText: renamed }).getByText(renamed).click();
+  // Undo so that the completion does not stay in the recent list.
+  await page.reload();
+  await page.locator("#recent").getByRole("button", { name: `Undo: ${renamed}` }).click();
+  await expect(page.locator("#due li", { hasText: renamed })).toBeVisible();
+
+  await page.locator("#due li", { hasText: renamed }).getByText(renamed).click();
   await dialog.getByRole("button", { name: "Archive" }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByText(renamed)).toHaveCount(0);

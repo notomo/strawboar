@@ -63,6 +63,7 @@ async fn find_chore(db : @cloudflare.D1Database, id : Int) -> @core.Chore {
 async fn insert_chore(
   db : @cloudflare.D1Database,
   input : @core.ChoreInput,
+  next_due : @core.Date,
 ) -> @core.Chore {
   let rows = db
     .prepare(
@@ -71,7 +72,7 @@ async fn insert_chore(
     .bind([
       Text(input.title),
       Integer(input.interval_days),
-      Text(input.next_due.to_string()),
+      Text(next_due.to_string()),
       labels_param(input.labels),
     ])
     .all()
@@ -84,19 +85,18 @@ async fn insert_chore(
 ///|
 async fn update_chore(
   db : @cloudflare.D1Database,
-  id : Int,
-  input : @core.ChoreInput,
+  chore : @core.Chore,
 ) -> @core.Chore {
   let rows = db
     .prepare(
       "UPDATE chores SET title = ?, interval_days = ?, next_due = ?, labels = ? WHERE id = ? AND archived = 0 RETURNING \{chore_columns}",
     )
     .bind([
-      Text(input.title),
-      Integer(input.interval_days),
-      Text(input.next_due.to_string()),
-      labels_param(input.labels),
-      Integer(id),
+      Text(chore.title),
+      Integer(chore.interval_days),
+      Text(chore.next_due.to_string()),
+      labels_param(chore.labels),
+      Integer(chore.id),
     ])
     .all()
   guard first_row(rows) is Some(row) else { raise NotFound }
@@ -110,25 +110,6 @@ async fn archive_chore(db : @cloudflare.D1Database, id : Int) -> Unit {
     .bind([Integer(id)])
     .run()
   guard changes > 0 else { raise NotFound }
-}
-
-///|
-async fn save_schedule(
-  db : @cloudflare.D1Database,
-  chore : @core.Chore,
-) -> @core.Chore {
-  let rows = db
-    .prepare(
-      "UPDATE chores SET next_due = ?, last_done = ? WHERE id = ? AND archived = 0 RETURNING \{chore_columns}",
-    )
-    .bind([
-      date_param(Some(chore.next_due)),
-      date_param(chore.last_done),
-      Integer(chore.id),
-    ])
-    .all()
-  guard first_row(rows) is Some(row) else { raise NotFound }
-  decode_chore(row)
 }
 
 ///|

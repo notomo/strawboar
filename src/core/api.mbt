@@ -75,15 +75,3 @@ pub extend Completed with ToJson::{to_json}
 
 ///|
 pub extend Completed with @json.FromJson::{from_json}
-
-///|
-/// Request body of `POST /api/chores/:id/postpone`.
-pub(all) struct Postpone {
-  days : Int
-} derive(ToJson, FromJson)
-
-///|
-pub extend Postpone with ToJson::{to_json}
-
-///|
-pub extend Postpone with @json.FromJson::{from_json}

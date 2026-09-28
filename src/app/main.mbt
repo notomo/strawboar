@@ -75,7 +75,6 @@ enum Msg {
   LabelsChanged(String)
   FilterByLabel(String?)
   Submit
-  Postpone(Int)
   Saved(Result[@core.Chore, Error])
   Archive
   Archived(Error?)
@@ -100,8 +99,15 @@ fn Editor::input(self : Editor) -> @core.ChoreInput raise @core.ValidationError 
   guard @core.parse_days(self.interval) is Some(interval_days) else {
     raise ValidationError("Interval must be a number of days.")
   }
-  let next_due = @core.Date::parse(self.next_due) catch {
-    _ => raise ValidationError("Next due must be a date.")
+  // The due date of an existing chore follows its completions.
+  let next_due = match self.id {
+    Some(_) => None
+    None =>
+      Some(
+        @core.Date::parse(self.next_due) catch {
+          _ => raise ValidationError("Next due must be a date.")
+        },
+      )
   }
   let input : @core.ChoreInput = {
     title: self.title,
@@ -283,19 +289,6 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
               )
           }
         None => (model, @rabbita.none)
-      }
-    Postpone(days) =>
-      match model.editor {
-        Some({ id: Some(id), .. }) => {
-          let postpone : @core.Postpone = { days, }
-          (
-            model,
-            @http.post("/api/chores/\{id}/postpone")
-            .with_json(postpone)
-            .expect_json(emit.map(result => Saved(result))),
-          )
-        }
-        _ => (model, @rabbita.none)
       }
     Saved(Ok(chore)) =>
       (

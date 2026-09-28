@@ -64,10 +64,20 @@ pub fn Chore::complete(self : Chore, today : Date) -> Chore {
 }
 
 ///|
-/// Returns the chore pushed back by `days` from its due date or today, whichever is later.
-pub fn Chore::postpone(self : Chore, today : Date, days : Int) -> Chore {
-  let base = if self.next_due > today { self.next_due } else { today }
-  { ..self, next_due: base.add_days(days), }
+/// Returns the chore with the edited fields. Once done, it is due `interval_days`
+/// after the last completion, so a new interval applies right away.
+/// A chore never done keeps its due date.
+pub fn Chore::edit(self : Chore, input : ChoreInput) -> Chore {
+  {
+    ..self,
+    title: input.title,
+    interval_days: input.interval_days,
+    labels: input.labels,
+    next_due: match self.last_done {
+      Some(last_done) => last_done.add_days(input.interval_days)
+      None => self.next_due
+    },
+  }
 }
 
 ///|

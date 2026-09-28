@@ -50,7 +50,7 @@ e2e/             # Playwright tests
 - **Global scope in Workers**: MoonBit JS output generates a random hash seed at module load, which Workers disallow in global scope. `worker/index.js` therefore imports the MoonBit module lazily inside the handler. Keep it that way.
 - **Authentication**: every `/api/*` request must pass `authenticate` in `src/worker`. The local bypass (`DEV_AUTH_BYPASS_EMAIL` in `.dev.vars`) only applies to localhost.
 - **Dates**: chores use local dates (`YYYY-MM-DD`, Asia/Tokyo), not timestamps. "Today" is decided by the Worker and returned from `GET /api/chores`.
-- **Chore scheduling**: urgency, ordering, done and postpone rules live in `src/core/chore.mbt`. Overdue chores are just "Due"; never show how late they are.
+- **Chore scheduling**: urgency, ordering, done and edit rules live in `src/core/chore.mbt`. Once done, a chore is due `interval_days` after its last completion (also recalculated when the interval is edited); `next_due` is only chosen by the user when creating a chore. There is no postpone. Overdue chores are just "Due"; never show how late they are.
 - **Undo**: undoing a completion restores the schedule saved with it, so only the latest completion of a chore can be undone (`RecentDone::can_undo`, enforced in `undo_completion`).
 - **Labels**: stored as a JSON text column on `chores`; normalized in `ChoreInput::validate`.
 - **API**: routes are in `src/worker/api.mbt`, D1 queries in `src/worker/repository.mbt`.

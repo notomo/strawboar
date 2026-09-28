@@ -55,15 +55,49 @@ test "complete" {
 }
 
 ///|
-test "postpone from today when overdue" {
-  let c = chore(next_due="2026-09-20").postpone(date("2026-09-24"), 3)
+fn edit_input(interval_days : Int) -> @core.ChoreInput {
+  { title: "edited", interval_days, next_due: None, labels: ["bath"], }
+}
+
+///|
+test "edit recalculates the due date from the last completion" {
+  let c = chore(interval_days=7, next_due="2026-09-27", last_done="2026-09-20").edit(
+    edit_input(30),
+  )
+  inspect(c.next_due, content="2026-10-20")
+  inspect(c.interval_days, content="30")
+  inspect(c.title, content="edited")
+  assert_eq(c.labels, ["bath"])
+}
+
+///|
+test "edit keeps the due date of a chore never done" {
+  let c = chore(interval_days=7, next_due="2026-09-27").edit(edit_input(30))
   inspect(c.next_due, content="2026-09-27")
 }
 
 ///|
-test "postpone from due date when not yet due" {
-  let c = chore(next_due="2026-09-30").postpone(date("2026-09-24"), 3)
-  inspect(c.next_due, content="2026-10-03")
+test "chore input json" {
+  let input = edit_input(7)
+  inspect(
+    input.to_json().stringify(),
+    content=(
+      #|{"title":"edited","interval_days":7,"labels":["bath"]}
+    ),
+  )
+  let decoded : @core.ChoreInput = @json.from_json(input.to_json())
+  assert_true(decoded.next_due is None)
+  let with_due = { ..input, next_due: Some(date("2026-09-24")), }
+  let decoded : @core.ChoreInput = @json.from_json(with_due.to_json())
+  assert_eq(decoded.next_due.map(d => d.to_string()), Some("2026-09-24"))
+  let decoded : @core.ChoreInput = @json.from_json(
+    @json.parse(
+      (
+        #|{"title":"a","interval_days":7,"next_due":null,"labels":[]}
+      ),
+    ),
+  )
+  assert_true(decoded.next_due is None)
 }
 
 ///|
@@ -127,7 +161,7 @@ test "validate" {
   let input : @core.ChoreInput = {
     title: "  Clean the bath  ",
     interval_days: 7,
-    next_due: date("2026-09-24"),
+    next_due: Some(date("2026-09-24")),
     labels: [],
   }
   inspect(validation_message(input), content="ok: Clean the bath")

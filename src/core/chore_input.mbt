@@ -1,11 +1,49 @@
 ///|
-/// Fields a user can edit on a chore.
+/// Fields a user can edit on a chore. `next_due` is the first due date and is
+/// only used when creating a chore; afterwards it follows the completions.
 pub(all) struct ChoreInput {
   title : String
   interval_days : Int
-  next_due : Date
+  next_due : Date?
   labels : Array[String]
-} derive(ToJson, FromJson)
+}
+
+///|
+pub impl ToJson for ChoreInput with fn to_json(self) {
+  let json : Map[String, Json] = {
+    "title": self.title.to_json(),
+    "interval_days": self.interval_days.to_json(),
+    "labels": self.labels.to_json(),
+  }
+  if self.next_due is Some(next_due) {
+    json["next_due"] = next_due.to_json()
+  }
+  Json::object(json)
+}
+
+///|
+pub impl @json.FromJson for ChoreInput with fn from_json(json, path) {
+  guard json
+    is {
+      "title": String(title),
+      "interval_days": Number(interval_days, ..),
+      "labels": labels,
+      ..
+    } else {
+    raise @json.JsonDecodeError((path, "invalid chore input"))
+  }
+  {
+    title,
+    interval_days: interval_days.to_int(),
+    next_due: match json {
+      { "next_due": Null, .. } => None
+      { "next_due": next_due, .. } =>
+        Some(@json.from_json(next_due, path=path.add_key("next_due")))
+      _ => None
+    },
+    labels: @json.from_json(labels, path=path.add_key("labels")),
+  }
+}
 
 ///|
 pub extend ChoreInput with ToJson::{to_json}

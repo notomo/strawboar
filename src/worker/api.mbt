@@ -46,18 +46,6 @@ async fn read_chore_input(request : @cloudflare.Request) -> @core.ChoreInput {
 }
 
 ///|
-async fn read_postpone_days(request : @cloudflare.Request) -> Int {
-  let json = read_json(request)
-  let postpone : @core.Postpone = @json.from_json(json) catch {
-    _ => raise BadRequest("Invalid postpone.")
-  }
-  guard postpone.days is (1..=365) else {
-    raise BadRequest("Days must be between 1 and 365.")
-  }
-  postpone.days
-}
-
-///|
 async fn route(
   request : @cloudflare.Request,
   db : @cloudflare.D1Database,
@@ -79,12 +67,16 @@ async fn route(
     }
     ("POST", ["api", "chores"]) => {
       let input = read_chore_input(request)
-      json_response(insert_chore(db, input).to_json(), 201)
+      guard input.next_due is Some(next_due) else {
+        raise BadRequest("Next due is required.")
+      }
+      json_response(insert_chore(db, input, next_due).to_json(), 201)
     }
     ("PUT", ["api", "chores", id]) => {
       let id = parse_id(id)
       let input = read_chore_input(request)
-      json_response(update_chore(db, id, input).to_json(), 200)
+      let chore = find_chore(db, id).edit(input)
+      json_response(update_chore(db, chore).to_json(), 200)
     }
     ("DELETE", ["api", "chores", id]) => {
       archive_chore(db, parse_id(id))
@@ -93,12 +85,6 @@ async fn route(
     ("POST", ["api", "chores", id, "complete"]) => {
       let completed = complete_chore(db, parse_id(id), today())
       json_response(completed.to_json(), 200)
-    }
-    ("POST", ["api", "chores", id, "postpone"]) => {
-      let id = parse_id(id)
-      let days = read_postpone_days(request)
-      let chore = find_chore(db, id).postpone(today(), days)
-      json_response(save_schedule(db, chore).to_json(), 200)
     }
     ("GET", ["api", "chores", id, "completions"]) =>
       json_response(list_history(db, parse_id(id)).to_json(), 200)
