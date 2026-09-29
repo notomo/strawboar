@@ -533,15 +533,26 @@ fn undo_view(undo : Undo?, emit : Emit[Msg]) -> Html {
     Some(undo) =>
       div(
         style=[
-          "position:fixed;left:50%;bottom:1rem;transform:translateX(-50%);width:min(24rem,calc(100% - 2rem))",
+          "position:fixed;z-index:100;left:50%;bottom:1rem;transform:translateX(-50%);width:min(24rem,calc(100% - 2rem))",
         ],
-        @rui.toast(open=true, id="undo-toast", [
-          @rui.toast_title("Done: \{undo.title}"),
-          @rui.toast_action(
-            on_click=emit(UndoCompletion(undo.completion_id)),
-            "Undo",
-          ),
-        ]),
+        // The default toast shares the page background, so raise it with a
+        // lighter surface, a visible border and a filled action.
+        @rui.toast(
+          open=true,
+          id="undo-toast",
+          style=[
+            "align-items:center;background:var(--rui-secondary);border-color:var(--rui-ring);box-shadow:0 8px 24px rgb(0 0 0 / 0.6)",
+          ],
+          [
+            @rui.toast_title("Done: \{undo.title}"),
+            @rui.button(
+              size=Sm,
+              slot="toast-action",
+              on_click=emit(UndoCompletion(undo.completion_id)),
+              "Undo",
+            ),
+          ],
+        ),
       )
   }
 }
