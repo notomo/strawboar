@@ -55,7 +55,7 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
         None => model.chores
       }
       let dashboard = @core.Dashboard::new(chores, today)
-      let selected = model.selected_id()
+      let state_of = (chore : @core.Chore) => row_state(model, chore.id)
       div(style=["display:flex;flex-direction:column;gap:1.5rem"], [
         notice_view(model.notice),
         label_filter_view(model.chores, model.label_filter, emit),
@@ -67,13 +67,13 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
           @html.nothing
         },
         chore_section("due", "Due", dashboard.due, chore => {
-          chore_row(chore, today, selected, emit)
+          chore_row(chore, today, state_of(chore), emit)
         }),
         chore_section("soon", "Soon", dashboard.soon, chore => {
-          chore_row(chore, today, selected, emit)
+          chore_row(chore, today, state_of(chore), emit)
         }),
         chore_section("later", "Later", dashboard.later, chore => {
-          later_row(chore, selected, emit)
+          later_row(chore, state_of(chore), emit)
         }),
         recent_view(model.recent, emit),
       ])
@@ -169,10 +169,30 @@ fn card_style() -> String {
 }
 
 ///|
+/// How a chore row relates to the editor panel.
+enum RowState {
+  /// The panel is closed.
+  Normal
+  /// The chore is open in the panel.
+  Selected
+  /// The panel is open for another chore (or a new one).
+  Behind
+}
+
+///|
+fn row_state(model : Model, chore_id : Int) -> RowState {
+  match (model.panel_open, model.selected_id()) {
+    (false, _) => Normal
+    (true, Some(id)) if id == chore_id => Selected
+    (true, _) => Behind
+  }
+}
+
+///|
 /// A row of a chore. The one open in the editor is highlighted and raised above
 /// the backdrop; it ignores taps so that tapping it closes the panel like the backdrop.
-fn card(chore_id : Int, selected : Int?, content : Array[Html]) -> Html {
-  if selected == Some(chore_id) {
+fn card(state : RowState, content : Array[Html]) -> Html {
+  if state is Selected {
     li(
       attrs=@html.Attrs::build().aria_current("true"),
       style=[
@@ -201,12 +221,23 @@ fn labels_view(labels : Array[String]) -> Html {
 
 ///|
 /// The clickable area that opens the editor. It shows a chevron so it reads as a link.
-fn edit_area(chore_id : Int, emit : Emit[Msg], content : Array[Html]) -> Html {
+/// While the panel is open for another chore, it is raised above the backdrop so
+/// that tapping it switches the panel to this chore.
+fn edit_area(
+  chore_id : Int,
+  state : RowState,
+  emit : Emit[Msg],
+  content : Array[Html],
+) -> Html {
   @rui.button(
     variant=Ghost,
     on_click=emit(OpenEdit(chore_id)),
     style=[
       "flex:1;min-width:0;height:auto;justify-content:space-between;gap:0.75rem;padding:0.625rem 0.75rem;text-align:left;white-space:normal;font-weight:inherit",
+      match state {
+        Behind => "position:relative;z-index:11"
+        Normal | Selected => ""
+      },
     ],
     [
       div(
@@ -241,11 +272,11 @@ fn title_text(title : String, labels : Array[String]) -> Html {
 fn chore_row(
   chore : @core.Chore,
   today : @core.Date,
-  selected : Int?,
+  state : RowState,
   emit : Emit[Msg],
 ) -> Html {
-  card(chore.id, selected, [
-    edit_area(chore.id, emit, [
+  card(state, [
+    edit_area(chore.id, state, emit, [
       title_text(chore.title, chore.labels),
       span(style=["font-size:0.8125rem", muted], chore_meta(chore, today)),
     ]),
@@ -260,9 +291,9 @@ fn chore_row(
 }
 
 ///|
-fn later_row(chore : @core.Chore, selected : Int?, emit : Emit[Msg]) -> Html {
-  card(chore.id, selected, [
-    edit_area(chore.id, emit, [
+fn later_row(chore : @core.Chore, state : RowState, emit : Emit[Msg]) -> Html {
+  card(state, [
+    edit_area(chore.id, state, emit, [
       div(
         style=[
           "display:flex;align-items:baseline;justify-content:space-between;gap:0.75rem",

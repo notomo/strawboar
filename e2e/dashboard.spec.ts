@@ -176,6 +176,26 @@ test("closes the panel by tapping outside of it", async ({ page }, testInfo) => 
   await expect(title).toHaveValue(second);
 });
 
+test("switches the panel to another chore while it is open", async ({ page }, testInfo) => {
+  const first = uniqueTitle(testInfo, "Wipe windows");
+  const second = uniqueTitle(testInfo, "Descale kettle");
+  await page.goto("/");
+  await addChore(page, first, "7");
+  await addChore(page, second, "30");
+  const dialog = page.getByRole("dialog");
+  const title = dialog.getByLabel("Title");
+
+  await page.locator("#due li", { hasText: first }).getByText(first).click();
+  await expect(title).toHaveValue(first);
+
+  // The panel covers the whole screen on mobile.
+  test.skip(page.viewportSize()!.width < 640, "no chore is visible beside the panel");
+  await page.locator("#due li", { hasText: second }).getByText(second).click();
+  await expect(dialog).toBeVisible();
+  await expect(title).toHaveValue(second);
+  await expect(page.locator("#due li[aria-current]")).toContainText(second);
+});
+
 test("shows the history of a chore", async ({ page }, testInfo) => {
   const title = uniqueTitle(testInfo, "Water plants");
   await page.goto("/");
