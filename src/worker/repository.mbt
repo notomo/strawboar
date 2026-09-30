@@ -2,7 +2,7 @@
 let chore_columns = "id, title, interval_days, next_due, last_done, labels"
 
 ///|
-/// `labels` is stored as a JSON text column.
+/// `labels` is stored as a JSON text column of label ids.
 fn decode_chore(row : Json) -> @core.Chore raise ApiError {
   guard row is Object(fields) && fields.get("labels") is Some(String(labels)) else {
     raise InternalError("invalid chore row: labels")
@@ -33,7 +33,7 @@ fn date_param(date : @core.Date?) -> @cloudflare.D1Param {
 }
 
 ///|
-fn labels_param(labels : Array[String]) -> @cloudflare.D1Param {
+fn labels_param(labels : Array[Int]) -> @cloudflare.D1Param {
   Text(labels.to_json().stringify())
 }
 
@@ -109,19 +109,45 @@ fn update_chore_statement(
 }
 
 ///|
-/// Applies the whole import in a single transaction.
-async fn import_chores(
+/// Applies an import. Labels are saved first, because chores refer to their
+/// ids; each step runs in a single transaction.
+async fn import_definitions(
   db : @cloudflare.D1Database,
   plan : @core.ImportPlan,
+  today : @core.Date,
 ) -> @core.ImportResult {
-  let statements = [
-    ..plan.updates.map(chore => update_chore_statement(db, chore)),
-    ..plan.creates.map(create => insert_chore_statement(db, create.0, create.1)),
-  ]
+  batch(
+    db,
+    [
+      ..plan.label_updates.map(label => update_label_statement(db, label)),
+      ..plan.label_creates.map(input => insert_label_statement(db, input)),
+    ],
+  )
+  let existing = list_chores(db)
+  let labels = list_labels(db)
+  let changes = plan.chore_changes(existing, labels, today) catch {
+    ValidationError(message) => raise BadRequest(message)
+  }
+  batch(
+    db,
+    [
+      ..changes.updates.map(chore => update_chore_statement(db, chore)),
+      ..changes.creates.map(create => {
+        insert_chore_statement(db, create.0, create.1)
+      }),
+    ],
+  )
+  { created: changes.creates.length(), updated: changes.updates.length(), }
+}
+
+///|
+async fn batch(
+  db : @cloudflare.D1Database,
+  statements : Array[@cloudflare.D1PreparedStatement],
+) -> Unit {
   if !statements.is_empty() {
     ignore(db.batch(statements))
   }
-  { created: plan.creates.length(), updated: plan.updates.length(), }
 }
 
 ///|
@@ -285,4 +311,86 @@ async fn list_history(db : @cloudflare.D1Database, id : Int) -> @core.History {
     date
   })
   { dates, }
+}
+
+///|
+let label_columns = "id, name, color"
+
+///|
+fn decode_label(row : Json) -> @core.Label raise ApiError {
+  @json.from_json(row) catch {
+    error => raise InternalError("invalid label row: \{error}")
+  }
+}
+
+///|
+async fn list_labels(db : @cloudflare.D1Database) -> Array[@core.Label] {
+  let rows = db
+    .prepare("SELECT \{label_columns} FROM labels ORDER BY name")
+    .all()
+  decode_rows(rows).map(decode_label)
+}
+
+///|
+fn insert_label_statement(
+  db : @cloudflare.D1Database,
+  input : @core.LabelInput,
+) -> @cloudflare.D1PreparedStatement {
+  db
+  .prepare(
+    "INSERT INTO labels (name, color) VALUES (?, ?) RETURNING \{label_columns}",
+  )
+  .bind([Text(input.name), Text(input.color.name())])
+}
+
+///|
+fn update_label_statement(
+  db : @cloudflare.D1Database,
+  label : @core.Label,
+) -> @cloudflare.D1PreparedStatement {
+  db
+  .prepare(
+    "UPDATE labels SET name = ?, color = ? WHERE id = ? RETURNING \{label_columns}",
+  )
+  .bind([Text(label.name), Text(label.color.name()), Integer(label.id)])
+}
+
+///|
+async fn insert_label(
+  db : @cloudflare.D1Database,
+  input : @core.LabelInput,
+) -> @core.Label {
+  let rows = insert_label_statement(db, input).all()
+  guard first_row(rows) is Some(row) else {
+    raise InternalError("insert returned no row")
+  }
+  decode_label(row)
+}
+
+///|
+async fn update_label(
+  db : @cloudflare.D1Database,
+  label : @core.Label,
+) -> @core.Label {
+  let rows = update_label_statement(db, label).all()
+  guard first_row(rows) is Some(row) else { raise NotFound }
+  decode_label(row)
+}
+
+///|
+/// Deletes the label and removes it from every chore, archived ones included.
+async fn delete_label(db : @cloudflare.D1Database, id : Int) -> Unit {
+  let results = db.batch([
+    db
+    .prepare(
+      "UPDATE chores SET labels = (SELECT json_group_array(value) FROM json_each(chores.labels) WHERE value != ?) WHERE EXISTS (SELECT 1 FROM json_each(chores.labels) WHERE value = ?)",
+    )
+    .bind([Integer(id), Integer(id)]),
+    db
+    .prepare("DELETE FROM labels WHERE id = ? RETURNING id")
+    .bind([Integer(id)]),
+  ])
+  guard results is [_, deleted] && first_row(deleted) is Some(_) else {
+    raise NotFound
+  }
 }

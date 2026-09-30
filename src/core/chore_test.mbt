@@ -12,7 +12,7 @@ fn chore(
   interval_days? : Int = 10,
   next_due? : String = "2026-09-24",
   last_done? : String,
-  labels? : Array[String] = [],
+  labels? : Array[Int] = [],
 ) -> @core.Chore {
   {
     id,
@@ -56,7 +56,7 @@ test "complete" {
 
 ///|
 fn edit_input(interval_days : Int) -> @core.ChoreInput {
-  { title: "edited", interval_days, next_due: None, labels: ["bath"], }
+  { title: "edited", interval_days, next_due: None, labels: [1], }
 }
 
 ///|
@@ -67,7 +67,7 @@ test "edit recalculates the due date from the last completion" {
   inspect(c.next_due, content="2026-10-20")
   inspect(c.interval_days, content="30")
   inspect(c.title, content="edited")
-  assert_eq(c.labels, ["bath"])
+  assert_eq(c.labels, [1])
 }
 
 ///|
@@ -82,7 +82,7 @@ test "chore input json" {
   inspect(
     input.to_json().stringify(),
     content=(
-      #|{"title":"edited","interval_days":7,"labels":["bath"]}
+      #|{"title":"edited","interval_days":7,"labels":[1]}
     ),
   )
   let decoded : @core.ChoreInput = @json.from_json(input.to_json())
@@ -148,11 +148,21 @@ test "chore json round trip" {
 }
 
 ///|
+fn label(
+  id : Int,
+  name : String,
+  color? : @core.LabelColor = Gray,
+) -> @core.Label {
+  { id, name, color, }
+}
+
+///|
 fn validation_message(input : @core.ChoreInput) -> String {
-  try input.validate() catch {
+  try input.validate([label(1, "bath"), label(2, "weekly")]) catch {
     ValidationError(message) => message
   } noraise {
-    valid => "ok: \{valid.title}"
+    valid =>
+      "ok: \{valid.title} \{valid.labels.map(id => id.to_string()).join(",")}"
   }
 }
 
@@ -164,7 +174,7 @@ test "validate" {
     next_due: Some(date("2026-09-24")),
     labels: [],
   }
-  inspect(validation_message(input), content="ok: Clean the bath")
+  inspect(validation_message(input), content="ok: Clean the bath ")
   inspect(
     validation_message({ ..input, title: "   ", }),
     content="Title is required.",
@@ -177,38 +187,87 @@ test "validate" {
     validation_message({ ..input, interval_days: 0, }),
     content="Interval must be between 1 and 3650 days.",
   )
-  let valid = input.validate() catch { _ => abort("invalid") }
-  assert_eq(valid.labels, [])
-  let valid = { ..input, labels: [" bath ", "", "weekly", "bath"], }.validate() catch {
-    _ => abort("invalid")
-  }
-  assert_eq(valid.labels, ["bath", "weekly"])
   inspect(
-    validation_message({ ..input, labels: ["a".repeat(31)], }),
-    content="Each label must be at most 30 characters.",
+    validation_message({ ..input, labels: [2, 1, 2], }),
+    content="ok: Clean the bath 2,1",
   )
   inspect(
-    validation_message({ ..input, labels: Array::makei(11, i => "label\{i}"), }),
+    validation_message({ ..input, labels: [3], }),
+    content="Unknown label.",
+  )
+  inspect(
+    validation_message({ ..input, labels: Array::makei(11, i => i), }),
     content="A chore can have at most 10 labels.",
   )
 }
 
 ///|
-test "parse_labels" {
-  assert_eq(@core.parse_labels(""), [])
-  assert_eq(@core.parse_labels(" kitchen, bath ,,kitchen "), ["kitchen", "bath"])
+test "labels_in" {
+  let labels = [label(1, "bath"), label(2, "kitchen"), label(3, "weekly")]
+  let c = chore(labels=[3, 1])
+  assert_eq(c.labels_in(labels).map(l => l.name), ["bath", "weekly"])
+  assert_true(c.has_label(3))
+  assert_false(c.has_label(2))
 }
 
 ///|
-test "all_labels" {
-  let chores = [
-    chore(id=1, labels=["kitchen", "weekly"]),
-    chore(id=2, labels=["bath", "kitchen"]),
-    chore(id=3),
-  ]
-  assert_eq(@core.all_labels(chores), ["bath", "kitchen", "weekly"])
-  assert_true(chores[0].has_label("weekly"))
-  assert_false(chores[1].has_label("weekly"))
+fn label_message(input : @core.LabelInput, id? : Int) -> String {
+  try input.validate([label(1, "bath"), label(2, "weekly")], id?) catch {
+    ValidationError(message) => message
+  } noraise {
+    valid => "ok: \{valid.name}"
+  }
+}
+
+///|
+test "validate label" {
+  let input : @core.LabelInput = { name: " kitchen ", color: Blue, }
+  inspect(label_message(input), content="ok: kitchen")
+  inspect(label_message({ ..input, name: " ", }), content="Name is required.")
+  inspect(
+    label_message({ ..input, name: "a".repeat(31), }),
+    content="Name must be at most 30 characters.",
+  )
+  inspect(
+    label_message({ ..input, name: "bath", }),
+    content="A label named bath already exists.",
+  )
+  // Renaming a label to its own name is allowed.
+  inspect(label_message({ ..input, name: "bath", }, id=1), content="ok: bath")
+}
+
+///|
+test "label json" {
+  let l = label(1, "bath", color=Teal)
+  inspect(
+    l.to_json().stringify(),
+    content=(
+      #|{"id":1,"name":"bath","color":"teal"}
+    ),
+  )
+  let decoded : @core.Label = @json.from_json(l.to_json())
+  assert_true(decoded == l)
+  let json = @json.parse(
+    (
+      #|{"id":1,"name":"bath","color":"black"}
+    ),
+  )
+  let invalid = try {
+    let _ : @core.Label = @json.from_json(json)
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(invalid)
+}
+
+///|
+test "upsert_label" {
+  let labels = [label(1, "bath"), label(2, "weekly")]
+  let labels = @core.upsert_label(labels, label(3, "kitchen"))
+  assert_eq(labels.map(l => l.name), ["bath", "kitchen", "weekly"])
+  let labels = @core.upsert_label(labels, label(1, "zoo"))
+  assert_eq(labels.map(l => l.name), ["kitchen", "weekly", "zoo"])
 }
 
 ///|

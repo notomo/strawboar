@@ -5,7 +5,8 @@ pub(all) struct ChoreInput {
   title : String
   interval_days : Int
   next_due : Date?
-  labels : Array[String]
+  /// Label ids.
+  labels : Array[Int]
 }
 
 ///|
@@ -58,9 +59,6 @@ pub const MAX_TITLE_LENGTH : Int = 100
 pub const MAX_INTERVAL_DAYS : Int = 3650
 
 ///|
-pub const MAX_LABEL_LENGTH : Int = 30
-
-///|
 pub const MAX_LABELS : Int = 10
 
 ///|
@@ -69,53 +67,56 @@ pub(all) suberror ValidationError {
 }
 
 ///|
-/// Returns the input with a trimmed title, or raises a user-facing message.
+/// Returns the input with a trimmed title and without duplicate labels, or
+/// raises a user-facing message. Every label must be one of `labels`.
 pub fn ChoreInput::validate(
   self : ChoreInput,
+  labels : Array[Label],
 ) -> ChoreInput raise ValidationError {
-  let title = self.title.trim().to_owned()
+  let title = validate_title(self.title)
+  validate_interval(self.interval_days)
+  let ids = validate_labels(self.labels)
+  guard ids.iter().all(id => labels.iter().any(label => label.id == id)) else {
+    raise ValidationError("Unknown label.")
+  }
+  { ..self, title, labels: ids, }
+}
+
+///|
+fn validate_title(title : String) -> String raise ValidationError {
+  let title = title.trim().to_owned()
   guard title != "" else { raise ValidationError("Title is required.") }
   guard title.length() <= MAX_TITLE_LENGTH else {
     raise ValidationError(
       "Title must be at most \{MAX_TITLE_LENGTH} characters.",
     )
   }
-  guard self.interval_days is (1..=MAX_INTERVAL_DAYS) else {
+  title
+}
+
+///|
+fn validate_interval(interval_days : Int) -> Unit raise ValidationError {
+  guard interval_days is (1..=MAX_INTERVAL_DAYS) else {
     raise ValidationError(
       "Interval must be between 1 and \{MAX_INTERVAL_DAYS} days.",
     )
   }
-  let labels = normalize_labels(self.labels)
-  guard labels.iter().all(label => label.length() <= MAX_LABEL_LENGTH) else {
-    raise ValidationError(
-      "Each label must be at most \{MAX_LABEL_LENGTH} characters.",
-    )
-  }
-  guard labels.length() <= MAX_LABELS else {
-    raise ValidationError("A chore can have at most \{MAX_LABELS} labels.")
-  }
-  { ..self, title, labels, }
 }
 
 ///|
-/// Trims labels and drops empty and duplicate ones, keeping the first order.
-fn normalize_labels(labels : Array[String]) -> Array[String] {
-  labels
-  .map(label => label.trim().to_owned())
-  .filter(label => label != "")
-  .fold(init=[], (acc, label) => {
+/// Drops duplicate labels, keeping the first order.
+fn[T : Eq] validate_labels(labels : Array[T]) -> Array[T] raise ValidationError {
+  let labels = labels.fold(init=[], (acc, label) => {
     if acc.contains(label) {
       acc
     } else {
       [..acc, label]
     }
   })
-}
-
-///|
-/// Parses comma-separated labels typed by a user.
-pub fn parse_labels(input : String) -> Array[String] {
-  normalize_labels(input.split(",").map(label => label.to_owned()).collect())
+  guard labels.length() <= MAX_LABELS else {
+    raise ValidationError("A chore can have at most \{MAX_LABELS} labels.")
+  }
+  labels
 }
 
 ///|

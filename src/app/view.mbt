@@ -23,7 +23,7 @@ fn view(model : Model, emit : Emit[Msg]) -> Html {
         [header_view(model, emit), content_view(model, emit)],
       ),
       backdrop_view(model.panel_open, emit),
-      panel_view(model.panel, emit),
+      panel_view(model.panel, model.labels, emit),
       undo_view(model.undo, emit),
     ],
   )
@@ -58,14 +58,15 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
   match (model.load, model.today) {
     (Ready, Some(today)) => {
       let chores = match model.label_filter {
-        Some(label) => model.chores.filter(chore => chore.has_label(label))
+        Some(id) => model.chores.filter(chore => chore.has_label(id))
         None => model.chores
       }
       let dashboard = @core.Dashboard::new(chores, today)
       let state_of = (chore : @core.Chore) => row_state(model, chore.id)
+      let labels_of = (chore : @core.Chore) => chore.labels_in(model.labels)
       div(style=["display:flex;flex-direction:column;gap:1.5rem"], [
         notice_view(model.notice),
-        label_filter_view(model.chores, model.label_filter, emit),
+        label_filter_view(model.labels, model.label_filter, emit),
         if model.chores.is_empty() {
           p(style=["margin:0", muted], "No chores yet. Add one to get started.")
         } else if dashboard.due.is_empty() && dashboard.soon.is_empty() {
@@ -74,13 +75,13 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
           @html.nothing
         },
         chore_section("due", "Due", dashboard.due, chore => {
-          chore_row(chore, today, state_of(chore), emit)
+          chore_row(chore, labels_of(chore), today, state_of(chore), emit)
         }),
         chore_section("soon", "Soon", dashboard.soon, chore => {
-          chore_row(chore, today, state_of(chore), emit)
+          chore_row(chore, labels_of(chore), today, state_of(chore), emit)
         }),
         chore_section("later", "Later", dashboard.later, chore => {
-          later_row(chore, state_of(chore), emit)
+          later_row(chore, labels_of(chore), state_of(chore), emit)
         }),
         recent_view(model.recent, emit),
       ])
@@ -109,32 +110,60 @@ fn notice_view(notice : String) -> Html {
 }
 
 ///|
-/// Filters the dashboard by a label. Hidden until some chore has a label.
+/// Filters the dashboard by a label, next to the button that opens the labels panel.
+/// Hidden until a label exists, so that it takes no space; the chore editor
+/// also opens the labels panel.
 fn label_filter_view(
-  chores : Array[@core.Chore],
-  label_filter : String?,
+  labels : Array[@core.Label],
+  label_filter : Int?,
   emit : Emit[Msg],
 ) -> Html {
-  let labels = @core.all_labels(chores)
   if labels.is_empty() {
     return @html.nothing
   }
-  let chip = (text : String, value : String?) => {
+  let chip = (name : String, content : Array[Html], value : Int?) => {
     let pressed = label_filter == value
     @rui.button(
       size=Sm,
       variant=if pressed { Default } else { Outline },
       on_click=emit(FilterByLabel(value)),
-      attrs=@html.Attrs::build().aria_pressed(pressed.to_string()),
-      style=["flex-shrink:0"],
-      text,
+      // The flex layout would put a space between "#" and the name.
+      attrs=@html.Attrs::build()
+        .aria_label(name)
+        .aria_pressed(pressed.to_string()),
+      style=["flex-shrink:0;gap:0"],
+      content,
     )
   }
   div(
-    id="label-filter",
-    attrs=@html.Attrs::build().role("group").aria_label("Filter by label"),
-    style=["display:flex;gap:0.5rem;overflow-x:auto;margin-bottom:-0.5rem"],
-    [chip("All", None), ..labels.map(label => chip("#\{label}", Some(label)))],
+    style=["display:flex;align-items:center;gap:0.5rem;margin-bottom:-0.5rem"],
+    [
+      div(
+        id="label-filter",
+        attrs=@html.Attrs::build().role("group").aria_label("Filter by label"),
+        style=["display:flex;gap:0.5rem;overflow-x:auto;flex:1;min-width:0"],
+        [
+          chip("All", [@html.text("All")], None),
+          ..labels.map(label => {
+            chip(
+              "#\{label.name}",
+              [
+                span(style=["color:\{color_value(label.color)}"], "#"),
+                @html.text(label.name),
+              ],
+              Some(label.id),
+            )
+          }),
+        ],
+      ),
+      @rui.button(
+        size=Sm,
+        variant=Ghost,
+        on_click=emit(OpenLabels),
+        style=["flex-shrink:0;margin-left:auto"],
+        "Edit labels",
+      ),
+    ],
   )
 }
 
@@ -214,15 +243,42 @@ fn card(state : RowState, content : Array[Html]) -> Html {
 }
 
 ///|
-fn labels_view(labels : Array[String]) -> Html {
+/// CSS color of a label color, readable on the dark theme.
+fn color_value(color : @core.LabelColor) -> String {
+  match color {
+    Gray => "#a1a1aa"
+    Red => "#f87171"
+    Orange => "#fb923c"
+    Yellow => "#facc15"
+    Green => "#4ade80"
+    Teal => "#2dd4bf"
+    Blue => "#60a5fa"
+    Purple => "#c084fc"
+    Pink => "#f472b6"
+  }
+}
+
+///|
+fn label_badge(label : @core.Label) -> Html {
+  let color = color_value(label.color)
+  @rui.badge(
+    variant=Outline,
+    // Hex alpha suffixes: 0x26 = 15%, 0x66 = 40%.
+    style=[
+      "font-weight:400;color:\{color};background:\{color}26;border-color:\{color}66",
+    ],
+    label.name,
+  )
+}
+
+///|
+fn labels_view(labels : Array[@core.Label]) -> Html {
   if labels.is_empty() {
     return @html.nothing
   }
   span(
     style=["display:flex;gap:0.25rem;flex-shrink:0"],
-    labels.map(label => {
-      @rui.badge(variant=Secondary, style=["font-weight:400"], label)
-    }),
+    labels.map(label_badge),
   )
 }
 
@@ -263,7 +319,7 @@ fn edit_area(
 }
 
 ///|
-fn title_text(title : String, labels : Array[String]) -> Html {
+fn title_text(title : String, labels : Array[@core.Label]) -> Html {
   span(style=["display:flex;align-items:center;gap:0.5rem;min-width:0"], [
     span(
       style=[
@@ -278,13 +334,14 @@ fn title_text(title : String, labels : Array[String]) -> Html {
 ///|
 fn chore_row(
   chore : @core.Chore,
+  labels : Array[@core.Label],
   today : @core.Date,
   state : RowState,
   emit : Emit[Msg],
 ) -> Html {
   card(state, [
     edit_area(chore.id, state, emit, [
-      title_text(chore.title, chore.labels),
+      title_text(chore.title, labels),
       span(style=["font-size:0.8125rem", muted], chore_meta(chore, today)),
     ]),
     @rui.button(
@@ -298,7 +355,12 @@ fn chore_row(
 }
 
 ///|
-fn later_row(chore : @core.Chore, state : RowState, emit : Emit[Msg]) -> Html {
+fn later_row(
+  chore : @core.Chore,
+  labels : Array[@core.Label],
+  state : RowState,
+  emit : Emit[Msg],
+) -> Html {
   card(state, [
     edit_area(chore.id, state, emit, [
       div(
@@ -306,7 +368,7 @@ fn later_row(chore : @core.Chore, state : RowState, emit : Emit[Msg]) -> Html {
           "display:flex;align-items:baseline;justify-content:space-between;gap:0.75rem",
         ],
         [
-          title_text(chore.title, chore.labels),
+          title_text(chore.title, labels),
           span(
             style=["font-size:0.8125rem;flex-shrink:0", muted],
             short_date(chore.next_due),
@@ -416,7 +478,11 @@ fn backdrop_view(panel_open : Bool, emit : Emit[Msg]) -> Html {
 
 ///|
 /// A non-modal panel over the right side of the dashboard.
-fn panel_view(panel : Panel?, emit : Emit[Msg]) -> Html {
+fn panel_view(
+  panel : Panel?,
+  labels : Array[@core.Label],
+  emit : Emit[Msg],
+) -> Html {
   @rui.sheet(
     id=EDITOR_ID,
     side=SheetRight,
@@ -428,14 +494,19 @@ fn panel_view(panel : Panel?, emit : Emit[Msg]) -> Html {
     ],
     match panel {
       None => []
-      Some(ChoreEditor(editor)) => editor_content(editor, emit)
+      Some(ChoreEditor(editor)) => editor_content(editor, labels, emit)
       Some(Transfer(transfer)) => transfer_content(transfer, emit)
+      Some(Labels(form)) => labels_content(form, labels, emit)
     },
   )
 }
 
 ///|
-fn editor_content(editor : Editor, emit : Emit[Msg]) -> Array[Html] {
+fn editor_content(
+  editor : Editor,
+  labels : Array[@core.Label],
+  emit : Emit[Msg],
+) -> Array[Html] {
   let is_new = editor.id is None
   [
     @rui.sheet_header([
@@ -491,16 +562,7 @@ fn editor_content(editor : Editor, emit : Emit[Msg]) -> Array[Html] {
         } else {
           @html.nothing
         },
-        field_view(
-          "chore-labels",
-          "Labels",
-          @rui.input(
-            id="chore-labels",
-            value=editor.labels,
-            placeholder="e.g. kitchen, weekly",
-            on_input=emit.map(value => LabelsChanged(value)),
-          ),
-        ),
+        label_picker(editor.labels, labels, emit),
         if is_new {
           @html.nothing
         } else {
@@ -527,6 +589,226 @@ fn editor_content(editor : Editor, emit : Emit[Msg]) -> Array[Html] {
               )
             },
             @rui.button(type_="submit", "Save"),
+          ],
+        ),
+      ],
+    ),
+  ]
+}
+
+///|
+/// Toggles the labels of the chore being edited.
+fn label_picker(
+  selected : Array[Int],
+  labels : Array[@core.Label],
+  emit : Emit[Msg],
+) -> Html {
+  @rui.field([
+    div(
+      style=["display:flex;align-items:center;justify-content:space-between"],
+      [
+        @rui.field_label(id="chore-labels-label", "Labels"),
+        @rui.button(
+          size=Xs,
+          variant=Ghost,
+          on_click=emit(OpenLabels),
+          "Edit labels",
+        ),
+      ],
+    ),
+    if labels.is_empty() {
+      span(style=["font-size:0.875rem", muted], "No labels yet.")
+    } else {
+      div(
+        attrs=@html.Attrs::build()
+          .role("group")
+          .aria_labelledby("chore-labels-label"),
+        style=["display:flex;flex-wrap:wrap;gap:0.5rem"],
+        labels.map(label => {
+          let pressed = selected.contains(label.id)
+          @rui.button(
+            size=Sm,
+            variant=if pressed { Secondary } else { Outline },
+            on_click=emit(ToggleLabel(label.id)),
+            attrs=@html.Attrs::build().aria_pressed(pressed.to_string()),
+            style=[
+              if pressed {
+                "border-color:\{color_value(label.color)}"
+              } else {
+                ""
+              },
+            ],
+            [
+              span(
+                attrs=@html.Attrs::build().aria_hidden("true"),
+                style=[
+                  "width:0.625rem;height:0.625rem;border-radius:9999px;background:\{color_value(label.color)}",
+                  if pressed {
+                    ""
+                  } else {
+                    "opacity:0.5"
+                  },
+                ],
+                "",
+              ),
+              @html.text(label.name),
+            ],
+          )
+        }),
+      )
+    },
+  ])
+}
+
+///|
+fn labels_content(
+  form : LabelForm,
+  labels : Array[@core.Label],
+  emit : Emit[Msg],
+) -> Array[Html] {
+  let is_new = form.id is None
+  [
+    @rui.sheet_header([
+      @rui.sheet_title(id="panel-title", "Labels"),
+      @rui.sheet_description(
+        "Labels are shared by chores. Pick a label to edit it.",
+      ),
+    ]),
+    if labels.is_empty() {
+      @html.nothing
+    } else {
+      ul(
+        id="label-list",
+        style=[
+          "list-style:none;margin:0 0 0.75rem;padding:0;display:flex;flex-wrap:wrap;gap:0.5rem",
+        ],
+        labels.map(label => {
+          let current = form.id == Some(label.id)
+          li([
+            @rui.button(
+              size=Sm,
+              variant=if current { Secondary } else { Ghost },
+              on_click=emit(EditLabel(label.id)),
+              attrs=@html.Attrs::build()
+                .aria_label("Edit label: \{label.name}")
+                .aria_current(current.to_string()),
+              style=["padding:0.25rem"],
+              label_badge(label),
+            ),
+          ])
+        }),
+      )
+    },
+    @html.form(
+      id="label-form",
+      on_submit=emit(SubmitLabel),
+      style=[
+        "display:flex;flex-direction:column;gap:1.25rem;padding-bottom:1rem;flex:1",
+      ],
+      [
+        h2(
+          style=["margin:0;font-size:1rem;font-weight:600"],
+          if is_new {
+            "New label"
+          } else {
+            "Edit label"
+          },
+        ),
+        field_view(
+          "label-name",
+          "Name",
+          @rui.input(
+            id="label-name",
+            value=form.name,
+            maxlength=@core.MAX_LABEL_LENGTH,
+            placeholder="e.g. kitchen",
+            on_input=emit.map(value => LabelNameChanged(value)),
+          ),
+        ),
+        @rui.field([
+          @rui.field_label(id="label-color-label", "Color"),
+          div(
+            attrs=@html.Attrs::build()
+              .role("group")
+              .aria_labelledby("label-color-label"),
+            style=["display:flex;flex-wrap:wrap;gap:0.5rem"],
+            @core.label_colors.map(color => {
+              let pressed = form.color == color
+              @rui.button(
+                size=IconSm,
+                variant=Outline,
+                on_click=emit(LabelColorChanged(color)),
+                attrs=@html.Attrs::build()
+                  .aria_label(color.name())
+                  .aria_pressed(pressed.to_string()),
+                style=[
+                  "border-radius:9999px;background:\{color_value(color)}",
+                  if pressed {
+                    "box-shadow:0 0 0 2px var(--rui-background),0 0 0 4px \{color_value(color)}"
+                  } else {
+                    ""
+                  },
+                ],
+                "",
+              )
+            }),
+          ),
+        ]),
+        div([
+          span(
+            style=["font-size:0.875rem;margin-right:0.5rem", muted],
+            "Preview",
+          ),
+          label_badge({
+            id: 0,
+            name: if form.name.trim() == "" {
+              "label"
+            } else {
+              form.name.trim().to_owned()
+            },
+            color: form.color,
+          }),
+        ]),
+        if form.error == "" {
+          @html.nothing
+        } else {
+          @rui.field_error(id="label-form-error", form.error)
+        },
+        div(
+          style=[
+            "display:flex;justify-content:space-between;gap:0.5rem;margin-top:auto",
+          ],
+          [
+            if is_new {
+              span("")
+            } else {
+              @rui.button(
+                type_="button",
+                variant=Ghost,
+                on_click=emit(DeleteLabel),
+                "Delete",
+              )
+            },
+            div(style=["display:flex;gap:0.5rem"], [
+              if is_new {
+                @html.nothing
+              } else {
+                @rui.button(
+                  type_="button",
+                  variant=Outline,
+                  on_click=emit(NewLabel),
+                  "Cancel",
+                )
+              },
+              @rui.button(
+                type_="submit",
+                if is_new {
+                  "Add label"
+                } else {
+                  "Save"
+                },
+              ),
+            ]),
           ],
         ),
       ],
@@ -578,7 +860,7 @@ fn transfer_content(transfer : Transfer, emit : Emit[Msg]) -> Array[Html] {
         "Import / Export",
       ),
       @rui.sheet_description(
-        "Copy the chores below to export them. To import, edit or paste chores and press Import: chores with the same title are updated and others are added.",
+        "Copy the labels and chores below to export them. To import, edit or paste them and press Import: labels with the same name and chores with the same title are updated, and others are added.",
       ),
     ]),
     @html.form(
@@ -589,7 +871,7 @@ fn transfer_content(transfer : Transfer, emit : Emit[Msg]) -> Array[Html] {
       [
         field_view(
           "chore-definitions",
-          "Chores (JSON)",
+          "Labels and chores (JSON)",
           @rui.textarea(
             id="chore-definitions",
             value=transfer.text,

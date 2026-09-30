@@ -6,7 +6,8 @@ pub(all) struct Chore {
   interval_days : Int
   next_due : Date
   last_done : Date?
-  labels : Array[String]
+  /// Label ids.
+  labels : Array[Int]
 } derive(Eq)
 
 ///|
@@ -81,25 +82,14 @@ pub fn Chore::edit(self : Chore, input : ChoreInput) -> Chore {
 }
 
 ///|
-pub fn Chore::has_label(self : Chore, label : String) -> Bool {
-  self.labels.contains(label)
+pub fn Chore::has_label(self : Chore, id : Int) -> Bool {
+  self.labels.contains(id)
 }
 
 ///|
-/// Returns the labels used by any of the chores, sorted and without duplicates.
-pub fn all_labels(chores : Array[Chore]) -> Array[String] {
-  let labels = chores
-    .iter()
-    .flat_map(chore => chore.labels.iter())
-    .fold(init=[], (acc, label) => {
-      if acc.contains(label) {
-        acc
-      } else {
-        [..acc, label]
-      }
-    })
-  labels.sort_by(String::lexical_compare)
-  labels
+/// The labels of the chore, in the order of `labels`.
+pub fn Chore::labels_in(self : Chore, labels : Array[Label]) -> Array[Label] {
+  labels.filter(label => self.has_label(label.id))
 }
 
 ///|

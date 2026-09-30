@@ -33,13 +33,16 @@ export async function openPage({ page }: { page: Page }) {
     getLabelFilter: () => labelFilter,
     getLabelFilterButtons: () => labelFilter.getByRole("button"),
     getLabelFilterButton: (name: string) => labelFilter.getByRole("button", { name }),
+    getRowLabels: (title: string) =>
+      page.locator("#due li, #later li", { hasText: title }).locator('[data-slot="badge"]'),
 
-    getAddButton: () => page.getByRole("button", { name: "Add" }),
+    getAddButton: () => page.getByRole("button", { name: "+ Add chore" }),
     getEditor: () => editor,
     getEditorBackdrop: () => page.locator("#editor-backdrop"),
     getTitleInput: () => editor.getByLabel("Title"),
     getIntervalInput: () => editor.getByLabel("Every (days)"),
-    getLabelsInput: () => editor.getByLabel("Labels"),
+    getLabelToggle: (name: string) =>
+      editor.getByRole("group", { name: "Labels" }).getByRole("button", { name, exact: true }),
     getFirstDueInput: () => editor.getByLabel("First due"),
     getEditorError: () => editor.locator("#chore-editor-error"),
     getHistory: () => editor.locator("#chore-history"),
@@ -47,8 +50,18 @@ export async function openPage({ page }: { page: Page }) {
     getCloseButton: () => editor.getByRole("button", { name: "Close" }),
     getArchiveButton: () => editor.getByRole("button", { name: "Archive" }),
 
+    getLabelsButton: () => editor.getByRole("button", { name: "Edit labels", exact: true }),
+    getLabelList: () => editor.locator("#label-list"),
+    getLabelListButton: (name: string) => editor.getByRole("button", { name: `Edit label: ${name}` }),
+    getLabelNameInput: () => editor.getByLabel("Name"),
+    getLabelColorButton: (color: string) =>
+      editor.getByRole("group", { name: "Color" }).getByRole("button", { name: color, exact: true }),
+    getAddLabelButton: () => editor.getByRole("button", { name: "Add label" }),
+    getDeleteLabelButton: () => editor.getByRole("button", { name: "Delete" }),
+    getLabelFormError: () => editor.locator("#label-form-error"),
+
     getTransferButton: () => page.getByRole("button", { name: "Import / Export" }),
-    getDefinitionsInput: () => editor.getByLabel("Chores (JSON)"),
+    getDefinitionsInput: () => editor.getByLabel("Labels and chores (JSON)"),
     getImportButton: () => editor.getByRole("button", { name: "Import", exact: true }),
     getTransferError: () => editor.locator("#transfer-error"),
 
@@ -61,13 +74,40 @@ export async function openPage({ page }: { page: Page }) {
       await strawboarPage.getImportButton().click();
     },
 
-    addChore: async (title: string, interval: string, labels = "") => {
+    addChore: async (title: string, interval: string, labels: string[] = []) => {
       await strawboarPage.getAddButton().click();
       await strawboarPage.getTitleInput().fill(title);
       await strawboarPage.getIntervalInput().fill(interval);
-      await strawboarPage.getLabelsInput().fill(labels);
+      for (const label of labels) {
+        await strawboarPage.getLabelToggle(label).click();
+      }
       await strawboarPage.getSaveButton().click();
       await expect(editor).toBeHidden();
+    },
+
+    // Through the chore editor, which offers it even when there is no label yet.
+    openLabels: async () => {
+      await strawboarPage.getAddButton().click();
+      await strawboarPage.getLabelsButton().click();
+      await expect(strawboarPage.getLabelNameInput()).toBeVisible();
+    },
+
+    // Adds a label in the open labels panel.
+    addLabel: async (name: string, color?: string) => {
+      await strawboarPage.getLabelNameInput().fill(name);
+      if (color) {
+        await strawboarPage.getLabelColorButton(color).click();
+      }
+      await strawboarPage.getAddLabelButton().click();
+      await expect(strawboarPage.getLabelListButton(name)).toBeVisible();
+    },
+
+    selectLabel: async (name: string) => {
+      await strawboarPage.getLabelListButton(name).click();
+    },
+
+    deleteLabel: async () => {
+      await strawboarPage.getDeleteLabelButton().click();
     },
 
     openChore: async (title: string) => {

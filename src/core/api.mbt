@@ -2,6 +2,8 @@
 /// Response of `GET /api/chores`.
 pub(all) struct ChoreList {
   today : Date
+  /// Sorted by name.
+  labels : Array[Label]
   chores : Array[Chore]
   /// Completions of the last `RECENT_DAYS` days, newest first.
   recent : Array[RecentDone]
