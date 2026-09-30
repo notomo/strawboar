@@ -1,4 +1,5 @@
-import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { expect, test, type TestInfo } from "@playwright/test";
+import { openPage } from "./page";
 
 // Start each test from an empty dashboard.
 test.beforeEach(async ({ request }) => {
@@ -18,105 +19,90 @@ function today(): string {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
-async function addChore(page: Page, title: string, interval: string, labels = "") {
-  await page.getByRole("button", { name: "Add" }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Title").fill(title);
-  await dialog.getByLabel("Every (days)").fill(interval);
-  await dialog.getByLabel("Labels").fill(labels);
-  await dialog.getByRole("button", { name: "Save" }).click();
-  await expect(dialog).toBeHidden();
-}
-
 test("adds a chore that is due today", async ({ page }, testInfo) => {
   const title = uniqueTitle(testInfo, "Clean bath");
-  await page.goto("/");
+  const strawboar = await openPage({ page });
 
-  await addChore(page, title, "7");
+  await strawboar.addChore(title, "7");
 
-  const row = page.locator("#due li", { hasText: title });
-  await expect(row).toContainText("weekly · not done yet");
+  await expect(strawboar.getDueRow(title)).toContainText("weekly · not done yet");
 });
 
 test("validates the title", async ({ page }) => {
-  await page.goto("/");
+  const strawboar = await openPage({ page });
 
-  await page.getByRole("button", { name: "Add" }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByRole("button", { name: "Save" }).click();
+  await strawboar.getAddButton().click();
+  await strawboar.save();
 
-  await expect(dialog.locator("#chore-editor-error")).toHaveText("Title is required.");
+  await expect(strawboar.getEditorError()).toHaveText("Title is required.");
 });
 
 test("marks a chore as done and undoes it", async ({ page }, testInfo) => {
   const title = uniqueTitle(testInfo, "Vacuum");
-  await page.goto("/");
-  await addChore(page, title, "3");
+  const strawboar = await openPage({ page });
+  await strawboar.addChore(title, "3");
 
-  await page.getByRole("button", { name: `Done: ${title}` }).click();
+  await strawboar.complete(title);
 
-  await expect(page.locator("#undo-toast")).toContainText(`Done: ${title}`);
-  await expect(page.locator("#due li", { hasText: title })).toHaveCount(0);
-  await expect(page.locator("#later", { hasText: title })).toBeVisible();
-  await expect(page.locator("#recent")).toContainText(title);
+  await expect(strawboar.getUndoToast()).toContainText(`Done: ${title}`);
+  await expect(strawboar.getDueRow(title)).toHaveCount(0);
+  await expect(strawboar.getLaterSection(title)).toBeVisible();
+  await expect(strawboar.getRecent()).toContainText(title);
 
-  await page.locator("#undo-toast").getByRole("button", { name: "Undo" }).click();
+  await strawboar.undoFromToast();
 
-  await expect(page.locator("#undo-toast")).toBeHidden();
-  await expect(page.locator("#due li", { hasText: title })).toBeVisible();
-  await expect(page.locator("#recent", { hasText: title })).toHaveCount(0);
+  await expect(strawboar.getUndoToast()).toBeHidden();
+  await expect(strawboar.getDueRow(title)).toBeVisible();
+  await expect(strawboar.getRecentRow(title)).toHaveCount(0);
 });
 
 test("highlights the chore open in the panel", async ({ page }, testInfo) => {
   const first = uniqueTitle(testInfo, "Clean bath");
   const second = uniqueTitle(testInfo, "Change toothbrush");
-  await page.goto("/");
-  await addChore(page, first, "7");
-  await addChore(page, second, "30");
-  const dialog = page.getByRole("dialog");
-  const current = page.locator('li[aria-current="true"]');
+  const strawboar = await openPage({ page });
+  await strawboar.addChore(first, "7");
+  await strawboar.addChore(second, "30");
+  const current = strawboar.getCurrentRow();
   await expect(current).toHaveCount(0);
 
-  await page.locator("#due li", { hasText: first }).getByText(first).click();
+  await strawboar.openChore(first);
   await expect(current).toHaveCount(1);
   await expect(current).toContainText(first);
 
-  await dialog.getByRole("button", { name: "Close" }).click();
-  await expect(dialog).toBeHidden();
+  await strawboar.close();
+  await expect(strawboar.getEditor()).toBeHidden();
   await expect(current).toHaveCount(0);
 });
 
 test("filters chores by label", async ({ page }, testInfo) => {
   const bath = uniqueTitle(testInfo, "Clean bath");
   const fan = uniqueTitle(testInfo, "Clean kitchen fan");
-  await page.goto("/");
-  await expect(page.locator("#label-filter")).toHaveCount(0);
-  await addChore(page, bath, "7", " bath, weekly ,bath");
-  await addChore(page, fan, "90", "kitchen");
+  const strawboar = await openPage({ page });
+  await expect(strawboar.getLabelFilter()).toHaveCount(0);
+  await strawboar.addChore(bath, "7", " bath, weekly ,bath");
+  await strawboar.addChore(fan, "90", "kitchen");
 
-  const bathRow = page.locator("#due li", { hasText: bath });
+  const bathRow = strawboar.getDueRow(bath);
   await expect(bathRow).toContainText("bath");
   await expect(bathRow).toContainText("weekly");
 
-  const filter = page.locator("#label-filter");
-  await expect(filter.getByRole("button")).toHaveText(["All", "#bath", "#kitchen", "#weekly"]);
-  await filter.getByRole("button", { name: "#kitchen" }).click();
-  await expect(filter.getByRole("button", { name: "#kitchen" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#due li", { hasText: fan })).toBeVisible();
-  await expect(page.locator("#due li", { hasText: bath })).toHaveCount(0);
+  await expect(strawboar.getLabelFilterButtons()).toHaveText(["All", "#bath", "#kitchen", "#weekly"]);
+  await strawboar.filterByLabel("#kitchen");
+  await expect(strawboar.getLabelFilterButton("#kitchen")).toHaveAttribute("aria-pressed", "true");
+  await expect(strawboar.getDueRow(fan)).toBeVisible();
+  await expect(strawboar.getDueRow(bath)).toHaveCount(0);
 
-  await filter.getByRole("button", { name: "All" }).click();
-  await expect(page.locator("#due li", { hasText: bath })).toBeVisible();
+  await strawboar.filterByLabel("All");
+  await expect(strawboar.getDueRow(bath)).toBeVisible();
 
   // Labels are kept after reload and can be edited.
-  await page.reload();
-  await page.locator("#due li", { hasText: fan }).getByText(fan).click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog.getByLabel("Labels")).toHaveValue("kitchen");
-  await dialog.getByLabel("Labels").fill("");
-  await dialog.getByRole("button", { name: "Save" }).click();
-  await expect(dialog).toBeHidden();
-  await expect(filter.getByRole("button")).toHaveText(["All", "#bath", "#weekly"]);
+  await strawboar.reload();
+  await strawboar.openChore(fan);
+  await expect(strawboar.getLabelsInput()).toHaveValue("kitchen");
+  await strawboar.getLabelsInput().fill("");
+  await strawboar.save();
+  await expect(strawboar.getEditor()).toBeHidden();
+  await expect(strawboar.getLabelFilterButtons()).toHaveText(["All", "#bath", "#weekly"]);
 });
 
 test("undoes the latest completion from the recent list", async ({ page, request }, testInfo) => {
@@ -133,86 +119,75 @@ test("undoes the latest completion from the recent list", async ({ page, request
   // Only the latest completion can be undone.
   expect((await request.delete(`/api/completions/${completionIds[0]}`)).status()).toBe(400);
 
-  await page.goto("/");
-  const recent = page.locator("#recent");
-  await expect(recent.locator("li", { hasText: title })).toHaveCount(2);
-  await expect(recent.getByRole("button", { name: `Undo: ${title}` })).toHaveCount(1);
+  const strawboar = await openPage({ page });
+  await expect(strawboar.getRecentRow(title)).toHaveCount(2);
+  await expect(strawboar.getRecentUndoButton(title)).toHaveCount(1);
 
-  await recent.getByRole("button", { name: `Undo: ${title}` }).click();
-  await expect(recent.locator("li", { hasText: title })).toHaveCount(1);
-  await expect(page.locator("#later li", { hasText: title })).toBeVisible();
+  await strawboar.undoFromRecent(title);
+  await expect(strawboar.getRecentRow(title)).toHaveCount(1);
+  await expect(strawboar.getLaterRow(title)).toBeVisible();
 
-  await recent.getByRole("button", { name: `Undo: ${title}` }).click();
-  await expect(recent.locator("li", { hasText: title })).toHaveCount(0);
-  await expect(page.locator("#due li", { hasText: title })).toBeVisible();
+  await strawboar.undoFromRecent(title);
+  await expect(strawboar.getRecentRow(title)).toHaveCount(0);
+  await expect(strawboar.getDueRow(title)).toBeVisible();
 
-  await page.reload();
-  await expect(page.locator("#due li", { hasText: title })).toContainText("not done yet");
-  await expect(page.locator("#recent li", { hasText: title })).toHaveCount(0);
+  await strawboar.reload();
+  await expect(strawboar.getDueRow(title)).toContainText("not done yet");
+  await expect(strawboar.getRecentRow(title)).toHaveCount(0);
 });
 
 test("closes the panel by tapping outside of it", async ({ page }, testInfo) => {
   const first = uniqueTitle(testInfo, "Clean bath");
   const second = uniqueTitle(testInfo, "Change toothbrush");
-  await page.goto("/");
-  await addChore(page, first, "7");
-  await addChore(page, second, "30");
-  const dialog = page.getByRole("dialog");
-  const title = dialog.getByLabel("Title");
+  const strawboar = await openPage({ page });
+  await strawboar.addChore(first, "7");
+  await strawboar.addChore(second, "30");
 
-  await page.locator("#due li", { hasText: first }).getByText(first).click();
-  await expect(title).toHaveValue(first);
+  await strawboar.openChore(first);
+  await expect(strawboar.getTitleInput()).toHaveValue(first);
 
-  // The left edge is outside of the panel on every viewport.
-  if (testInfo.project.use.hasTouch) {
-    await page.touchscreen.tap(8, 300);
-  } else {
-    await page.mouse.click(8, 300);
-  }
-  await expect(dialog).toBeHidden();
-  await expect(page.locator("#editor-backdrop")).toHaveCount(0);
+  await strawboar.tapOutsideEditor({ hasTouch: !!testInfo.project.use.hasTouch });
+  await expect(strawboar.getEditor()).toBeHidden();
+  await expect(strawboar.getEditorBackdrop()).toHaveCount(0);
 
-  await page.locator("#due li", { hasText: second }).getByText(second).click();
-  await expect(title).toHaveValue(second);
+  await strawboar.openChore(second);
+  await expect(strawboar.getTitleInput()).toHaveValue(second);
 });
 
 test("switches the panel to another chore while it is open", async ({ page }, testInfo) => {
   const first = uniqueTitle(testInfo, "Wipe windows");
   const second = uniqueTitle(testInfo, "Descale kettle");
-  await page.goto("/");
-  await addChore(page, first, "7");
-  await addChore(page, second, "30");
-  const dialog = page.getByRole("dialog");
-  const title = dialog.getByLabel("Title");
+  const strawboar = await openPage({ page });
+  await strawboar.addChore(first, "7");
+  await strawboar.addChore(second, "30");
 
-  await page.locator("#due li", { hasText: first }).getByText(first).click();
-  await expect(title).toHaveValue(first);
+  await strawboar.openChore(first);
+  await expect(strawboar.getTitleInput()).toHaveValue(first);
 
   // The panel covers the whole screen on mobile.
-  test.skip(page.viewportSize()!.width < 640, "no chore is visible beside the panel");
-  await page.locator("#due li", { hasText: second }).getByText(second).click();
-  await expect(dialog).toBeVisible();
-  await expect(title).toHaveValue(second);
-  await expect(page.locator("#due li[aria-current]")).toContainText(second);
+  test.skip(strawboar.isNarrow(), "no chore is visible beside the panel");
+  await strawboar.openChore(second);
+  await expect(strawboar.getEditor()).toBeVisible();
+  await expect(strawboar.getTitleInput()).toHaveValue(second);
+  await expect(strawboar.getCurrentRow()).toContainText(second);
 });
 
 test("shows the history of a chore", async ({ page }, testInfo) => {
   const title = uniqueTitle(testInfo, "Water plants");
-  await page.goto("/");
-  await addChore(page, title, "4");
-  const dialog = page.getByRole("dialog");
+  const strawboar = await openPage({ page });
+  await strawboar.addChore(title, "4");
 
-  await page.locator("#due li", { hasText: title }).getByText(title).click();
-  await expect(dialog.locator("#chore-history")).toContainText("Not done yet.");
-  await dialog.getByRole("button", { name: "Close" }).click();
-  await expect(dialog).toBeHidden();
+  await strawboar.openChore(title);
+  await expect(strawboar.getHistory()).toContainText("Not done yet.");
+  await strawboar.close();
+  await expect(strawboar.getEditor()).toBeHidden();
 
-  await page.getByRole("button", { name: `Done: ${title}` }).click();
-  await page.locator("#later").getByText(title).click();
+  await strawboar.complete(title);
+  await strawboar.openChore(title);
 
   const [, month, day] = today().split("-");
   const label = `${month}/${day}`;
-  await expect(dialog.locator("#chore-history")).toHaveText(`History${label}`);
+  await expect(strawboar.getHistory()).toHaveText(`History${label}`);
 });
 
 test("serves the web app manifest", async ({ request }) => {
@@ -231,35 +206,34 @@ function shortDate(offsetDays: number): string {
 test("edits and archives a chore", async ({ page }, testInfo) => {
   const title = uniqueTitle(testInfo, "Wash sheets");
   const renamed = uniqueTitle(testInfo, "Wash all sheets");
-  await page.goto("/");
-  await addChore(page, title, "30");
-  const dialog = page.getByRole("dialog");
+  const strawboar = await openPage({ page });
+  await strawboar.addChore(title, "30");
 
-  await page.getByRole("button", { name: `Done: ${title}` }).click();
-  await expect(page.locator("#later li", { hasText: title })).toContainText(shortDate(30));
+  await strawboar.complete(title);
+  await expect(strawboar.getLaterRow(title)).toContainText(shortDate(30));
 
   // The due date follows the last completion, so a new interval applies right away.
-  await page.locator("#later li", { hasText: title }).getByText(title).click();
-  await expect(dialog.getByLabel("First due")).toHaveCount(0);
-  await dialog.getByLabel("Title").fill(renamed);
-  await dialog.getByLabel("Every (days)").fill("20");
-  await dialog.getByRole("button", { name: "Save" }).click();
-  await expect(dialog).toBeHidden();
-  await expect(page.locator("#later li", { hasText: renamed })).toContainText(shortDate(20));
+  await strawboar.openChore(title);
+  await expect(strawboar.getFirstDueInput()).toHaveCount(0);
+  await strawboar.getTitleInput().fill(renamed);
+  await strawboar.getIntervalInput().fill("20");
+  await strawboar.save();
+  await expect(strawboar.getEditor()).toBeHidden();
+  await expect(strawboar.getLaterRow(renamed)).toContainText(shortDate(20));
 
   // Undo so that the completion does not stay in the recent list.
-  await page.reload();
-  await page.locator("#recent").getByRole("button", { name: `Undo: ${renamed}` }).click();
-  await expect(page.locator("#due li", { hasText: renamed })).toBeVisible();
+  await strawboar.reload();
+  await strawboar.undoFromRecent(renamed);
+  await expect(strawboar.getDueRow(renamed)).toBeVisible();
 
-  await page.locator("#due li", { hasText: renamed }).getByText(renamed).click();
-  await dialog.getByRole("button", { name: "Archive" }).click();
-  await expect(dialog).toBeHidden();
-  await expect(page.getByText(renamed)).toHaveCount(0);
+  await strawboar.openChore(renamed);
+  await strawboar.archive();
+  await expect(strawboar.getEditor()).toBeHidden();
+  await expect(strawboar.getText(renamed)).toHaveCount(0);
 
-  await page.reload();
-  await expect(page.locator("#today")).not.toBeEmpty();
-  await expect(page.getByText(renamed)).toHaveCount(0);
+  await strawboar.reload();
+  await expect(strawboar.getToday()).not.toBeEmpty();
+  await expect(strawboar.getText(renamed)).toHaveCount(0);
 });
 
 test("fits in the first view without scrolling", async ({ page, request }, testInfo) => {
@@ -280,15 +254,8 @@ test("fits in the first view without scrolling", async ({ page, request }, testI
     expect(response.ok()).toBeTruthy();
   }
 
-  await page.goto("/");
-  await expect(page.locator("#due li").first()).toBeVisible();
+  const strawboar = await openPage({ page });
+  await expect(strawboar.getDueRows().first()).toBeVisible();
 
-  const overflow = await page.evaluate(() => {
-    const root = document.scrollingElement!;
-    return {
-      x: root.scrollWidth - root.clientWidth,
-      y: root.scrollHeight - root.clientHeight,
-    };
-  });
-  expect(overflow).toEqual({ x: 0, y: 0 });
+  expect(await strawboar.getOverflow()).toEqual({ x: 0, y: 0 });
 });
