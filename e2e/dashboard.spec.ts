@@ -190,6 +190,48 @@ test("shows the history of a chore", async ({ page }, testInfo) => {
   await expect(strawboar.getHistory()).toHaveText(`History${label}`);
 });
 
+test("exports and imports chore definitions", async ({ page }, testInfo) => {
+  const existing = uniqueTitle(testInfo, "Clean bath");
+  const added = uniqueTitle(testInfo, "Descale kettle");
+  const strawboar = await openPage({ page });
+  await strawboar.addChore(existing, "7", "bath");
+
+  await strawboar.openTransfer();
+  const exported = JSON.parse(await strawboar.getDefinitionsInput().inputValue());
+  expect(exported).toEqual([{ title: existing, interval_days: 7, labels: ["bath"], next_due: today() }]);
+
+  await strawboar.importDefinitions("[{}]");
+  await expect(strawboar.getTransferError()).toHaveText(
+    "Chore #1: title, interval_days and labels are required.",
+  );
+
+  // Matched by title: the existing chore is updated and the other one is added.
+  const definitions = [
+    { ...exported[0], interval_days: 1, labels: ["daily"] },
+    { title: added, interval_days: 30, labels: ["kitchen"] },
+  ];
+  await strawboar.importDefinitions(JSON.stringify(definitions));
+  await expect(strawboar.getEditor()).toBeHidden();
+  await expect(strawboar.getDueRow(existing)).toContainText("daily");
+  await expect(strawboar.getDueRow(added)).toContainText("kitchen");
+  await expect(strawboar.getDueRows()).toHaveCount(2);
+});
+
+test("opens import/export at the top of a long list", async ({ page, request }, testInfo) => {
+  for (let i = 0; i < 15; i++) {
+    const response = await request.post("/api/chores", {
+      data: { title: uniqueTitle(testInfo, `Chore ${i}`), interval_days: 7, next_due: today(), labels: ["a", "b"] },
+    });
+    expect(response.ok()).toBeTruthy();
+  }
+  const strawboar = await openPage({ page });
+
+  await strawboar.openTransfer();
+
+  await expect(strawboar.getImportButton()).toBeInViewport();
+  expect(await strawboar.getDefinitionsScroll()).toEqual({ panel: 0, textarea: 0 });
+});
+
 test("serves the web app manifest", async ({ request }) => {
   const response = await request.get("/manifest.webmanifest");
   expect(response.ok()).toBeTruthy();

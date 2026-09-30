@@ -53,6 +53,7 @@ e2e/             # Playwright tests
 - **Chore scheduling**: urgency, ordering, done and edit rules live in `src/core/chore.mbt`. Once done, a chore is due `interval_days` after its last completion (also recalculated when the interval is edited); `next_due` is only chosen by the user when creating a chore. There is no postpone. Overdue chores are just "Due"; never show how late they are.
 - **Undo**: undoing a completion restores the schedule saved with it, so only the latest completion of a chore can be undone (`RecentDone::can_undo`, enforced in `undo_completion`).
 - **Labels**: stored as a JSON text column on `chores`; normalized in `ChoreInput::validate`.
+- **Import / Export**: chore definitions are exchanged as JSON text (an array of `ChoreInput`) in a text area. Import matches chores by title, updates or adds them and never archives; rules live in `src/core/transfer.mbt`.
 - **API**: routes are in `src/worker/api.mbt`, D1 queries in `src/worker/repository.mbt`.
 - **UI**: use `rui` components (dark theme) and inline `style` for layout. One chore per row; clickable areas must look clickable. Editing happens in a non-modal panel (`rui.sheet`) overlaid on the right, not a modal. Dates are shown as `MM/dd`. The dashboard must fit in the first view without scrolling on both desktop and mobile (checked in E2E). All UI text is in English.
 - **E2E**: keep all locators and UI actions in the page object returned by `openPage` in `e2e/page.ts`; specs must not call `page.locator`/`getBy*` directly.

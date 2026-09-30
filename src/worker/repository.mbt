@@ -65,17 +65,7 @@ async fn insert_chore(
   input : @core.ChoreInput,
   next_due : @core.Date,
 ) -> @core.Chore {
-  let rows = db
-    .prepare(
-      "INSERT INTO chores (title, interval_days, next_due, labels) VALUES (?, ?, ?, ?) RETURNING \{chore_columns}",
-    )
-    .bind([
-      Text(input.title),
-      Integer(input.interval_days),
-      Text(next_due.to_string()),
-      labels_param(input.labels),
-    ])
-    .all()
+  let rows = insert_chore_statement(db, input, next_due).all()
   guard first_row(rows) is Some(row) else {
     raise InternalError("insert returned no row")
   }
@@ -83,22 +73,63 @@ async fn insert_chore(
 }
 
 ///|
+fn insert_chore_statement(
+  db : @cloudflare.D1Database,
+  input : @core.ChoreInput,
+  next_due : @core.Date,
+) -> @cloudflare.D1PreparedStatement {
+  db
+  .prepare(
+    "INSERT INTO chores (title, interval_days, next_due, labels) VALUES (?, ?, ?, ?) RETURNING \{chore_columns}",
+  )
+  .bind([
+    Text(input.title),
+    Integer(input.interval_days),
+    Text(next_due.to_string()),
+    labels_param(input.labels),
+  ])
+}
+
+///|
+fn update_chore_statement(
+  db : @cloudflare.D1Database,
+  chore : @core.Chore,
+) -> @cloudflare.D1PreparedStatement {
+  db
+  .prepare(
+    "UPDATE chores SET title = ?, interval_days = ?, next_due = ?, labels = ? WHERE id = ? AND archived = 0 RETURNING \{chore_columns}",
+  )
+  .bind([
+    Text(chore.title),
+    Integer(chore.interval_days),
+    Text(chore.next_due.to_string()),
+    labels_param(chore.labels),
+    Integer(chore.id),
+  ])
+}
+
+///|
+/// Applies the whole import in a single transaction.
+async fn import_chores(
+  db : @cloudflare.D1Database,
+  plan : @core.ImportPlan,
+) -> @core.ImportResult {
+  let statements = [
+    ..plan.updates.map(chore => update_chore_statement(db, chore)),
+    ..plan.creates.map(create => insert_chore_statement(db, create.0, create.1)),
+  ]
+  if !statements.is_empty() {
+    ignore(db.batch(statements))
+  }
+  { created: plan.creates.length(), updated: plan.updates.length(), }
+}
+
+///|
 async fn update_chore(
   db : @cloudflare.D1Database,
   chore : @core.Chore,
 ) -> @core.Chore {
-  let rows = db
-    .prepare(
-      "UPDATE chores SET title = ?, interval_days = ?, next_due = ?, labels = ? WHERE id = ? AND archived = 0 RETURNING \{chore_columns}",
-    )
-    .bind([
-      Text(chore.title),
-      Integer(chore.interval_days),
-      Text(chore.next_due.to_string()),
-      labels_param(chore.labels),
-      Integer(chore.id),
-    ])
-    .all()
+  let rows = update_chore_statement(db, chore).all()
   guard first_row(rows) is Some(row) else { raise NotFound }
   decode_chore(row)
 }

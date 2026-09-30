@@ -47,6 +47,20 @@ export async function openPage({ page }: { page: Page }) {
     getCloseButton: () => editor.getByRole("button", { name: "Close" }),
     getArchiveButton: () => editor.getByRole("button", { name: "Archive" }),
 
+    getTransferButton: () => page.getByRole("button", { name: "Import / Export" }),
+    getDefinitionsInput: () => editor.getByLabel("Chores (JSON)"),
+    getImportButton: () => editor.getByRole("button", { name: "Import", exact: true }),
+    getTransferError: () => editor.locator("#transfer-error"),
+
+    openTransfer: async () => {
+      await strawboarPage.getTransferButton().click();
+    },
+
+    importDefinitions: async (text: string) => {
+      await strawboarPage.getDefinitionsInput().fill(text);
+      await strawboarPage.getImportButton().click();
+    },
+
     addChore: async (title: string, interval: string, labels = "") => {
       await strawboarPage.getAddButton().click();
       await strawboarPage.getTitleInput().fill(title);
@@ -98,6 +112,12 @@ export async function openPage({ page }: { page: Page }) {
     },
 
     isNarrow: () => page.viewportSize()!.width < 640,
+
+    getDefinitionsScroll: () =>
+      strawboarPage.getDefinitionsInput().evaluate((textarea) => ({
+        panel: textarea.closest("dialog")!.scrollTop,
+        textarea: textarea.scrollTop,
+      })),
 
     getOverflow: () =>
       page.evaluate(() => {

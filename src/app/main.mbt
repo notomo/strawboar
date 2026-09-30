@@ -37,6 +37,21 @@ struct Editor {
 } derive(Eq)
 
 ///|
+/// Form state of the import/export panel.
+struct Transfer {
+  /// Chore definitions as JSON, prefilled with the current ones.
+  text : String
+  error : String
+} derive(Eq)
+
+///|
+/// Content of the side panel.
+enum Panel {
+  ChoreEditor(Editor)
+  Transfer(Transfer)
+} derive(Eq)
+
+///|
 struct Undo {
   completion_id : Int
   title : String
@@ -48,8 +63,9 @@ struct Model {
   today : @core.Date?
   chores : Array[@core.Chore]
   recent : Array[@core.RecentDone]
-  editor : Editor?
-  /// Whether the editor panel is shown. Drives the backdrop that closes it.
+  /// Kept after the panel closes, like `Editor`.
+  panel : Panel?
+  /// Whether the panel is shown. Drives the backdrop that closes it.
   panel_open : Bool
   /// Only chores with this label are shown when set.
   label_filter : String?
@@ -74,6 +90,10 @@ enum Msg {
   NextDueChanged(String)
   LabelsChanged(String)
   FilterByLabel(String?)
+  OpenTransfer
+  TransferTextChanged(String)
+  Import
+  Imported(Result[@core.ImportResult, Error])
   Submit
   Saved(Result[@core.Chore, Error])
   Archive
@@ -206,15 +226,17 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
       (
         {
           ..model,
-          editor: Some({
-            id: None,
-            title: "",
-            interval: "7",
-            next_due,
-            labels: model.label_filter.unwrap_or(""),
-            error: "",
-            history: Fetched([]),
-          }),
+          panel: Some(
+            ChoreEditor({
+              id: None,
+              title: "",
+              interval: "7",
+              next_due,
+              labels: model.label_filter.unwrap_or(""),
+              error: "",
+              history: Fetched([]),
+            }),
+          ),
           panel_open: true,
         },
         @dialog.show(EDITOR_ID, modal=false),
@@ -226,15 +248,17 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
           (
             {
               ..model,
-              editor: Some({
-                id: Some(id),
-                title: chore.title,
-                interval: chore.interval_days.to_string(),
-                next_due: chore.next_due.to_string(),
-                labels: chore.labels.join(", "),
-                error: "",
-                history: Loading,
-              }),
+              panel: Some(
+                ChoreEditor({
+                  id: Some(id),
+                  title: chore.title,
+                  interval: chore.interval_days.to_string(),
+                  next_due: chore.next_due.to_string(),
+                  labels: chore.labels.join(", "),
+                  error: "",
+                  history: Loading,
+                }),
+              ),
               panel_open: true,
             },
             @rabbita.batch([
@@ -247,13 +271,13 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
         None => (model, @rabbita.none)
       }
     HistoryLoaded(id, result) =>
-      match model.editor {
+      match model.editor() {
         Some(editor) if editor.id == Some(id) => {
           let history = match result {
             Ok(history) => Fetched(history.dates)
             Err(_) => Unavailable
           }
-          ({ ..model, editor: Some({ ..editor, history, }), }, @rabbita.none)
+          (model.edit(editor => { ..editor, history, }), @rabbita.none)
         }
         _ => (model, @rabbita.none)
       }
@@ -267,7 +291,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
       (model.edit(editor => { ..editor, labels, }), @rabbita.none)
     FilterByLabel(label_filter) => ({ ..model, label_filter, }, @rabbita.none)
     Submit =>
-      match model.editor {
+      match model.editor() {
         Some(editor) =>
           try editor.input() catch {
             ValidationError(error) =>
@@ -309,7 +333,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
         @rabbita.none,
       )
     Archive =>
-      match model.editor {
+      match model.editor() {
         Some({ id: Some(id), .. }) =>
           (
             model,
@@ -320,7 +344,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
         _ => (model, @rabbita.none)
       }
     Archived(None) => {
-      let id = model.editor.bind(editor => editor.id)
+      let id = model.editor().bind(editor => editor.id)
       (
         {
           ..model,
@@ -338,14 +362,87 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
         }),
         @rabbita.none,
       )
+    OpenTransfer =>
+      (
+        {
+          ..model,
+          panel: Some(
+            Transfer({ text: @core.export_text(model.chores), error: "", }),
+          ),
+          panel_open: true,
+        },
+        @dialog.show(EDITOR_ID, modal=false),
+      )
+    TransferTextChanged(text) =>
+      (model.edit_transfer(transfer => { ..transfer, text, }), @rabbita.none)
+    Import =>
+      match (model.panel, model.today) {
+        (Some(Transfer(transfer)), Some(today)) =>
+          // Validated here too, so that the user sees why it is rejected.
+          try
+            @core.ImportPlan::new(
+              model.chores,
+              @core.parse_definitions(transfer.text),
+              today,
+            )
+          catch {
+            ValidationError(error) =>
+              (
+                model.edit_transfer(transfer => { ..transfer, error, }),
+                @rabbita.none,
+              )
+          } noraise {
+            _ =>
+              (
+                model.edit_transfer(transfer => { ..transfer, error: "", }),
+                @http.post("/api/chores/import")
+                .with_text(transfer.text)
+                .expect_json(emit.map(result => Imported(result))),
+              )
+          }
+        _ => (model, @rabbita.none)
+      }
+    Imported(Ok(_)) =>
+      (
+        { ..model, panel_open: false, },
+        @rabbita.batch([@dialog.close(EDITOR_ID), emit(Reload)]),
+      )
+    Imported(Err(_)) =>
+      (
+        model.edit_transfer(transfer => {
+          ..transfer,
+          error: "Failed to import. Please try again.",
+        }),
+        @rabbita.none,
+      )
     ClosePanel => ({ ..model, panel_open: false, }, @dialog.close(EDITOR_ID))
     PanelClosed => ({ ..model, panel_open: false, }, @rabbita.none)
   }
 }
 
 ///|
+fn Model::editor(self : Model) -> Editor? {
+  match self.panel {
+    Some(ChoreEditor(editor)) => Some(editor)
+    _ => None
+  }
+}
+
+///|
 fn Model::edit(self : Model, f : (Editor) -> Editor) -> Model {
-  { ..self, editor: self.editor.map(f), }
+  match self.panel {
+    Some(ChoreEditor(editor)) =>
+      { ..self, panel: Some(ChoreEditor(f(editor))), }
+    _ => self
+  }
+}
+
+///|
+fn Model::edit_transfer(self : Model, f : (Transfer) -> Transfer) -> Model {
+  match self.panel {
+    Some(Transfer(transfer)) => { ..self, panel: Some(Transfer(f(transfer))), }
+    _ => self
+  }
 }
 
 ///|
@@ -361,7 +458,7 @@ fn Model::keep_valid_filter(self : Model) -> Model {
 ///|
 /// The chore being edited in the open panel, if any.
 fn Model::selected_id(self : Model) -> Int? {
-  match (self.panel_open, self.editor) {
+  match (self.panel_open, self.editor()) {
     (true, Some({ id, .. })) => id
     _ => None
   }
@@ -377,7 +474,7 @@ fn app() -> Val[Html] {
           today: None,
           chores: [],
           recent: [],
-          editor: None,
+          panel: None,
           panel_open: false,
           label_filter: None,
           undo: None,

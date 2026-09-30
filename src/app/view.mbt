@@ -23,7 +23,7 @@ fn view(model : Model, emit : Emit[Msg]) -> Html {
         [header_view(model, emit), content_view(model, emit)],
       ),
       backdrop_view(model.panel_open, emit),
-      editor_view(model.editor, emit),
+      panel_view(model.panel, emit),
       undo_view(model.undo, emit),
     ],
   )
@@ -41,7 +41,14 @@ fn header_view(model : Model, emit : Emit[Msg]) -> Html {
         style=["margin:0;font-size:1.5rem;font-weight:600"],
         model.today.map(long_date).unwrap_or(""),
       ),
-      @rui.button(on_click=emit(OpenNew), "+ Add chore"),
+      div(style=["display:flex;gap:0.5rem"], [
+        @rui.button(
+          variant=Outline,
+          on_click=emit(OpenTransfer),
+          "Import / Export",
+        ),
+        @rui.button(on_click=emit(OpenNew), "+ Add chore"),
+      ]),
     ],
   )
 }
@@ -409,19 +416,20 @@ fn backdrop_view(panel_open : Bool, emit : Emit[Msg]) -> Html {
 
 ///|
 /// A non-modal panel over the right side of the dashboard.
-fn editor_view(editor : Editor?, emit : Emit[Msg]) -> Html {
+fn panel_view(panel : Panel?, emit : Emit[Msg]) -> Html {
   @rui.sheet(
     id=EDITOR_ID,
     side=SheetRight,
     closedby="closerequest",
     on_close=emit.map(_ => PanelClosed),
-    attrs=@html.Attrs::build().aria_labelledby("chore-editor-title"),
+    attrs=@html.Attrs::build().aria_labelledby("panel-title"),
     style=[
       "position:fixed;z-index:20;width:min(\{panel_width},100vw);max-width:100vw;box-shadow:-8px 0 24px rgb(0 0 0 / 0.4)",
     ],
-    match editor {
+    match panel {
       None => []
-      Some(editor) => editor_content(editor, emit)
+      Some(ChoreEditor(editor)) => editor_content(editor, emit)
+      Some(Transfer(transfer)) => transfer_content(transfer, emit)
     },
   )
 }
@@ -432,7 +440,7 @@ fn editor_content(editor : Editor, emit : Emit[Msg]) -> Array[Html] {
   [
     @rui.sheet_header([
       @rui.sheet_title(
-        id="chore-editor-title",
+        id="panel-title",
         if is_new {
           "New chore"
         } else {
@@ -555,4 +563,54 @@ fn undo_view(undo : Undo?, emit : Emit[Msg]) -> Html {
         ),
       )
   }
+}
+
+///|
+fn transfer_content(transfer : Transfer, emit : Emit[Msg]) -> Array[Html] {
+  [
+    @rui.sheet_header([
+      // Focusing the text area would put the caret at the end and scroll it
+      // to the bottom, so the title takes the initial focus instead.
+      @rui.sheet_title(
+        id="panel-title",
+        attrs=@html.Attrs::build().autofocus(true).tabindex(-1),
+        style=["outline:none"],
+        "Import / Export",
+      ),
+      @rui.sheet_description(
+        "Copy the chores below to export them. To import, edit or paste chores and press Import: chores with the same title are updated and others are added.",
+      ),
+    ]),
+    @html.form(
+      on_submit=emit(Import),
+      style=[
+        "display:flex;flex-direction:column;gap:1.25rem;padding-bottom:1rem;flex:1",
+      ],
+      [
+        field_view(
+          "chore-definitions",
+          "Chores (JSON)",
+          @rui.textarea(
+            id="chore-definitions",
+            value=transfer.text,
+            wrap="off",
+            rows=14,
+            // A fixed height keeps the Import button in view for long lists.
+            style=[
+              "field-sizing:fixed;font-family:monospace;font-size:0.8125rem",
+            ],
+            on_input=emit.map(value => TransferTextChanged(value)),
+          ),
+        ),
+        if transfer.error == "" {
+          @html.nothing
+        } else {
+          @rui.field_error(id="transfer-error", transfer.error)
+        },
+        div(style=["display:flex;justify-content:flex-end;margin-top:auto"], [
+          @rui.button(type_="submit", "Import"),
+        ]),
+      ],
+    ),
+  ]
 }

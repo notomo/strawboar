@@ -72,6 +72,18 @@ async fn route(
       }
       json_response(insert_chore(db, input, next_due).to_json(), 201)
     }
+    ("POST", ["api", "chores", "import"]) => {
+      let text = request.text()
+      let existing = list_chores(db)
+      let plan = @core.ImportPlan::new(
+        existing,
+        @core.parse_definitions(text),
+        today(),
+      ) catch {
+        ValidationError(message) => raise BadRequest(message)
+      }
+      json_response(import_chores(db, plan).to_json(), 200)
+    }
     ("PUT", ["api", "chores", id]) => {
       let id = parse_id(id)
       let input = read_chore_input(request)
