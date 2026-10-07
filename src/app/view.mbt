@@ -342,7 +342,13 @@ fn chore_row(
   card(state, [
     edit_area(chore.id, state, emit, [
       title_text(chore.title, labels),
-      span(style=["font-size:0.8125rem", muted], chore_meta(chore, today)),
+      span(style=["font-size:0.8125rem", muted], [
+        span(
+          style=["font-weight:600;color:var(--rui-foreground)"],
+          interval_text(chore.interval_days),
+        ),
+        @html.text(" · \{chore_status(chore, today)}"),
+      ]),
     ]),
     @rui.button(
       variant=Outline,

@@ -44,12 +44,13 @@ fn long_date(date : @core.Date) -> String {
 }
 
 ///|
-fn chore_meta(chore : @core.Chore, today : @core.Date) -> String {
+/// The status following the interval in a due chore row.
+fn chore_status(chore : @core.Chore, today : @core.Date) -> String {
   let due = match chore.days_left(today) {
     left if left > 0 => " · due in \{plural(left, "day")}"
     _ => ""
   }
-  "\{interval_text(chore.interval_days)} · \{last_done_text(chore.last_done, today)}\{due}"
+  "\{last_done_text(chore.last_done, today)}\{due}"
 }
 
 ///|

@@ -6,7 +6,7 @@ fn test_date(s : String) -> @core.Date {
 }
 
 ///|
-test "chore_meta" {
+test "chore_status" {
   let today = test_date("2026-09-24")
   let chore : @core.Chore = {
     id: 1,
@@ -16,9 +16,9 @@ test "chore_meta" {
     last_done: Some(test_date("2026-09-15")),
     labels: [],
   }
-  inspect(chore_meta(chore, today), content="weekly · done 9 days ago")
+  inspect(chore_status(chore, today), content="done 9 days ago")
   inspect(
-    chore_meta(
+    chore_status(
       {
         ..chore,
         interval_days: 10,
@@ -27,12 +27,19 @@ test "chore_meta" {
       },
       today,
     ),
-    content="every 10 days · not done yet · due in 1 day",
+    content="not done yet · due in 1 day",
   )
   inspect(
-    chore_meta({ ..chore, interval_days: 1, last_done: Some(today), }, today),
-    content="daily · done today",
+    chore_status({ ..chore, interval_days: 1, last_done: Some(today), }, today),
+    content="done today",
   )
+}
+
+///|
+test "interval_text" {
+  inspect(interval_text(1), content="daily")
+  inspect(interval_text(7), content="weekly")
+  inspect(interval_text(10), content="every 10 days")
 }
 
 ///|
