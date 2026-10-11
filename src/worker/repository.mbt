@@ -1,8 +1,9 @@
 ///|
-let chore_columns = "id, title, interval_days, next_due, last_done, labels"
+let chore_columns = "id, title, interval_days, monthly_months, monthly_day, monthly_lead_days, next_due, last_done, labels"
 
 ///|
-/// `labels` is stored as a JSON text column of label ids.
+/// `labels` is stored as a JSON text column of label ids, and a monthly chore
+/// has the `monthly_*` columns set.
 fn decode_chore(row : Json) -> @core.Chore raise ApiError {
   guard row is Object(fields) && fields.get("labels") is Some(String(labels)) else {
     raise InternalError("invalid chore row: labels")
@@ -10,6 +11,15 @@ fn decode_chore(row : Json) -> @core.Chore raise ApiError {
   let fields = fields.copy()
   fields["labels"] = @json.parse(labels) catch {
     error => raise InternalError("invalid chore labels: \{error}")
+  }
+  if row
+    is {
+      "monthly_months": Number(_) as months,
+      "monthly_day": day,
+      "monthly_lead_days": lead_days,
+      ..
+    } {
+    fields["monthly"] = { "months": months, "day": day, "lead_days": lead_days }
   }
   @json.from_json(Json::object(fields)) catch {
     error => raise InternalError("invalid chore row: \{error}")
@@ -35,6 +45,21 @@ fn date_param(date : @core.Date?) -> @cloudflare.D1Param {
 ///|
 fn labels_param(labels : Array[Int]) -> @cloudflare.D1Param {
   Text(labels.to_json().stringify())
+}
+
+///|
+/// Parameters of `interval_days, monthly_months, monthly_day, monthly_lead_days`.
+fn repeat_params(repeat : @core.Repeat) -> Array[@cloudflare.D1Param] {
+  match repeat {
+    AfterDone(days) => [Integer(days), Null, Null, Null]
+    Monthly({ months, day, lead_days, }) =>
+      [
+        Integer(repeat.approx_days()),
+        Integer(months),
+        Integer(day),
+        Integer(lead_days),
+      ]
+  }
 }
 
 ///|
@@ -80,14 +105,16 @@ fn insert_chore_statement(
 ) -> @cloudflare.D1PreparedStatement {
   db
   .prepare(
-    "INSERT INTO chores (title, interval_days, next_due, labels) VALUES (?, ?, ?, ?) RETURNING \{chore_columns}",
+    "INSERT INTO chores (title, interval_days, monthly_months, monthly_day, monthly_lead_days, next_due, labels) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING \{chore_columns}",
   )
-  .bind([
-    Text(input.title),
-    Integer(input.interval_days),
-    Text(next_due.to_string()),
-    labels_param(input.labels),
-  ])
+  .bind(
+    [
+      Text(input.title),
+      ..repeat_params(input.repeat),
+      Text(next_due.to_string()),
+      labels_param(input.labels),
+    ],
+  )
 }
 
 ///|
@@ -97,15 +124,17 @@ fn update_chore_statement(
 ) -> @cloudflare.D1PreparedStatement {
   db
   .prepare(
-    "UPDATE chores SET title = ?, interval_days = ?, next_due = ?, labels = ? WHERE id = ? AND archived = 0 RETURNING \{chore_columns}",
+    "UPDATE chores SET title = ?, interval_days = ?, monthly_months = ?, monthly_day = ?, monthly_lead_days = ?, next_due = ?, labels = ? WHERE id = ? AND archived = 0 RETURNING \{chore_columns}",
   )
-  .bind([
-    Text(chore.title),
-    Integer(chore.interval_days),
-    Text(chore.next_due.to_string()),
-    labels_param(chore.labels),
-    Integer(chore.id),
-  ])
+  .bind(
+    [
+      Text(chore.title),
+      ..repeat_params(chore.repeat),
+      Text(chore.next_due.to_string()),
+      labels_param(chore.labels),
+      Integer(chore.id),
+    ],
+  )
 }
 
 ///|

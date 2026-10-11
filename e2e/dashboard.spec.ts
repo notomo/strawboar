@@ -259,7 +259,7 @@ test("exports and imports definitions", async ({ page }, testInfo) => {
 
   await strawboar.importDefinitions(JSON.stringify({ labels: [], chores: [{}] }));
   await expect(strawboar.getTransferError()).toHaveText(
-    "Chore #1: title, interval_days and labels are required.",
+    "Chore #1: title, interval_days or monthly, and labels are required.",
   );
   await strawboar.importDefinitions(JSON.stringify({ labels: [], chores: [{ ...exported.chores[0], labels: ["daily"] }] }));
   await expect(strawboar.getTransferError()).toHaveText("Chore #1: Unknown label: daily");
@@ -316,6 +316,44 @@ function shortDate(offsetDays: number): string {
   const [, month, day] = date.toISOString().slice(0, 10).split("-");
   return `${month}/${day}`;
 }
+
+function isoDate(offsetDays: number): string {
+  return new Date(new Date(`${today()}T00:00:00Z`).getTime() + offsetDays * 86_400_000).toISOString().slice(0, 10);
+}
+
+// `MM/dd` of the same day in the next month, or its last day.
+function nextMonthShortDate(iso: string): string {
+  const [year, month, day] = iso.split("-").map(Number);
+  const nextMonth = (month % 12) + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  const lastDay = new Date(Date.UTC(nextYear, nextMonth, 0)).getUTCDate();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(nextMonth)}/${pad(Math.min(day, lastDay))}`;
+}
+
+test("keeps a monthly chore on its day", async ({ page }, testInfo) => {
+  const title = uniqueTitle(testInfo, "Pay rent");
+  const firstDue = isoDate(10);
+  const strawboar = await openPage({ page });
+
+  await strawboar.addMonthlyChore(title, { firstDue, leadDays: "14" });
+  await expect(strawboar.getSoonRow(title)).toContainText("monthly on the");
+  await expect(strawboar.getSoonRow(title)).toContainText("not done yet · due in 10 days");
+
+  // Done early, it is due on the same day of the next month.
+  await strawboar.complete(title);
+  await expect(strawboar.getLaterRow(title)).toContainText(nextMonthShortDate(firstDue));
+  await strawboar.undoFromToast();
+  await expect(strawboar.getSoonRow(title)).toBeVisible();
+
+  await strawboar.openChore(title);
+  await expect(strawboar.getRepeatButton("Monthly")).toHaveAttribute("aria-pressed", "true");
+  await expect(strawboar.getDayInput()).toHaveValue(String(Number(firstDue.slice(8))));
+  await strawboar.getLeadDaysInput().fill("0");
+  await strawboar.save();
+  await expect(strawboar.getEditor()).toBeHidden();
+  await expect(strawboar.getLaterRow(title)).toContainText(shortDate(10));
+});
 
 test("edits and archives a chore", async ({ page }, testInfo) => {
   const title = uniqueTitle(testInfo, "Wash sheets");

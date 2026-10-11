@@ -63,3 +63,19 @@ test "json" {
   let decoded : @core.Date = @json.from_json("2026-09-24".to_json())
   assert_true(decoded == date)
 }
+
+///|
+test "add_months" {
+  let d = (s : String) => {
+    @core.Date::parse(s) catch {
+      _ => abort("invalid date: \{s}")
+    }
+  }
+  inspect(d("2026-10-28").add_months(1, day=28), content="2026-11-28")
+  inspect(d("2026-11-30").add_months(2, day=31), content="2027-01-31")
+  // A day the month does not have becomes its last day.
+  inspect(d("2027-01-31").add_months(1, day=31), content="2027-02-28")
+  inspect(d("2028-01-31").add_months(1, day=31), content="2028-02-29")
+  inspect(d("2026-04-15").add_months(0, day=31), content="2026-04-30")
+  inspect(d("2026-03-15").add_months(-3, day=1), content="2025-12-01")
+}

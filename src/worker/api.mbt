@@ -89,10 +89,13 @@ async fn route(
     }
     ("POST", ["api", "chores"]) => {
       let input = read_chore_input(request, db)
-      guard input.next_due is Some(next_due) else {
+      guard input.next_due is Some(_) else {
         raise BadRequest("Next due is required.")
       }
-      json_response(insert_chore(db, input, next_due).to_json(), 201)
+      json_response(
+        insert_chore(db, input, input.first_due(today())).to_json(),
+        201,
+      )
     }
     ("POST", ["api", "chores", "import"]) => {
       let text = request.text()

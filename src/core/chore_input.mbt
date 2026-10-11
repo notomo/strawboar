@@ -3,7 +3,7 @@
 /// only used when creating a chore; afterwards it follows the completions.
 pub(all) struct ChoreInput {
   title : String
-  interval_days : Int
+  repeat : Repeat
   next_due : Date?
   /// Label ids.
   labels : Array[Int]
@@ -11,11 +11,10 @@ pub(all) struct ChoreInput {
 
 ///|
 pub impl ToJson for ChoreInput with fn to_json(self) {
-  let json : Map[String, Json] = {
-    "title": self.title.to_json(),
-    "interval_days": self.interval_days.to_json(),
-    "labels": self.labels.to_json(),
-  }
+  let (repeat_key, repeat_value) = self.repeat.json_field()
+  let json : Map[String, Json] = { "title": self.title.to_json() }
+  json[repeat_key] = repeat_value
+  json["labels"] = self.labels.to_json()
   if self.next_due is Some(next_due) {
     json["next_due"] = next_due.to_json()
   }
@@ -24,18 +23,12 @@ pub impl ToJson for ChoreInput with fn to_json(self) {
 
 ///|
 pub impl @json.FromJson for ChoreInput with fn from_json(json, path) {
-  guard json
-    is {
-      "title": String(title),
-      "interval_days": Number(interval_days, ..),
-      "labels": labels,
-      ..
-    } else {
+  guard json is { "title": String(title), "labels": labels, .. } else {
     raise @json.JsonDecodeError((path, "invalid chore input"))
   }
   {
     title,
-    interval_days: interval_days.to_int(),
+    repeat: Repeat::read_json(json, path),
     next_due: match json {
       { "next_due": Null, .. } => None
       { "next_due": next_due, .. } =>
@@ -44,6 +37,13 @@ pub impl @json.FromJson for ChoreInput with fn from_json(json, path) {
     },
     labels: @json.from_json(labels, path=path.add_key("labels")),
   }
+}
+
+///|
+/// The first due date of a new chore: `next_due`, or `default` if not given,
+/// moved to the day of a monthly chore.
+pub fn ChoreInput::first_due(self : ChoreInput, default : Date) -> Date {
+  self.repeat.align(self.next_due.unwrap_or(default))
 }
 
 ///|
@@ -74,7 +74,7 @@ pub fn ChoreInput::validate(
   labels : Array[Label],
 ) -> ChoreInput raise ValidationError {
   let title = validate_title(self.title)
-  validate_interval(self.interval_days)
+  self.repeat.validate()
   let ids = validate_labels(self.labels)
   guard ids.iter().all(id => labels.iter().any(label => label.id == id)) else {
     raise ValidationError("Unknown label.")

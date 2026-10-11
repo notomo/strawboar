@@ -90,6 +90,28 @@ pub fn Date::add_days(self : Date, days : Int) -> Date {
 }
 
 ///|
+fn days_in_month(year : Int, month : Int) -> Int {
+  let (next_year, next_month) = if month == 12 {
+    (year + 1, 1)
+  } else {
+    (year, month + 1)
+  }
+  days_from_civil(next_year, next_month, 1) - days_from_civil(year, month, 1)
+}
+
+///|
+/// Returns the `day` of the month `months` after the month of `self`.
+/// A day the month does not have becomes its last day.
+pub fn Date::add_months(self : Date, months : Int, day~ : Int) -> Date {
+  let (year, month, _) = self.ymd()
+  let index = year * 12 + month - 1 + months
+  let year = if index >= 0 { index / 12 } else { (index - 11) / 12 }
+  let month = index - year * 12 + 1
+  let day = day.clamp(min=1, max=days_in_month(year, month))
+  { days: days_from_civil(year, month, day), }
+}
+
+///|
 /// Number of days from `self` to `other` (negative if `other` is earlier).
 pub fn Date::days_until(self : Date, other : Date) -> Int {
   other.days - self.days

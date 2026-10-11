@@ -2,10 +2,16 @@
 fn definition(
   title : String,
   interval_days? : Int = 7,
+  repeat? : @core.Repeat,
   next_due? : String,
   labels? : Array[String] = [],
 ) -> @core.ChoreDefinition {
-  { title, interval_days, next_due: next_due.map(date), labels, }
+  {
+    title,
+    repeat: repeat.unwrap_or(AfterDone(interval_days)),
+    next_due: next_due.map(date),
+    labels,
+  }
 }
 
 ///|
@@ -110,7 +116,7 @@ test "parse_definitions errors" {
         ),
       )
     }),
-    content="Chore #1: title, interval_days and labels are required.",
+    content="Chore #1: title, interval_days or monthly, and labels are required.",
   )
 }
 
@@ -199,5 +205,39 @@ test "import plan errors" {
   inspect(
     plan_error(definitions(labels=[{ name: "", color: Red, }], [])),
     content="Label #1: Name is required.",
+  )
+}
+
+///|
+test "monthly definitions" {
+  let text =
+    #|{"labels":[],"chores":[
+    #|  {"title":"Rent","monthly":{"months":1,"day":27,"lead_days":21},"next_due":"2026-10-01","labels":[]},
+    #|  {"title":"Bath","interval_days":7,"labels":[]}
+    #|]}
+  let defs = @core.parse_definitions(text)
+  assert_true(
+    defs.chores.map(c => c.repeat) ==
+    [Monthly({ months: 1, day: 27, lead_days: 21, }), AfterDone(7)],
+  )
+  let changes = @core.ImportPlan::new([], defs).chore_changes(
+    [],
+    [],
+    date("2026-09-30"),
+  )
+  assert_eq(changes.creates.map(c => c.1.to_string()), [
+    "2026-10-27", "2026-09-30",
+  ])
+  inspect(
+    defs.chores[0].to_json().stringify(),
+    content=(
+      #|{"title":"Rent","monthly":{"months":1,"day":27,"lead_days":21},"labels":[],"next_due":"2026-10-01"}
+    ),
+  )
+  let invalid =
+    #|{"labels":[],"chores":[{"title":"Rent","monthly":{"months":1},"labels":[]}]}
+  inspect(
+    import_error(() => ignore(@core.parse_definitions(invalid))),
+    content="Chore #1: title, interval_days or monthly, and labels are required.",
   )
 }

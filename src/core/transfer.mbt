@@ -11,7 +11,7 @@ pub const MAX_IMPORT_LABELS : Int = 100
 /// to by name so that the text can be edited by hand.
 pub(all) struct ChoreDefinition {
   title : String
-  interval_days : Int
+  repeat : Repeat
   next_due : Date?
   /// Label names.
   labels : Array[String]
@@ -19,11 +19,10 @@ pub(all) struct ChoreDefinition {
 
 ///|
 pub impl ToJson for ChoreDefinition with fn to_json(self) {
-  let json : Map[String, Json] = {
-    "title": self.title.to_json(),
-    "interval_days": self.interval_days.to_json(),
-    "labels": self.labels.to_json(),
-  }
+  let (repeat_key, repeat_value) = self.repeat.json_field()
+  let json : Map[String, Json] = { "title": self.title.to_json() }
+  json[repeat_key] = repeat_value
+  json["labels"] = self.labels.to_json()
   if self.next_due is Some(next_due) {
     json["next_due"] = next_due.to_json()
   }
@@ -32,18 +31,12 @@ pub impl ToJson for ChoreDefinition with fn to_json(self) {
 
 ///|
 pub impl @json.FromJson for ChoreDefinition with fn from_json(json, path) {
-  guard json
-    is {
-      "title": String(title),
-      "interval_days": Number(interval_days, ..),
-      "labels": labels,
-      ..
-    } else {
+  guard json is { "title": String(title), "labels": labels, .. } else {
     raise @json.JsonDecodeError((path, "invalid chore definition"))
   }
   {
     title,
-    interval_days: interval_days.to_int(),
+    repeat: Repeat::read_json(json, path),
     next_due: match json {
       { "next_due": Null, .. } => None
       { "next_due": next_due, .. } =>
@@ -68,7 +61,7 @@ fn ChoreDefinition::validate(
   label_names : Array[String],
 ) -> ChoreDefinition raise ValidationError {
   let title = validate_title(self.title)
-  validate_interval(self.interval_days)
+  self.repeat.validate()
   let labels = validate_labels(self.labels)
   labels.each(name => {
     guard label_names.contains(name) else {
@@ -98,7 +91,7 @@ pub fn export_definitions(
     labels: labels.map(label => { name: label.name, color: label.color, }),
     chores: chores.map(chore => {
       title: chore.title,
-      interval_days: chore.interval_days,
+      repeat: chore.repeat,
       next_due: Some(chore.next_due),
       labels: chore.labels_in(labels).map(label => label.name),
     }),
@@ -135,7 +128,7 @@ pub fn parse_definitions(text : String) -> Definitions raise ValidationError {
       let definition : ChoreDefinition = @json.from_json(item) catch {
         _ =>
           raise ValidationError(
-            "Chore #\{i + 1}: title, interval_days and labels are required.",
+            "Chore #\{i + 1}: title, interval_days or monthly, and labels are required.",
           )
       }
       definition
@@ -223,7 +216,7 @@ pub(all) struct ChoreChanges {
 
 ///|
 /// Resolves the chores of the plan once its labels are saved. A new chore
-/// without `next_due` is due `today`. Existing chores keep their schedule like
+/// without `next_due` is due `today` (see `ChoreInput::first_due`). Existing chores keep their schedule like
 /// when edited, so their `next_due` is ignored.
 pub fn ImportPlan::chore_changes(
   self : ImportPlan,
@@ -236,7 +229,7 @@ pub fn ImportPlan::chore_changes(
   self.chores.each(definition => {
     let input : ChoreInput = {
       title: definition.title,
-      interval_days: definition.interval_days,
+      repeat: definition.repeat,
       next_due: definition.next_due,
       labels: definition.labels.map(name => {
         match labels.iter().find_first(label => label.name == name) {
@@ -247,7 +240,7 @@ pub fn ImportPlan::chore_changes(
     }
     match existing.iter().find_first(chore => chore.title == input.title) {
       Some(chore) => updates.push(chore.edit(input))
-      None => creates.push((input, input.next_due.unwrap_or(today)))
+      None => creates.push((input, input.first_due(today)))
     }
   })
   { updates, creates, }

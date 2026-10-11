@@ -10,6 +10,7 @@ fn chore(
   id? : Int = 1,
   title? : String = "chore",
   interval_days? : Int = 10,
+  repeat? : @core.Repeat,
   next_due? : String = "2026-09-24",
   last_done? : String,
   labels? : Array[Int] = [],
@@ -17,7 +18,7 @@ fn chore(
   {
     id,
     title,
-    interval_days,
+    repeat: repeat.unwrap_or(AfterDone(interval_days)),
     next_due: date(next_due),
     last_done: last_done.map(date),
     labels,
@@ -56,7 +57,12 @@ test "complete" {
 
 ///|
 fn edit_input(interval_days : Int) -> @core.ChoreInput {
-  { title: "edited", interval_days, next_due: None, labels: [1], }
+  edit_repeat(AfterDone(interval_days))
+}
+
+///|
+fn edit_repeat(repeat : @core.Repeat) -> @core.ChoreInput {
+  { title: "edited", repeat, next_due: None, labels: [1], }
 }
 
 ///|
@@ -65,7 +71,7 @@ test "edit recalculates the due date from the last completion" {
     edit_input(30),
   )
   inspect(c.next_due, content="2026-10-20")
-  inspect(c.interval_days, content="30")
+  assert_true(c.repeat == AfterDone(30))
   inspect(c.title, content="edited")
   assert_eq(c.labels, [1])
 }
@@ -170,7 +176,7 @@ fn validation_message(input : @core.ChoreInput) -> String {
 test "validate" {
   let input : @core.ChoreInput = {
     title: "  Clean the bath  ",
-    interval_days: 7,
+    repeat: AfterDone(7),
     next_due: Some(date("2026-09-24")),
     labels: [],
   }
@@ -184,7 +190,7 @@ test "validate" {
     content="Title must be at most 100 characters.",
   )
   inspect(
-    validation_message({ ..input, interval_days: 0, }),
+    validation_message({ ..input, repeat: AfterDone(0), }),
     content="Interval must be between 1 and 3650 days.",
   )
   inspect(
@@ -292,4 +298,130 @@ test "parse_days" {
   assert_eq(@core.parse_days("-1"), None)
   assert_eq(@core.parse_days("1.5"), None)
   assert_eq(@core.parse_days("999999"), None)
+}
+
+///|
+fn monthly(
+  months? : Int = 1,
+  day? : Int = 28,
+  lead_days? : Int = 7,
+) -> @core.Repeat {
+  Monthly({ months, day, lead_days, })
+}
+
+///|
+test "monthly urgency follows the lead days" {
+  let c = chore(repeat=monthly(lead_days=21), next_due="2026-10-28")
+  inspect(urgency_label(c, "2026-10-06"), content="later")
+  inspect(urgency_label(c, "2026-10-07"), content="soon")
+  inspect(urgency_label(c, "2026-10-28"), content="due")
+  let no_lead = chore(repeat=monthly(lead_days=0), next_due="2026-10-28")
+  inspect(urgency_label(no_lead, "2026-10-27"), content="later")
+}
+
+///|
+test "monthly complete moves to the next due date whenever done" {
+  let c = chore(repeat=monthly(day=31), next_due="2026-10-31")
+  // done late
+  let late = c.complete(date("2026-11-03"))
+  inspect(late.next_due, content="2026-11-30")
+  assert_eq(late.last_done.map(d => d.to_string()), Some("2026-11-03"))
+  // the day is kept after a shorter month
+  inspect(late.complete(date("2026-11-30")).next_due, content="2026-12-31")
+  // done early
+  let c = chore(repeat=monthly(months=3, day=1), next_due="2026-12-01")
+  inspect(c.complete(date("2026-11-20")).next_due, content="2027-03-01")
+}
+
+///|
+test "edit moves a monthly chore to its day in the month it is due" {
+  let c = chore(
+    repeat=monthly(day=28),
+    next_due="2026-10-28",
+    last_done="2026-09-27",
+  )
+  let edited = c.edit(edit_repeat(monthly(day=25, lead_days=10)))
+  inspect(edited.next_due, content="2026-10-25")
+  assert_true(edited.repeat == monthly(day=25, lead_days=10))
+  // from after done
+  let c = chore(interval_days=14, next_due="2026-10-12", last_done="2026-09-28")
+  inspect(c.edit(edit_repeat(monthly(day=31))).next_due, content="2026-10-31")
+  // back to after done
+  inspect(edited.edit(edit_input(7)).next_due, content="2026-10-04")
+}
+
+///|
+test "first_due" {
+  let input : @core.ChoreInput = {
+    title: "Rent",
+    repeat: monthly(day=31),
+    next_due: Some(date("2026-11-10")),
+    labels: [],
+  }
+  inspect(input.first_due(date("2026-10-11")), content="2026-11-30")
+  inspect(
+    { ..input, next_due: None, }.first_due(date("2026-10-11")),
+    content="2026-10-31",
+  )
+  inspect(
+    { ..input, repeat: AfterDone(7), }.first_due(date("2026-10-11")),
+    content="2026-11-10",
+  )
+}
+
+///|
+test "monthly json" {
+  let c = chore(repeat=monthly(months=2, day=5, lead_days=3))
+  let json = c.to_json()
+  inspect(
+    json.stringify(),
+    content=(
+      #|{"id":1,"title":"chore","monthly":{"months":2,"day":5,"lead_days":3},"next_due":"2026-09-24","last_done":null,"labels":[]}
+    ),
+  )
+  let decoded : @core.Chore = @json.from_json(json)
+  assert_true(decoded == c)
+}
+
+///|
+test "validate monthly" {
+  let input : @core.ChoreInput = {
+    title: "Rent",
+    repeat: monthly(),
+    next_due: Some(date("2026-10-28")),
+    labels: [],
+  }
+  inspect(validation_message(input), content="ok: Rent ")
+  inspect(
+    validation_message({ ..input, repeat: monthly(months=0), }),
+    content="Months must be between 1 and 120.",
+  )
+  inspect(
+    validation_message({ ..input, repeat: monthly(day=32), }),
+    content="Day must be between 1 and 31.",
+  )
+  inspect(
+    validation_message({ ..input, repeat: monthly(lead_days=28), }),
+    content="Lead days must be between 0 and 27.",
+  )
+  inspect(
+    validation_message({ ..input, repeat: monthly(months=2, lead_days=55), }),
+    content="ok: Rent ",
+  )
+}
+
+///|
+test "dashboard sorts monthly chores by the approximate interval" {
+  let chores = [
+    chore(id=1, title="weekly", interval_days=7, next_due="2026-10-12"),
+    chore(
+      id=2,
+      title="rent",
+      repeat=monthly(lead_days=21),
+      next_due="2026-10-13",
+    ),
+  ]
+  let dashboard = @core.Dashboard::new(chores, date("2026-10-11"))
+  // elapsed fraction: 28/30 > 6/7
+  assert_eq(dashboard.soon.map(c => c.title), ["rent", "weekly"])
 }

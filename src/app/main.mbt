@@ -22,13 +22,24 @@ enum HistoryState {
 } derive(Eq)
 
 ///|
+enum RepeatKind {
+  AfterDone
+  Monthly
+} derive(Eq)
+
+///|
 /// Form state of the editor panel. `id` is `None` for a new chore.
 /// It is kept after the panel closes: a close event can arrive after
 /// another chore was opened, and clearing it then would empty the panel.
 struct Editor {
   id : Int?
   title : String
+  repeat : RepeatKind
   interval : String
+  months : String
+  /// Day of the month. A new chore uses the day of `next_due` instead.
+  day : String
+  lead_days : String
   next_due : String
   /// Selected label ids.
   labels : Array[Int]
@@ -98,7 +109,11 @@ enum Msg {
   OpenEdit(Int)
   HistoryLoaded(Int, Result[@core.History, Error])
   TitleChanged(String)
+  RepeatChanged(RepeatKind)
   IntervalChanged(String)
+  MonthsChanged(String)
+  DayChanged(String)
+  LeadDaysChanged(String)
   NextDueChanged(String)
   ToggleLabel(Int)
   FilterByLabel(Int?)
@@ -140,9 +155,6 @@ fn Editor::input(
   self : Editor,
   labels : Array[@core.Label],
 ) -> @core.ChoreInput raise @core.ValidationError {
-  guard @core.parse_days(self.interval) is Some(interval_days) else {
-    raise ValidationError("Interval must be a number of days.")
-  }
   // The due date of an existing chore follows its completions.
   let next_due = match self.id {
     Some(_) => None
@@ -153,9 +165,31 @@ fn Editor::input(
         },
       )
   }
+  let number = fn(
+    input : String,
+    message : String,
+  ) raise @core.ValidationError {
+    guard @core.parse_days(input) is Some(n) else {
+      raise @core.ValidationError(message)
+    }
+    n
+  }
+  let repeat : @core.Repeat = match self.repeat {
+    AfterDone =>
+      AfterDone(number(self.interval, "Interval must be a number of days."))
+    Monthly =>
+      Monthly({
+        months: number(self.months, "Months must be a number."),
+        day: match next_due {
+          Some(date) => date.ymd().2
+          None => number(self.day, "Day must be a number.")
+        },
+        lead_days: number(self.lead_days, "Lead days must be a number."),
+      })
+  }
   let input : @core.ChoreInput = {
     title: self.title,
-    interval_days,
+    repeat,
     next_due,
     labels: self.labels,
   }
@@ -265,7 +299,11 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
             ChoreEditor({
               id: None,
               title: "",
+              repeat: AfterDone,
               interval: "7",
+              months: "1",
+              day: "",
+              lead_days: "7",
               next_due,
               labels: model.label_filter.map(id => [id]).unwrap_or([]),
               error: "",
@@ -287,7 +325,23 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
                 ChoreEditor({
                   id: Some(id),
                   title: chore.title,
-                  interval: chore.interval_days.to_string(),
+                  repeat: match chore.repeat {
+                    AfterDone(_) => AfterDone
+                    Monthly(_) => Monthly
+                  },
+                  interval: chore.repeat.approx_days().to_string(),
+                  months: match chore.repeat {
+                    Monthly({ months, .. }) => months.to_string()
+                    AfterDone(_) => "1"
+                  },
+                  day: match chore.repeat {
+                    Monthly({ day, .. }) => day.to_string()
+                    AfterDone(_) => chore.next_due.ymd().2.to_string()
+                  },
+                  lead_days: match chore.repeat {
+                    Monthly({ lead_days, .. }) => lead_days.to_string()
+                    AfterDone(_) => "7"
+                  },
                   next_due: chore.next_due.to_string(),
                   labels: chore.labels,
                   error: "",
@@ -318,8 +372,15 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
       }
     TitleChanged(title) =>
       (model.edit(editor => { ..editor, title, }), @rabbita.none)
+    RepeatChanged(repeat) =>
+      (model.edit(editor => { ..editor, repeat, }), @rabbita.none)
     IntervalChanged(interval) =>
       (model.edit(editor => { ..editor, interval, }), @rabbita.none)
+    MonthsChanged(months) =>
+      (model.edit(editor => { ..editor, months, }), @rabbita.none)
+    DayChanged(day) => (model.edit(editor => { ..editor, day, }), @rabbita.none)
+    LeadDaysChanged(lead_days) =>
+      (model.edit(editor => { ..editor, lead_days, }), @rabbita.none)
     NextDueChanged(next_due) =>
       (model.edit(editor => { ..editor, next_due, }), @rabbita.none)
     ToggleLabel(id) =>

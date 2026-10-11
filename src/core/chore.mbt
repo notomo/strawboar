@@ -1,9 +1,9 @@
 ///|
-/// A recurring chore. It is due again `interval_days` after it was done.
+/// A recurring chore. See `Repeat` for when it is due again.
 pub(all) struct Chore {
   id : Int
   title : String
-  interval_days : Int
+  repeat : Repeat
   next_due : Date
   last_done : Date?
   /// Label ids.
@@ -30,15 +30,18 @@ pub fn Chore::days_left(self : Chore, today : Date) -> Int {
 }
 
 ///|
-/// `Soon` covers the last 20% of the interval (at least one day for long intervals).
+/// `Soon` covers the last 20% of the interval (at least one day for long
+/// intervals), or the lead days of a monthly chore.
 pub fn Chore::urgency(self : Chore, today : Date) -> Urgency {
   let days_left = self.days_left(today)
-  if days_left <= 0 {
-    Due
-  } else if days_left * 5 <= self.interval_days {
-    Soon
-  } else {
-    Later
+  let soon = match self.repeat {
+    AfterDone(days) => days_left * 5 <= days
+    Monthly({ lead_days, .. }) => days_left <= lead_days
+  }
+  match (days_left <= 0, soon) {
+    (true, _) => Due
+    (false, true) => Soon
+    (false, false) => Later
   }
 }
 
@@ -46,8 +49,12 @@ pub fn Chore::urgency(self : Chore, today : Date) -> Urgency {
 /// Orders by elapsed fraction of the interval, most elapsed first.
 fn Chore::compare_progress(self : Chore, other : Chore, today : Date) -> Int {
   // (interval - left) / interval, compared without division
-  let a = (self.interval_days - self.days_left(today)) * other.interval_days
-  let b = (other.interval_days - other.days_left(today)) * self.interval_days
+  let (self_days, other_days) = (
+    self.repeat.approx_days(),
+    other.repeat.approx_days(),
+  )
+  let a = (self_days - self.days_left(today)) * other_days
+  let b = (other_days - other.days_left(today)) * self_days
   match b.compare(a) {
     0 => self.title.compare(other.title)
     order => order
@@ -55,28 +62,34 @@ fn Chore::compare_progress(self : Chore, other : Chore, today : Date) -> Int {
 }
 
 ///|
-/// Returns the chore after being done on `today`.
+/// Returns the chore after being done on `today`. A monthly chore moves to its
+/// next due date even when done late or early, so that none is skipped.
 pub fn Chore::complete(self : Chore, today : Date) -> Chore {
   {
     ..self,
     last_done: Some(today),
-    next_due: today.add_days(self.interval_days),
+    next_due: match self.repeat {
+      AfterDone(days) => today.add_days(days)
+      Monthly({ months, day, .. }) => self.next_due.add_months(months, day~)
+    },
   }
 }
 
 ///|
-/// Returns the chore with the edited fields. Once done, it is due `interval_days`
-/// after the last completion, so a new interval applies right away.
-/// A chore never done keeps its due date.
+/// Returns the chore with the edited fields, so that a new interval applies
+/// right away. Once done, it is due `days` after the last completion; a chore
+/// never done keeps its due date. A monthly chore is due on its day in the
+/// month it is due.
 pub fn Chore::edit(self : Chore, input : ChoreInput) -> Chore {
   {
     ..self,
     title: input.title,
-    interval_days: input.interval_days,
+    repeat: input.repeat,
     labels: input.labels,
-    next_due: match self.last_done {
-      Some(last_done) => last_done.add_days(input.interval_days)
-      None => self.next_due
+    next_due: match (input.repeat, self.last_done) {
+      (AfterDone(days), Some(last_done)) => last_done.add_days(days)
+      (AfterDone(_), None) => self.next_due
+      (Monthly(_), _) => input.repeat.align(self.next_due)
     },
   }
 }
@@ -121,17 +134,19 @@ pub fn Dashboard::new(chores : Array[Chore], today : Date) -> Dashboard {
 
 ///|
 pub impl ToJson for Chore with fn to_json(self) {
-  {
+  let (repeat_key, repeat_value) = self.repeat.json_field()
+  let json : Map[String, Json] = {
     "id": self.id.to_json(),
     "title": self.title.to_json(),
-    "interval_days": self.interval_days.to_json(),
-    "next_due": self.next_due.to_json(),
-    "last_done": match self.last_done {
-      Some(date) => date.to_json()
-      None => Json::null()
-    },
-    "labels": self.labels.to_json(),
   }
+  json[repeat_key] = repeat_value
+  json["next_due"] = self.next_due.to_json()
+  json["last_done"] = match self.last_done {
+    Some(date) => date.to_json()
+    None => Json::null()
+  }
+  json["labels"] = self.labels.to_json()
+  Json::object(json)
 }
 
 ///|
@@ -140,7 +155,6 @@ pub impl @json.FromJson for Chore with fn from_json(json, path) {
     is {
       "id": Number(id, ..),
       "title": String(title),
-      "interval_days": Number(interval_days, ..),
       "next_due": next_due,
       "last_done": last_done,
       "labels": labels,
@@ -151,7 +165,7 @@ pub impl @json.FromJson for Chore with fn from_json(json, path) {
   {
     id: id.to_int(),
     title,
-    interval_days: interval_days.to_int(),
+    repeat: Repeat::read_json(json, path),
     next_due: @json.from_json(next_due, path=path.add_key("next_due")),
     last_done: match last_done {
       Null => None

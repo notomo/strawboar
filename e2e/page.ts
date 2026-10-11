@@ -18,6 +18,7 @@ export async function openPage({ page }: { page: Page }) {
 
     getDueRows: () => page.locator("#due li"),
     getDueRow: (title: string) => page.locator("#due li", { hasText: title }),
+    getSoonRow: (title: string) => page.locator("#soon li", { hasText: title }),
     getLaterSection: (title: string) => page.locator("#later", { hasText: title }),
     getLaterRow: (title: string) => page.locator("#later li", { hasText: title }),
     getCurrentRow: () => page.locator('li[aria-current="true"]'),
@@ -34,13 +35,18 @@ export async function openPage({ page }: { page: Page }) {
     getLabelFilterButtons: () => labelFilter.getByRole("button"),
     getLabelFilterButton: (name: string) => labelFilter.getByRole("button", { name }),
     getRowLabels: (title: string) =>
-      page.locator("#due li, #later li", { hasText: title }).locator('[data-slot="badge"]'),
+      page.locator("#due li, #soon li, #later li", { hasText: title }).locator('[data-slot="badge"]'),
 
     getAddButton: () => page.getByRole("button", { name: "+ Add chore" }),
     getEditor: () => editor,
     getEditorBackdrop: () => page.locator("#editor-backdrop"),
     getTitleInput: () => editor.getByLabel("Title"),
     getIntervalInput: () => editor.getByLabel("Every (days)"),
+    getRepeatButton: (name: string) =>
+      editor.getByRole("group", { name: "Repeat" }).getByRole("button", { name, exact: true }),
+    getMonthsInput: () => editor.getByLabel("Every (months)"),
+    getDayInput: () => editor.getByLabel("Day of month"),
+    getLeadDaysInput: () => editor.getByLabel("Soon from (days before)"),
     getLabelToggle: (name: string) =>
       editor.getByRole("group", { name: "Labels" }).getByRole("button", { name, exact: true }),
     getFirstDueInput: () => editor.getByLabel("First due"),
@@ -85,6 +91,17 @@ export async function openPage({ page }: { page: Page }) {
       await expect(editor).toBeHidden();
     },
 
+    addMonthlyChore: async (title: string, { firstDue, leadDays }: { firstDue: string; leadDays: string }) => {
+      await strawboarPage.getAddButton().click();
+      await strawboarPage.getTitleInput().fill(title);
+      await strawboarPage.getRepeatButton("Monthly").click();
+      await strawboarPage.getMonthsInput().fill("1");
+      await strawboarPage.getLeadDaysInput().fill(leadDays);
+      await strawboarPage.getFirstDueInput().fill(firstDue);
+      await strawboarPage.getSaveButton().click();
+      await expect(editor).toBeHidden();
+    },
+
     // Through the chore editor, which offers it even when there is no label yet.
     openLabels: async () => {
       await strawboarPage.getAddButton().click();
@@ -111,7 +128,7 @@ export async function openPage({ page }: { page: Page }) {
     },
 
     openChore: async (title: string) => {
-      await page.locator("#due li, #later li", { hasText: title }).getByText(title).click();
+      await page.locator("#due li, #soon li, #later li", { hasText: title }).getByText(title).click();
     },
 
     complete: async (title: string) => {

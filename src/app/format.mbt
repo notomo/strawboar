@@ -8,12 +8,28 @@ fn plural(count : Int, unit : String) -> String {
 }
 
 ///|
-fn interval_text(days : Int) -> String {
-  match days {
-    1 => "daily"
-    7 => "weekly"
-    _ => "every \{plural(days, "day")}"
+fn interval_text(repeat : @core.Repeat) -> String {
+  match repeat {
+    AfterDone(1) => "daily"
+    AfterDone(7) => "weekly"
+    AfterDone(days) => "every \{plural(days, "day")}"
+    Monthly({ months: 1, day, .. }) => "monthly on the \{ordinal(day)}"
+    Monthly({ months, day, .. }) =>
+      "every \{months} months on the \{ordinal(day)}"
   }
+}
+
+///|
+/// e.g. `1st`, `22nd`
+fn ordinal(n : Int) -> String {
+  let suffix = match (n % 100, n % 10) {
+    (11..=13, _) => "th"
+    (_, 1) => "st"
+    (_, 2) => "nd"
+    (_, 3) => "rd"
+    _ => "th"
+  }
+  "\{n}\{suffix}"
 }
 
 ///|

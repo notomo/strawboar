@@ -345,7 +345,7 @@ fn chore_row(
       span(style=["font-size:0.8125rem", muted], [
         span(
           style=["font-weight:600;color:var(--rui-foreground)"],
-          interval_text(chore.interval_days),
+          interval_text(chore.repeat),
         ),
         @html.text(" · \{chore_status(chore, today)}"),
       ]),
@@ -541,19 +541,52 @@ fn editor_content(
             on_input=emit.map(value => TitleChanged(value)),
           ),
         ),
-        field_view(
-          "chore-interval",
-          "Every (days)",
-          @rui.input(
-            id="chore-interval",
-            input_type=Number,
-            inputmode="numeric",
-            min=1,
-            max=@core.MAX_INTERVAL_DAYS,
-            value=editor.interval,
-            on_input=emit.map(value => IntervalChanged(value)),
-          ),
-        ),
+        repeat_picker(editor.repeat, emit),
+        ..match editor.repeat {
+          AfterDone =>
+            [
+              number_field(
+                "chore-interval",
+                "Every (days)",
+                min=1,
+                max=@core.MAX_INTERVAL_DAYS,
+                editor.interval,
+                emit.map(value => IntervalChanged(value)),
+              ),
+            ]
+          Monthly =>
+            [
+              number_field(
+                "chore-months",
+                "Every (months)",
+                min=1,
+                max=@core.MAX_INTERVAL_MONTHS,
+                editor.months,
+                emit.map(value => MonthsChanged(value)),
+              ),
+              // A new chore is due on the day of its first due date.
+              if is_new {
+                @html.nothing
+              } else {
+                number_field(
+                  "chore-day",
+                  "Day of month",
+                  min=1,
+                  max=31,
+                  editor.day,
+                  emit.map(value => DayChanged(value)),
+                )
+              },
+              number_field(
+                "chore-lead-days",
+                "Soon from (days before)",
+                min=0,
+                max=@core.MAX_INTERVAL_MONTHS * 28,
+                editor.lead_days,
+                emit.map(value => LeadDaysChanged(value)),
+              ),
+            ]
+        },
         if is_new {
           field_view(
             "chore-next-due",
@@ -600,6 +633,55 @@ fn editor_content(
       ],
     ),
   ]
+}
+
+///|
+fn number_field(
+  id : String,
+  label : String,
+  min~ : Int,
+  max~ : Int,
+  value : String,
+  on_input : Emit[String],
+) -> Html {
+  field_view(
+    id,
+    label,
+    @rui.input(
+      id~,
+      input_type=Number,
+      inputmode="numeric",
+      min~,
+      max~,
+      value~,
+      on_input~,
+    ),
+  )
+}
+
+///|
+/// Chooses whether the chore is due after it was done or on a fixed day.
+fn repeat_picker(selected : RepeatKind, emit : Emit[Msg]) -> Html {
+  @rui.field([
+    @rui.field_label(id="chore-repeat-label", "Repeat"),
+    div(
+      attrs=@html.Attrs::build()
+        .role("group")
+        .aria_labelledby("chore-repeat-label"),
+      style=["display:flex;flex-wrap:wrap;gap:0.5rem"],
+      [(AfterDone, "After done"), (Monthly, "Monthly")].map(option => {
+        let (kind, text) = option
+        let pressed = selected == kind
+        @rui.button(
+          size=Sm,
+          variant=if pressed { Secondary } else { Outline },
+          on_click=emit(RepeatChanged(kind)),
+          attrs=@html.Attrs::build().aria_pressed(pressed.to_string()),
+          text,
+        )
+      }),
+    ),
+  ])
 }
 
 ///|
