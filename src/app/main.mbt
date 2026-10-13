@@ -92,6 +92,8 @@ struct Model {
   panel_open : Bool
   /// Only chores with this label are shown when set.
   label_filter : Int?
+  /// Whether the later section is expanded. Collapsed by default.
+  later_open : Bool
   undo : Undo?
   notice : String
 } derive(Eq)
@@ -117,6 +119,7 @@ enum Msg {
   NextDueChanged(String)
   ToggleLabel(Int)
   FilterByLabel(Int?)
+  LaterToggled(Bool)
   OpenLabels
   EditLabel(Int)
   NewLabel
@@ -396,6 +399,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
         @rabbita.none,
       )
     FilterByLabel(label_filter) => ({ ..model, label_filter, }, @rabbita.none)
+    LaterToggled(later_open) => ({ ..model, later_open, }, @rabbita.none)
     OpenLabels =>
       (
         {
@@ -703,6 +707,7 @@ fn app() -> Val[Html] {
           panel: None,
           panel_open: false,
           label_filter: None,
+          later_open: false,
           undo: None,
           notice: "",
         },

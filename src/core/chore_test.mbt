@@ -425,3 +425,31 @@ test "dashboard sorts monthly chores by the approximate interval" {
   // elapsed fraction: 28/30 > 6/7
   assert_eq(dashboard.soon.map(c => c.title), ["rent", "weekly"])
 }
+
+///|
+test "dashboard puts monthly chores first in each section" {
+  let rent = (id : Int, title : String, next_due : String) => {
+    chore(id~, title~, repeat=monthly(lead_days=3), next_due~)
+  }
+  let chores = [
+    chore(id=1, title="weekly due", interval_days=7, next_due="2026-10-09"),
+    rent(2, "rent due", "2026-10-11"),
+    chore(id=3, title="weekly soon", interval_days=7, next_due="2026-10-12"),
+    rent(4, "rent soon", "2026-10-13"),
+    chore(id=5, title="weekly later", interval_days=7, next_due="2026-10-15"),
+    rent(6, "rent later", "2026-11-01"),
+  ]
+  let dashboard = @core.Dashboard::new(chores, date("2026-10-11"))
+  let titles = (chores : Array[@core.Chore]) => chores.map(c => c.title)
+  assert_eq(titles(dashboard.due), ["rent due", "weekly due"])
+  assert_eq(titles(dashboard.soon), ["rent soon", "weekly soon"])
+  assert_eq(titles(dashboard.later), ["rent later", "weekly later"])
+  assert_eq(dashboard.soon_until().map(d => d.to_string()), Some("2026-10-13"))
+}
+
+///|
+test "dashboard has no soon range without soon chores" {
+  let chores = [chore(next_due="2026-10-30")]
+  let dashboard = @core.Dashboard::new(chores, date("2026-10-11"))
+  assert_true(dashboard.soon_until() is None)
+}

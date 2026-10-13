@@ -77,10 +77,10 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
         chore_section("due", "Due", dashboard.due, chore => {
           chore_row(chore, labels_of(chore), today, state_of(chore), emit)
         }),
-        chore_section("soon", "Soon", dashboard.soon, chore => {
+        chore_section("soon", soon_title(dashboard), dashboard.soon, chore => {
           chore_row(chore, labels_of(chore), today, state_of(chore), emit)
         }),
-        chore_section("later", "Later", dashboard.later, chore => {
+        later_section(dashboard.later, model.later_open, emit, chore => {
           later_row(chore, labels_of(chore), state_of(chore), emit)
         }),
         recent_view(model.recent, emit),
@@ -168,14 +168,11 @@ fn label_filter_view(
 }
 
 ///|
+let section_title_style = "font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase"
+
+///|
 fn section_title(title : String) -> Html {
-  h2(
-    style=[
-      "margin:0 0 0.5rem;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase",
-      muted,
-    ],
-    title,
-  )
+  h2(style=["margin:0 0 0.5rem", section_title_style, muted], title)
 }
 
 ///|
@@ -196,6 +193,48 @@ fn chore_section(
   @html.section(id~, [
     section_title(title),
     ul(style=[list_style()], chores.map(row)),
+  ])
+}
+
+///|
+/// e.g. `Soon · until 10/20`, so that it is clear which days the section covers.
+fn soon_title(dashboard : @core.Dashboard) -> String {
+  match dashboard.soon_until() {
+    Some(date) => "Soon · until \{short_date(date)}"
+    None => "Soon"
+  }
+}
+
+///|
+/// The later section, collapsed by default so that the dashboard stays short.
+fn later_section(
+  chores : Array[@core.Chore],
+  open : Bool,
+  emit : Emit[Msg],
+  row : (@core.Chore) -> Html,
+) -> Html {
+  if chores.is_empty() {
+    return @html.nothing
+  }
+  @html.section(id="later", [
+    @rui.collapsible_root(open~, [
+      @rui.collapsible_trigger(
+        open~,
+        controls="later-content",
+        on_open_change=emit.map(open => LaterToggled(open)),
+        id="later-trigger",
+        style=["padding:0 0 0.5rem;align-items:center"],
+        // A heading is not allowed in a button.
+        span(style=[section_title_style, muted], "Later (\{chores.length()})"),
+      ),
+      @rui.collapsible_content(
+        open~,
+        labelledby="later-trigger",
+        id="later-content",
+        body_style=["padding:0"],
+        ul(style=[list_style()], chores.map(row)),
+      ),
+    ]),
   ])
 }
 

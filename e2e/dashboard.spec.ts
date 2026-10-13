@@ -52,7 +52,12 @@ test("marks a chore as done and undoes it", async ({ page }, testInfo) => {
 
   await expect(strawboar.getUndoToast()).toContainText(`Done: ${title}`);
   await expect(strawboar.getDueRow(title)).toHaveCount(0);
-  await expect(strawboar.getLaterSection(title)).toBeVisible();
+  // Later is collapsed by default.
+  await expect(strawboar.getLaterTrigger()).toHaveAttribute("aria-expanded", "false");
+  await expect(strawboar.getLaterTrigger()).toContainText("Later (1)");
+  await expect(strawboar.getLaterRow(title)).toBeHidden();
+  await strawboar.openLater();
+  await expect(strawboar.getLaterRow(title)).toBeVisible();
   await expect(strawboar.getRecent()).toContainText(title);
 
   await strawboar.undoFromToast();
@@ -176,6 +181,7 @@ test("undoes the latest completion from the recent list", async ({ page, request
 
   await strawboar.undoFromRecent(title);
   await expect(strawboar.getRecentRow(title)).toHaveCount(1);
+  await strawboar.openLater();
   await expect(strawboar.getLaterRow(title)).toBeVisible();
 
   await strawboar.undoFromRecent(title);
@@ -234,6 +240,7 @@ test("shows the history of a chore", async ({ page }, testInfo) => {
   await expect(strawboar.getEditor()).toBeHidden();
 
   await strawboar.complete(title);
+  await strawboar.openLater();
   await strawboar.openChore(title);
 
   const [, month, day] = today().split("-");
@@ -339,9 +346,11 @@ test("keeps a monthly chore on its day", async ({ page }, testInfo) => {
   await strawboar.addMonthlyChore(title, { firstDue, leadDays: "14" });
   await expect(strawboar.getSoonRow(title)).toContainText("monthly on the");
   await expect(strawboar.getSoonRow(title)).toContainText("not done yet · due in 10 days");
+  await expect(strawboar.getSoonTitle()).toHaveText(`Soon · until ${shortDate(10)}`);
 
   // Done early, it is due on the same day of the next month.
   await strawboar.complete(title);
+  await strawboar.openLater();
   await expect(strawboar.getLaterRow(title)).toContainText(nextMonthShortDate(firstDue));
   await strawboar.undoFromToast();
   await expect(strawboar.getSoonRow(title)).toBeVisible();
@@ -362,6 +371,7 @@ test("edits and archives a chore", async ({ page }, testInfo) => {
   await strawboar.addChore(title, "30");
 
   await strawboar.complete(title);
+  await strawboar.openLater();
   await expect(strawboar.getLaterRow(title)).toContainText(shortDate(30));
 
   // The due date follows the last completion, so a new interval applies right away.

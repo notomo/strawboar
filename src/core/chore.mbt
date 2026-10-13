@@ -113,8 +113,30 @@ pub(all) struct Dashboard {
 }
 
 ///|
+/// Monthly chores come first, as they are of a different nature.
+fn Chore::compare_kind(self : Chore, other : Chore) -> Int {
+  let rank = (chore : Chore) => {
+    match chore.repeat {
+      Monthly(_) => 0
+      AfterDone(_) => 1
+    }
+  }
+  rank(self).compare(rank(other))
+}
+
+///|
+/// Each section puts monthly chores first. Due and soon chores are then ordered
+/// by progress, and later chores by due date.
 pub fn Dashboard::new(chores : Array[Chore], today : Date) -> Dashboard {
-  let by_progress = (a : Chore, b : Chore) => a.compare_progress(b, today)
+  let then_by = (a : Chore, b : Chore, compare : (Chore, Chore) -> Int) => {
+    match a.compare_kind(b) {
+      0 => compare(a, b)
+      order => order
+    }
+  }
+  let by_progress = (a : Chore, b : Chore) => {
+    then_by(a, b, (a, b) => a.compare_progress(b, today))
+  }
   let pick = (urgency : Urgency) => {
     chores.filter(chore => chore.urgency(today) == urgency)
   }
@@ -124,12 +146,20 @@ pub fn Dashboard::new(chores : Array[Chore], today : Date) -> Dashboard {
   soon.sort_by(by_progress)
   let later = pick(Later)
   later.sort_by((a, b) => {
-    match a.next_due.compare(b.next_due) {
-      0 => a.title.compare(b.title)
-      order => order
-    }
+    then_by(a, b, (a, b) => {
+      match a.next_due.compare(b.next_due) {
+        0 => a.title.compare(b.title)
+        order => order
+      }
+    })
   })
   { due, soon, later, }
+}
+
+///|
+/// The latest due date among the soon chores.
+pub fn Dashboard::soon_until(self : Dashboard) -> Date? {
+  self.soon.iter().map(chore => chore.next_due).maximum()
 }
 
 ///|

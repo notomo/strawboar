@@ -19,7 +19,8 @@ export async function openPage({ page }: { page: Page }) {
     getDueRows: () => page.locator("#due li"),
     getDueRow: (title: string) => page.locator("#due li", { hasText: title }),
     getSoonRow: (title: string) => page.locator("#soon li", { hasText: title }),
-    getLaterSection: (title: string) => page.locator("#later", { hasText: title }),
+    getSoonTitle: () => page.locator("#soon h2"),
+    getLaterTrigger: () => page.locator("#later-trigger"),
     getLaterRow: (title: string) => page.locator("#later li", { hasText: title }),
     getCurrentRow: () => page.locator('li[aria-current="true"]'),
     getDoneButton: (title: string) => page.getByRole("button", { name: `Done: ${title}` }),
@@ -129,6 +130,15 @@ export async function openPage({ page }: { page: Page }) {
 
     openChore: async (title: string) => {
       await page.locator("#due li, #soon li, #later li", { hasText: title }).getByText(title).click();
+    },
+
+    // Later is collapsed by default.
+    openLater: async () => {
+      const trigger = strawboarPage.getLaterTrigger();
+      if ((await trigger.getAttribute("aria-expanded")) !== "true") {
+        await trigger.click();
+      }
+      await expect(trigger).toHaveAttribute("aria-expanded", "true");
     },
 
     complete: async (title: string) => {
