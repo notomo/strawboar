@@ -13,11 +13,13 @@ fn chore(
   repeat? : @core.Repeat,
   next_due? : String = "2026-09-24",
   last_done? : String,
+  description? : String = "",
   labels? : Array[Int] = [],
 ) -> @core.Chore {
   {
     id,
     title,
+    description,
     repeat: repeat.unwrap_or(AfterDone(interval_days)),
     next_due: date(next_due),
     last_done: last_done.map(date),
@@ -62,7 +64,7 @@ fn edit_input(interval_days : Int) -> @core.ChoreInput {
 
 ///|
 fn edit_repeat(repeat : @core.Repeat) -> @core.ChoreInput {
-  { title: "edited", repeat, next_due: None, labels: [1], }
+  { title: "edited", description: "", repeat, next_due: None, labels: [1], }
 }
 
 ///|
@@ -74,6 +76,8 @@ test "edit recalculates the due date from the last completion" {
   assert_true(c.repeat == AfterDone(30))
   inspect(c.title, content="edited")
   assert_eq(c.labels, [1])
+  let c = chore(description="old").edit({ ..edit_input(7), description: "new", })
+  inspect(c.description, content="new")
 }
 
 ///|
@@ -91,6 +95,9 @@ test "chore input json" {
       #|{"title":"edited","interval_days":7,"labels":[1]}
     ),
   )
+  let with_description = { ..input, description: "steps\nmore", }
+  let decoded : @core.ChoreInput = @json.from_json(with_description.to_json())
+  inspect(decoded.description, content="steps\nmore")
   let decoded : @core.ChoreInput = @json.from_json(input.to_json())
   assert_true(decoded.next_due is None)
   let with_due = { ..input, next_due: Some(date("2026-09-24")), }
@@ -138,18 +145,19 @@ test "dashboard groups and sorts chores" {
 
 ///|
 test "chore json round trip" {
-  let c = chore(last_done="2026-09-14")
+  let c = chore(last_done="2026-09-14", description="1. Fill\n2. Wash")
   let json = c.to_json()
   inspect(
     json.stringify(),
     content=(
-      #|{"id":1,"title":"chore","interval_days":10,"next_due":"2026-09-24","last_done":"2026-09-14","labels":[]}
+      #|{"id":1,"title":"chore","description":"1. Fill\n2. Wash","interval_days":10,"next_due":"2026-09-24","last_done":"2026-09-14","labels":[]}
     ),
   )
   let decoded : @core.Chore = @json.from_json(json)
   assert_true(decoded == c)
   let never_done = chore()
   let decoded : @core.Chore = @json.from_json(never_done.to_json())
+  assert_eq(decoded.description, "")
   assert_true(decoded == never_done)
 }
 
@@ -176,6 +184,7 @@ fn validation_message(input : @core.ChoreInput) -> String {
 test "validate" {
   let input : @core.ChoreInput = {
     title: "  Clean the bath  ",
+    description: "",
     repeat: AfterDone(7),
     next_due: Some(date("2026-09-24")),
     labels: [],
@@ -188,6 +197,22 @@ test "validate" {
   inspect(
     validation_message({ ..input, title: "a".repeat(101), }),
     content="Title must be at most 100 characters.",
+  )
+  let valid = input.validate([]) catch { _ => abort("invalid") }
+  inspect(valid.description, content="")
+  let valid = { ..input, description: "  1. Fill\n2. Wash\n\n", }.validate([]) catch {
+    _ => abort("invalid")
+  }
+  inspect(
+    valid.description,
+    content=(
+      #|1. Fill
+      #|2. Wash
+    ),
+  )
+  inspect(
+    validation_message({ ..input, description: "a".repeat(2001), }),
+    content="Description must be at most 2000 characters.",
   )
   inspect(
     validation_message({ ..input, repeat: AfterDone(0), }),
@@ -354,6 +379,7 @@ test "edit moves a monthly chore to its day in the month it is due" {
 test "first_due" {
   let input : @core.ChoreInput = {
     title: "Rent",
+    description: "",
     repeat: monthly(day=31),
     next_due: Some(date("2026-11-10")),
     labels: [],
@@ -376,7 +402,7 @@ test "monthly json" {
   inspect(
     json.stringify(),
     content=(
-      #|{"id":1,"title":"chore","monthly":{"months":2,"day":5,"lead_days":3},"next_due":"2026-09-24","last_done":null,"labels":[]}
+      #|{"id":1,"title":"chore","description":"","monthly":{"months":2,"day":5,"lead_days":3},"next_due":"2026-09-24","last_done":null,"labels":[]}
     ),
   )
   let decoded : @core.Chore = @json.from_json(json)
@@ -387,6 +413,7 @@ test "monthly json" {
 test "validate monthly" {
   let input : @core.ChoreInput = {
     title: "Rent",
+    description: "",
     repeat: monthly(),
     next_due: Some(date("2026-10-28")),
     labels: [],

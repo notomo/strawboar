@@ -364,6 +364,23 @@ test("keeps a monthly chore on its day", async ({ page }, testInfo) => {
   await expect(strawboar.getLaterRow(title)).toContainText(shortDate(10));
 });
 
+test("keeps a multi-line description", async ({ page }, testInfo) => {
+  const title = uniqueTitle(testInfo, "Clean filter");
+  const description = "1. Remove the filter\n2. Wash it\n3. Dry it";
+  const strawboar = await openPage({ page });
+  await strawboar.addChore(title, "14");
+
+  await strawboar.openChore(title);
+  await expect(strawboar.getDescriptionInput()).toHaveValue("");
+  await strawboar.getDescriptionInput().fill(description);
+  await strawboar.save();
+  await expect(strawboar.getEditor()).toBeHidden();
+
+  await strawboar.reload();
+  await strawboar.openChore(title);
+  await expect(strawboar.getDescriptionInput()).toHaveValue(description);
+});
+
 test("edits and archives a chore", async ({ page }, testInfo) => {
   const title = uniqueTitle(testInfo, "Wash sheets");
   const renamed = uniqueTitle(testInfo, "Wash all sheets");

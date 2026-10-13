@@ -4,10 +4,12 @@ fn definition(
   interval_days? : Int = 7,
   repeat? : @core.Repeat,
   next_due? : String,
+  description? : String = "",
   labels? : Array[String] = [],
 ) -> @core.ChoreDefinition {
   {
     title,
+    description,
     repeat: repeat.unwrap_or(AfterDone(interval_days)),
     next_due: next_due.map(date),
     labels,
@@ -39,6 +41,7 @@ test "export and parse definitions" {
     chore(
       id=2,
       title="Descale kettle",
+      description="Use citric acid.\nRinse twice.",
       interval_days=30,
       last_done="2026-09-20",
     ),
@@ -70,6 +73,7 @@ test "export and parse definitions" {
       #|    },
       #|    {
       #|      "title": "Descale kettle",
+      #|      "description": "Use citric acid.\nRinse twice.",
       #|      "interval_days": 30,
       #|      "labels": [],
       #|      "next_due": "2026-09-24"

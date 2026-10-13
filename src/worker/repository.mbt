@@ -1,5 +1,5 @@
 ///|
-let chore_columns = "id, title, interval_days, monthly_months, monthly_day, monthly_lead_days, next_due, last_done, labels"
+let chore_columns = "id, title, description, interval_days, monthly_months, monthly_day, monthly_lead_days, next_due, last_done, labels"
 
 ///|
 /// `labels` is stored as a JSON text column of label ids, and a monthly chore
@@ -105,11 +105,12 @@ fn insert_chore_statement(
 ) -> @cloudflare.D1PreparedStatement {
   db
   .prepare(
-    "INSERT INTO chores (title, interval_days, monthly_months, monthly_day, monthly_lead_days, next_due, labels) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING \{chore_columns}",
+    "INSERT INTO chores (title, description, interval_days, monthly_months, monthly_day, monthly_lead_days, next_due, labels) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING \{chore_columns}",
   )
   .bind(
     [
       Text(input.title),
+      Text(input.description),
       ..repeat_params(input.repeat),
       Text(next_due.to_string()),
       labels_param(input.labels),
@@ -124,11 +125,12 @@ fn update_chore_statement(
 ) -> @cloudflare.D1PreparedStatement {
   db
   .prepare(
-    "UPDATE chores SET title = ?, interval_days = ?, monthly_months = ?, monthly_day = ?, monthly_lead_days = ?, next_due = ?, labels = ? WHERE id = ? AND archived = 0 RETURNING \{chore_columns}",
+    "UPDATE chores SET title = ?, description = ?, interval_days = ?, monthly_months = ?, monthly_day = ?, monthly_lead_days = ?, next_due = ?, labels = ? WHERE id = ? AND archived = 0 RETURNING \{chore_columns}",
   )
   .bind(
     [
       Text(chore.title),
+      Text(chore.description),
       ..repeat_params(chore.repeat),
       Text(chore.next_due.to_string()),
       labels_param(chore.labels),

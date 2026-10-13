@@ -11,6 +11,7 @@ pub const MAX_IMPORT_LABELS : Int = 100
 /// to by name so that the text can be edited by hand.
 pub(all) struct ChoreDefinition {
   title : String
+  description : String
   repeat : Repeat
   next_due : Date?
   /// Label names.
@@ -21,6 +22,9 @@ pub(all) struct ChoreDefinition {
 pub impl ToJson for ChoreDefinition with fn to_json(self) {
   let (repeat_key, repeat_value) = self.repeat.json_field()
   let json : Map[String, Json] = { "title": self.title.to_json() }
+  if self.description != "" {
+    json["description"] = self.description.to_json()
+  }
   json[repeat_key] = repeat_value
   json["labels"] = self.labels.to_json()
   if self.next_due is Some(next_due) {
@@ -36,6 +40,7 @@ pub impl @json.FromJson for ChoreDefinition with fn from_json(json, path) {
   }
   {
     title,
+    description: read_description(json, path),
     repeat: Repeat::read_json(json, path),
     next_due: match json {
       { "next_due": Null, .. } => None
@@ -54,13 +59,14 @@ pub extend ChoreDefinition with ToJson::{to_json}
 pub extend ChoreDefinition with @json.FromJson::{from_json}
 
 ///|
-/// Returns the definition with a trimmed title and without duplicate labels,
-/// or raises a user-facing message. Every label must be one of `label_names`.
+/// Returns the definition with a trimmed title and description and without
+/// duplicate labels, or raises a user-facing message. Every label must be one of `label_names`.
 fn ChoreDefinition::validate(
   self : ChoreDefinition,
   label_names : Array[String],
 ) -> ChoreDefinition raise ValidationError {
   let title = validate_title(self.title)
+  let description = validate_description(self.description)
   self.repeat.validate()
   let labels = validate_labels(self.labels)
   labels.each(name => {
@@ -68,7 +74,7 @@ fn ChoreDefinition::validate(
       raise ValidationError("Unknown label: \{name}")
     }
   })
-  { ..self, title, labels, }
+  { ..self, title, description, labels, }
 }
 
 ///|
@@ -91,6 +97,7 @@ pub fn export_definitions(
     labels: labels.map(label => { name: label.name, color: label.color, }),
     chores: chores.map(chore => {
       title: chore.title,
+      description: chore.description,
       repeat: chore.repeat,
       next_due: Some(chore.next_due),
       labels: chore.labels_in(labels).map(label => label.name),
@@ -229,6 +236,7 @@ pub fn ImportPlan::chore_changes(
   self.chores.each(definition => {
     let input : ChoreInput = {
       title: definition.title,
+      description: definition.description,
       repeat: definition.repeat,
       next_due: definition.next_due,
       labels: definition.labels.map(name => {

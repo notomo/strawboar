@@ -34,6 +34,7 @@ enum RepeatKind {
 struct Editor {
   id : Int?
   title : String
+  description : String
   repeat : RepeatKind
   interval : String
   months : String
@@ -111,6 +112,7 @@ enum Msg {
   OpenEdit(Int)
   HistoryLoaded(Int, Result[@core.History, Error])
   TitleChanged(String)
+  DescriptionChanged(String)
   RepeatChanged(RepeatKind)
   IntervalChanged(String)
   MonthsChanged(String)
@@ -192,6 +194,7 @@ fn Editor::input(
   }
   let input : @core.ChoreInput = {
     title: self.title,
+    description: self.description,
     repeat,
     next_due,
     labels: self.labels,
@@ -302,6 +305,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
             ChoreEditor({
               id: None,
               title: "",
+              description: "",
               repeat: AfterDone,
               interval: "7",
               months: "1",
@@ -328,6 +332,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
                 ChoreEditor({
                   id: Some(id),
                   title: chore.title,
+                  description: chore.description,
                   repeat: match chore.repeat {
                     AfterDone(_) => AfterDone
                     Monthly(_) => Monthly
@@ -375,6 +380,8 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
       }
     TitleChanged(title) =>
       (model.edit(editor => { ..editor, title, }), @rabbita.none)
+    DescriptionChanged(description) =>
+      (model.edit(editor => { ..editor, description, }), @rabbita.none)
     RepeatChanged(repeat) =>
       (model.edit(editor => { ..editor, repeat, }), @rabbita.none)
     IntervalChanged(interval) =>

@@ -42,6 +42,7 @@ export async function openPage({ page }: { page: Page }) {
     getEditor: () => editor,
     getEditorBackdrop: () => page.locator("#editor-backdrop"),
     getTitleInput: () => editor.getByLabel("Title"),
+    getDescriptionInput: () => editor.getByLabel("Description"),
     getIntervalInput: () => editor.getByLabel("Every (days)"),
     getRepeatButton: (name: string) =>
       editor.getByRole("group", { name: "Repeat" }).getByRole("button", { name, exact: true }),

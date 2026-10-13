@@ -3,6 +3,7 @@
 /// only used when creating a chore; afterwards it follows the completions.
 pub(all) struct ChoreInput {
   title : String
+  description : String
   repeat : Repeat
   next_due : Date?
   /// Label ids.
@@ -13,6 +14,9 @@ pub(all) struct ChoreInput {
 pub impl ToJson for ChoreInput with fn to_json(self) {
   let (repeat_key, repeat_value) = self.repeat.json_field()
   let json : Map[String, Json] = { "title": self.title.to_json() }
+  if self.description != "" {
+    json["description"] = self.description.to_json()
+  }
   json[repeat_key] = repeat_value
   json["labels"] = self.labels.to_json()
   if self.next_due is Some(next_due) {
@@ -28,6 +32,7 @@ pub impl @json.FromJson for ChoreInput with fn from_json(json, path) {
   }
   {
     title,
+    description: read_description(json, path),
     repeat: Repeat::read_json(json, path),
     next_due: match json {
       { "next_due": Null, .. } => None
@@ -36,6 +41,22 @@ pub impl @json.FromJson for ChoreInput with fn from_json(json, path) {
       _ => None
     },
     labels: @json.from_json(labels, path=path.add_key("labels")),
+  }
+}
+
+///|
+/// Reads the optional `description`, which is empty if missing.
+fn read_description(
+  json : Json,
+  path : @json.JsonPath,
+) -> String raise @json.JsonDecodeError {
+  match json {
+    { "description": String(description), .. } => description
+    { "description": _, .. } =>
+      raise @json.JsonDecodeError(
+        (path.add_key("description"), "description must be a string"),
+      )
+    _ => ""
   }
 }
 
@@ -56,6 +77,9 @@ pub extend ChoreInput with @json.FromJson::{from_json}
 pub const MAX_TITLE_LENGTH : Int = 100
 
 ///|
+pub const MAX_DESCRIPTION_LENGTH : Int = 2000
+
+///|
 pub const MAX_INTERVAL_DAYS : Int = 3650
 
 ///|
@@ -67,19 +91,21 @@ pub(all) suberror ValidationError {
 }
 
 ///|
-/// Returns the input with a trimmed title and without duplicate labels, or
+/// Returns the input with a trimmed title and description and without
+/// duplicate labels, or
 /// raises a user-facing message. Every label must be one of `labels`.
 pub fn ChoreInput::validate(
   self : ChoreInput,
   labels : Array[Label],
 ) -> ChoreInput raise ValidationError {
   let title = validate_title(self.title)
+  let description = validate_description(self.description)
   self.repeat.validate()
   let ids = validate_labels(self.labels)
   guard ids.iter().all(id => labels.iter().any(label => label.id == id)) else {
     raise ValidationError("Unknown label.")
   }
-  { ..self, title, labels: ids, }
+  { ..self, title, description, labels: ids, }
 }
 
 ///|
@@ -92,6 +118,17 @@ fn validate_title(title : String) -> String raise ValidationError {
     )
   }
   title
+}
+
+///|
+fn validate_description(description : String) -> String raise ValidationError {
+  let description = description.trim().to_owned()
+  guard description.length() <= MAX_DESCRIPTION_LENGTH else {
+    raise ValidationError(
+      "Description must be at most \{MAX_DESCRIPTION_LENGTH} characters.",
+    )
+  }
+  description
 }
 
 ///|

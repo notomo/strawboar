@@ -11,6 +11,7 @@ test "chore_status" {
   let chore : @core.Chore = {
     id: 1,
     title: "Bath",
+    description: "",
     repeat: AfterDone(7),
     next_due: test_date("2026-09-22"),
     last_done: Some(test_date("2026-09-15")),

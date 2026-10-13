@@ -580,6 +580,22 @@ fn editor_content(
             on_input=emit.map(value => TitleChanged(value)),
           ),
         ),
+        field_view(
+          "chore-description",
+          "Description",
+          @rui.textarea(
+            id="chore-description",
+            value=editor.description,
+            maxlength=@core.MAX_DESCRIPTION_LENGTH,
+            rows=3,
+            placeholder="Notes such as the steps",
+            style=[
+              // Grows with the content up to a limit, then scrolls.
+              "max-height:12rem",
+            ],
+            on_input=emit.map(value => DescriptionChanged(value)),
+          ),
+        ),
         repeat_picker(editor.repeat, emit),
         ..match editor.repeat {
           AfterDone =>

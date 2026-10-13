@@ -3,6 +3,8 @@
 pub(all) struct Chore {
   id : Int
   title : String
+  /// Free notes such as the steps, possibly multiple lines. Empty if none.
+  description : String
   repeat : Repeat
   next_due : Date
   last_done : Date?
@@ -84,6 +86,7 @@ pub fn Chore::edit(self : Chore, input : ChoreInput) -> Chore {
   {
     ..self,
     title: input.title,
+    description: input.description,
     repeat: input.repeat,
     labels: input.labels,
     next_due: match (input.repeat, self.last_done) {
@@ -168,6 +171,7 @@ pub impl ToJson for Chore with fn to_json(self) {
   let json : Map[String, Json] = {
     "id": self.id.to_json(),
     "title": self.title.to_json(),
+    "description": self.description.to_json(),
   }
   json[repeat_key] = repeat_value
   json["next_due"] = self.next_due.to_json()
@@ -195,6 +199,7 @@ pub impl @json.FromJson for Chore with fn from_json(json, path) {
   {
     id: id.to_int(),
     title,
+    description: read_description(json, path),
     repeat: Repeat::read_json(json, path),
     next_due: @json.from_json(next_due, path=path.add_key("next_due")),
     last_done: match last_done {
