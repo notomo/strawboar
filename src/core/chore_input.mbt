@@ -7,7 +7,7 @@ pub(all) struct ChoreInput {
   repeat : Repeat
   next_due : Date?
   /// Label ids.
-  labels : Array[Int]
+  labels : Array[Int32]
 }
 
 ///|
@@ -74,16 +74,16 @@ pub extend ChoreInput with ToJson::{to_json}
 pub extend ChoreInput with @json.FromJson::{from_json}
 
 ///|
-pub const MAX_TITLE_LENGTH : Int = 100
+pub const MAX_TITLE_LENGTH : Int32 = 100
 
 ///|
-pub const MAX_DESCRIPTION_LENGTH : Int = 2000
+pub const MAX_DESCRIPTION_LENGTH : Int32 = 2000
 
 ///|
-pub const MAX_INTERVAL_DAYS : Int = 3650
+pub const MAX_INTERVAL_DAYS : Int32 = 3650
 
 ///|
-pub const MAX_LABELS : Int = 10
+pub const MAX_LABELS : Int32 = 10
 
 ///|
 pub(all) suberror ValidationError {
@@ -132,8 +132,8 @@ fn validate_description(description : String) -> String raise ValidationError {
 }
 
 ///|
-fn validate_interval(interval_days : Int) -> Unit raise ValidationError {
-  guard interval_days is (1..=MAX_INTERVAL_DAYS) else {
+fn validate_interval(interval_days : Int32) -> Unit raise ValidationError {
+  guard interval_days is (1..<=MAX_INTERVAL_DAYS) else {
     raise ValidationError(
       "Interval must be between 1 and \{MAX_INTERVAL_DAYS} days.",
     )
@@ -158,10 +158,10 @@ fn[T : Eq] validate_labels(labels : Array[T]) -> Array[T] raise ValidationError 
 
 ///|
 /// Parses a positive day count typed by a user.
-pub fn parse_days(input : String) -> Int? {
+pub fn parse_days(input : String) -> Int32? {
   let input = input.trim()
   guard input != "" &&
-    input.iter().all(c => c is ('0'..='9')) &&
+    input.iter().all(c => c is ('0'..<='9')) &&
     input.length() <= 5 else {
     return None
   }

@@ -18,8 +18,9 @@ fn today() -> @core.Date {
 }
 
 ///|
-fn parse_id(segment : StringView) -> Int raise ApiError {
-  guard segment.length() is (1..=9) && segment.iter().all(c => c is ('0'..='9')) else {
+fn parse_id(segment : StringView) -> Int32 raise ApiError {
+  guard segment.length() is (1..<=9) &&
+    segment.iter().all(c => c is ('0'..<='9')) else {
     raise NotFound
   }
   @string.parse_int(segment) catch {
@@ -54,7 +55,7 @@ async fn read_chore_input(
 async fn read_label_input(
   request : @cloudflare.Request,
   db : @cloudflare.D1Database,
-  id? : Int,
+  id? : Int32,
 ) -> @core.LabelInput {
   let json = read_json(request)
   let input : @core.LabelInput = @json.from_json(json) catch {

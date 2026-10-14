@@ -9,7 +9,7 @@ pub type D1PreparedStatement
 ///|
 pub(all) enum D1Param {
   Text(String)
-  Integer(Int)
+  Integer(Int32)
   Null
 }
 
@@ -21,7 +21,7 @@ priv type JsValue
 fn JsValue::text(value : String) -> JsValue = "%identity"
 
 ///|
-fn JsValue::integer(value : Int) -> JsValue = "%identity"
+fn JsValue::integer(value : Int32) -> JsValue = "%identity"
 
 ///|
 extern "js" fn JsValue::null() -> JsValue =
@@ -87,12 +87,12 @@ pub async fn D1PreparedStatement::all(self : D1PreparedStatement) -> Json {
 ///|
 extern "js" fn D1PreparedStatement::run_ffi(
   self : D1PreparedStatement,
-) -> @js_async.Promise[Int] =
+) -> @js_async.Promise[Int32] =
   #| (stmt) => stmt.run().then((r) => r.meta.changes)
 
 ///|
 /// Runs the statement and returns the number of changed rows.
-pub async fn D1PreparedStatement::run(self : D1PreparedStatement) -> Int {
+pub async fn D1PreparedStatement::run(self : D1PreparedStatement) -> Int32 {
   self.run_ffi().wait()
 }
 

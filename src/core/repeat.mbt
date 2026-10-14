@@ -2,11 +2,11 @@
 /// A chore due on a fixed day of the month, e.g. paying the rent.
 pub(all) struct Monthly {
   /// Due every `months` months.
-  months : Int
+  months : Int32
   /// Day of the month. A day the month does not have means its last day.
-  day : Int
+  day : Int32
   /// The chore is `Soon` from this many days before it is due.
-  lead_days : Int
+  lead_days : Int32
 } derive(Eq, ToJson, FromJson)
 
 ///|
@@ -22,7 +22,7 @@ pub extend Monthly with @json.FromJson::{from_json}
 /// How a chore recurs.
 pub(all) enum Repeat {
   /// Due this many days after it was done.
-  AfterDone(Int)
+  AfterDone(Int32)
   /// Due on a fixed day, whenever it was done.
   Monthly(Monthly)
 } derive(Eq)
@@ -31,11 +31,11 @@ pub(all) enum Repeat {
 pub extend Repeat with Eq::{equal, not_equal}
 
 ///|
-pub const MAX_INTERVAL_MONTHS : Int = 120
+pub const MAX_INTERVAL_MONTHS : Int32 = 120
 
 ///|
 /// The approximate number of days between due dates.
-pub fn Repeat::approx_days(self : Repeat) -> Int {
+pub fn Repeat::approx_days(self : Repeat) -> Int32 {
   match self {
     AfterDone(days) => days
     Monthly({ months, .. }) => months * 30
@@ -82,12 +82,12 @@ fn Repeat::validate(self : Repeat) -> Unit raise ValidationError {
   match self {
     AfterDone(days) => validate_interval(days)
     Monthly({ months, day, lead_days, }) => {
-      guard months is (1..=MAX_INTERVAL_MONTHS) else {
+      guard months is (1..<=MAX_INTERVAL_MONTHS) else {
         raise ValidationError(
           "Months must be between 1 and \{MAX_INTERVAL_MONTHS}.",
         )
       }
-      guard day is (1..=31) else {
+      guard day is (1..<=31) else {
         raise ValidationError("Day must be between 1 and 31.")
       }
       // Shorter than the shortest interval, so that it is not always soon.

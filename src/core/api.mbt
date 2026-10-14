@@ -10,12 +10,12 @@ pub(all) struct ChoreList {
 } derive(Eq, ToJson, FromJson)
 
 ///|
-pub const RECENT_DAYS : Int = 7
+pub const RECENT_DAYS : Int32 = 7
 
 ///|
 pub(all) struct RecentDone {
-  completion_id : Int
-  chore_id : Int
+  completion_id : Int32
+  chore_id : Int32
   title : String
   done_on : Date
 } derive(Eq, ToJson, FromJson)
@@ -69,7 +69,7 @@ pub extend ChoreList with @json.FromJson::{from_json}
 /// Response of `POST /api/chores/:id/complete`.
 pub(all) struct Completed {
   chore : Chore
-  completion_id : Int
+  completion_id : Int32
 } derive(ToJson, FromJson)
 
 ///|

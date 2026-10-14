@@ -43,7 +43,7 @@ fn date_param(date : @core.Date?) -> @cloudflare.D1Param {
 }
 
 ///|
-fn labels_param(labels : Array[Int]) -> @cloudflare.D1Param {
+fn labels_param(labels : Array[Int32]) -> @cloudflare.D1Param {
   Text(labels.to_json().stringify())
 }
 
@@ -73,7 +73,7 @@ async fn list_chores(db : @cloudflare.D1Database) -> Array[@core.Chore] {
 }
 
 ///|
-async fn find_chore(db : @cloudflare.D1Database, id : Int) -> @core.Chore {
+async fn find_chore(db : @cloudflare.D1Database, id : Int32) -> @core.Chore {
   let rows = db
     .prepare(
       "SELECT \{chore_columns} FROM chores WHERE id = ? AND archived = 0",
@@ -192,7 +192,7 @@ async fn update_chore(
 }
 
 ///|
-async fn archive_chore(db : @cloudflare.D1Database, id : Int) -> Unit {
+async fn archive_chore(db : @cloudflare.D1Database, id : Int32) -> Unit {
   let changes = db
     .prepare("UPDATE chores SET archived = 1 WHERE id = ? AND archived = 0")
     .bind([Integer(id)])
@@ -203,7 +203,7 @@ async fn archive_chore(db : @cloudflare.D1Database, id : Int) -> Unit {
 ///|
 async fn complete_chore(
   db : @cloudflare.D1Database,
-  id : Int,
+  id : Int32,
   today : @core.Date,
 ) -> @core.Completed {
   let before = find_chore(db, id)
@@ -242,7 +242,7 @@ async fn complete_chore(
 /// Only the latest completion of a chore can be undone (see `@core.RecentDone::can_undo`).
 async fn undo_completion(
   db : @cloudflare.D1Database,
-  completion_id : Int,
+  completion_id : Int32,
 ) -> @core.Chore {
   let rows = db
     .prepare(
@@ -323,7 +323,7 @@ async fn list_recent_done(
 let history_limit = 20
 
 ///|
-async fn list_history(db : @cloudflare.D1Database, id : Int) -> @core.History {
+async fn list_history(db : @cloudflare.D1Database, id : Int32) -> @core.History {
   // Also checks that the chore exists.
   let _ = find_chore(db, id)
   let rows = db
@@ -410,7 +410,7 @@ async fn update_label(
 
 ///|
 /// Deletes the label and removes it from every chore, archived ones included.
-async fn delete_label(db : @cloudflare.D1Database, id : Int) -> Unit {
+async fn delete_label(db : @cloudflare.D1Database, id : Int32) -> Unit {
   let results = db.batch([
     db
     .prepare(

@@ -1,7 +1,7 @@
 ///|
 /// A recurring chore. See `Repeat` for when it is due again.
 pub(all) struct Chore {
-  id : Int
+  id : Int32
   title : String
   /// Free notes such as the steps, possibly multiple lines. Empty if none.
   description : String
@@ -9,7 +9,7 @@ pub(all) struct Chore {
   next_due : Date
   last_done : Date?
   /// Label ids.
-  labels : Array[Int]
+  labels : Array[Int32]
 } derive(Eq)
 
 ///|
@@ -27,7 +27,7 @@ pub(all) enum Urgency {
 pub extend Urgency with Eq::{equal, not_equal}
 
 ///|
-pub fn Chore::days_left(self : Chore, today : Date) -> Int {
+pub fn Chore::days_left(self : Chore, today : Date) -> Int32 {
   today.days_until(self.next_due)
 }
 
@@ -49,7 +49,7 @@ pub fn Chore::urgency(self : Chore, today : Date) -> Urgency {
 
 ///|
 /// Orders by elapsed fraction of the interval, most elapsed first.
-fn Chore::compare_progress(self : Chore, other : Chore, today : Date) -> Int {
+fn Chore::compare_progress(self : Chore, other : Chore, today : Date) -> Int32 {
   // (interval - left) / interval, compared without division
   let (self_days, other_days) = (
     self.repeat.approx_days(),
@@ -98,7 +98,7 @@ pub fn Chore::edit(self : Chore, input : ChoreInput) -> Chore {
 }
 
 ///|
-pub fn Chore::has_label(self : Chore, id : Int) -> Bool {
+pub fn Chore::has_label(self : Chore, id : Int32) -> Bool {
   self.labels.contains(id)
 }
 
@@ -117,7 +117,7 @@ pub(all) struct Dashboard {
 
 ///|
 /// Monthly chores come first, as they are of a different nature.
-fn Chore::compare_kind(self : Chore, other : Chore) -> Int {
+fn Chore::compare_kind(self : Chore, other : Chore) -> Int32 {
   let rank = (chore : Chore) => {
     match chore.repeat {
       Monthly(_) => 0
@@ -131,7 +131,7 @@ fn Chore::compare_kind(self : Chore, other : Chore) -> Int {
 /// Each section puts monthly chores first. Due and soon chores are then ordered
 /// by progress, and later chores by due date.
 pub fn Dashboard::new(chores : Array[Chore], today : Date) -> Dashboard {
-  let then_by = (a : Chore, b : Chore, compare : (Chore, Chore) -> Int) => {
+  let then_by = (a : Chore, b : Chore, compare : (Chore, Chore) -> Int32) => {
     match a.compare_kind(b) {
       0 => compare(a, b)
       order => order

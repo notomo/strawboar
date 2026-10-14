@@ -32,7 +32,7 @@ enum RepeatKind {
 /// It is kept after the panel closes: a close event can arrive after
 /// another chore was opened, and clearing it then would empty the panel.
 struct Editor {
-  id : Int?
+  id : Int32?
   title : String
   description : String
   repeat : RepeatKind
@@ -43,7 +43,7 @@ struct Editor {
   lead_days : String
   next_due : String
   /// Selected label ids.
-  labels : Array[Int]
+  labels : Array[Int32]
   error : String
   history : HistoryState
 } derive(Eq)
@@ -59,7 +59,7 @@ struct Transfer {
 ///|
 /// Form state of the labels panel. `id` is `None` for a new label.
 struct LabelForm {
-  id : Int?
+  id : Int32?
   name : String
   color : @core.LabelColor
   error : String
@@ -75,7 +75,7 @@ enum Panel {
 
 ///|
 struct Undo {
-  completion_id : Int
+  completion_id : Int32
   title : String
 } derive(Eq)
 
@@ -92,7 +92,7 @@ struct Model {
   /// Whether the panel is shown. Drives the backdrop that closes it.
   panel_open : Bool
   /// Only chores with this label are shown when set.
-  label_filter : Int?
+  label_filter : Int32?
   /// Whether the later section is expanded. Collapsed by default.
   later_open : Bool
   undo : Undo?
@@ -103,14 +103,14 @@ struct Model {
 enum Msg {
   Reload
   Loaded(Result[@core.ChoreList, Error])
-  Complete(Int)
+  Complete(Int32)
   Completed(Result[@core.Completed, Error])
-  UndoCompletion(Int)
+  UndoCompletion(Int32)
   Undone(Result[@core.Chore, Error])
-  DismissUndo(Int)
+  DismissUndo(Int32)
   OpenNew
-  OpenEdit(Int)
-  HistoryLoaded(Int, Result[@core.History, Error])
+  OpenEdit(Int32)
+  HistoryLoaded(Int32, Result[@core.History, Error])
   TitleChanged(String)
   DescriptionChanged(String)
   RepeatChanged(RepeatKind)
@@ -119,11 +119,11 @@ enum Msg {
   DayChanged(String)
   LeadDaysChanged(String)
   NextDueChanged(String)
-  ToggleLabel(Int)
-  FilterByLabel(Int?)
+  ToggleLabel(Int32)
+  FilterByLabel(Int32?)
   LaterToggled(Bool)
   OpenLabels
-  EditLabel(Int)
+  EditLabel(Int32)
   NewLabel
   LabelNameChanged(String)
   LabelColorChanged(@core.LabelColor)
@@ -693,7 +693,7 @@ fn Model::keep_valid_filter(self : Model) -> Model {
 
 ///|
 /// The chore being edited in the open panel, if any.
-fn Model::selected_id(self : Model) -> Int? {
+fn Model::selected_id(self : Model) -> Int32? {
   match (self.panel_open, self.editor()) {
     (true, Some({ id, .. })) => id
     _ => None

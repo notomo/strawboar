@@ -1,11 +1,11 @@
 ///|
 fn definition(
   title : String,
-  interval_days? : Int = 7,
+  interval_days~ : Int32 = 7,
   repeat? : @core.Repeat,
   next_due? : String,
-  description? : String = "",
-  labels? : Array[String] = [],
+  description~ : String = "",
+  labels~ : Array[String] = [],
 ) -> @core.ChoreDefinition {
   {
     title,
@@ -18,7 +18,7 @@ fn definition(
 
 ///|
 fn definitions(
-  labels? : Array[@core.LabelInput] = [],
+  labels~ : Array[@core.LabelInput] = [],
   chores : Array[@core.ChoreDefinition],
 ) -> @core.Definitions {
   { labels, chores, }

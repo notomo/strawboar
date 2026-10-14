@@ -6,10 +6,10 @@ let config : AccessConfig = {
 
 ///|
 fn claims(
-  iss? : String = "https://example.cloudflareaccess.com",
-  aud? : Json = ["aud1"],
-  exp? : Double = 2000,
-  email? : String = "me@example.com",
+  iss~ : String = "https://example.cloudflareaccess.com",
+  aud~ : Json = ["aud1"],
+  exp~ : Double = 2000,
+  email~ : String = "me@example.com",
 ) -> Json {
   {
     "iss": iss.to_json(),
@@ -20,7 +20,7 @@ fn claims(
 }
 
 ///|
-fn validation_error(claims : Json, config? : AccessConfig = config) -> String {
+fn validation_error(claims : Json, config~ : AccessConfig = config) -> String {
   try validate_claims(claims, config, 1000) catch {
     AuthError(message) => message
   } noraise {

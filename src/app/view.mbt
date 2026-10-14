@@ -115,13 +115,13 @@ fn notice_view(notice : String) -> Html {
 /// also opens the labels panel.
 fn label_filter_view(
   labels : Array[@core.Label],
-  label_filter : Int?,
+  label_filter : Int32?,
   emit : Emit[Msg],
 ) -> Html {
   if labels.is_empty() {
     return @html.nothing
   }
-  let chip = (name : String, content : Array[Html], value : Int?) => {
+  let chip = (name : String, content : Array[Html], value : Int32?) => {
     let pressed = label_filter == value
     @rui.button(
       size=Sm,
@@ -255,7 +255,7 @@ enum RowState {
 }
 
 ///|
-fn row_state(model : Model, chore_id : Int) -> RowState {
+fn row_state(model : Model, chore_id : Int32) -> RowState {
   match (model.panel_open, model.selected_id()) {
     (false, _) => Normal
     (true, Some(id)) if id == chore_id => Selected
@@ -326,7 +326,7 @@ fn labels_view(labels : Array[@core.Label]) -> Html {
 /// While the panel is open for another chore, it is raised above the backdrop so
 /// that tapping it switches the panel to this chore.
 fn edit_area(
-  chore_id : Int,
+  chore_id : Int32,
   state : RowState,
   emit : Emit[Msg],
   content : Array[Html],
@@ -694,8 +694,8 @@ fn editor_content(
 fn number_field(
   id : String,
   label : String,
-  min~ : Int,
-  max~ : Int,
+  min~ : Int32,
+  max~ : Int32,
   value : String,
   on_input : Emit[String],
 ) -> Html {
@@ -742,7 +742,7 @@ fn repeat_picker(selected : RepeatKind, emit : Emit[Msg]) -> Html {
 ///|
 /// Toggles the labels of the chore being edited.
 fn label_picker(
-  selected : Array[Int],
+  selected : Array[Int32],
   labels : Array[@core.Label],
   emit : Emit[Msg],
 ) -> Html {

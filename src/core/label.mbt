@@ -71,7 +71,7 @@ pub extend LabelColor with @json.FromJson::{from_json}
 ///|
 /// A label created beforehand and shared by chores.
 pub(all) struct Label {
-  id : Int
+  id : Int32
   name : String
   color : LabelColor
 } derive(Eq, ToJson, FromJson)
@@ -102,7 +102,7 @@ pub extend LabelInput with ToJson::{to_json}
 pub extend LabelInput with @json.FromJson::{from_json}
 
 ///|
-pub const MAX_LABEL_LENGTH : Int = 30
+pub const MAX_LABEL_LENGTH : Int32 = 30
 
 ///|
 /// Returns the input with a trimmed name, or raises a user-facing message.
@@ -110,7 +110,7 @@ pub const MAX_LABEL_LENGTH : Int = 30
 pub fn LabelInput::validate(
   self : LabelInput,
   labels : Array[Label],
-  id? : Int,
+  id? : Int32,
 ) -> LabelInput raise ValidationError {
   let name = self.name.trim().to_owned()
   guard name != "" else { raise ValidationError("Name is required.") }

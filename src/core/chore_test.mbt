@@ -7,14 +7,14 @@ fn date(s : String) -> @core.Date {
 
 ///|
 fn chore(
-  id? : Int = 1,
-  title? : String = "chore",
-  interval_days? : Int = 10,
+  id~ : Int32 = 1,
+  title~ : String = "chore",
+  interval_days~ : Int32 = 10,
   repeat? : @core.Repeat,
-  next_due? : String = "2026-09-24",
+  next_due~ : String = "2026-09-24",
   last_done? : String,
-  description? : String = "",
-  labels? : Array[Int] = [],
+  description~ : String = "",
+  labels~ : Array[Int32] = [],
 ) -> @core.Chore {
   {
     id,
@@ -58,7 +58,7 @@ test "complete" {
 }
 
 ///|
-fn edit_input(interval_days : Int) -> @core.ChoreInput {
+fn edit_input(interval_days : Int32) -> @core.ChoreInput {
   edit_repeat(AfterDone(interval_days))
 }
 
@@ -163,9 +163,9 @@ test "chore json round trip" {
 
 ///|
 fn label(
-  id : Int,
+  id : Int32,
   name : String,
-  color? : @core.LabelColor = Gray,
+  color~ : @core.LabelColor = Gray,
 ) -> @core.Label {
   { id, name, color, }
 }
@@ -242,7 +242,7 @@ test "labels_in" {
 }
 
 ///|
-fn label_message(input : @core.LabelInput, id? : Int) -> String {
+fn label_message(input : @core.LabelInput, id? : Int32) -> String {
   try input.validate([label(1, "bath"), label(2, "weekly")], id?) catch {
     ValidationError(message) => message
   } noraise {
@@ -303,7 +303,7 @@ test "upsert_label" {
 
 ///|
 test "can_undo" {
-  let done = (completion_id : Int, chore_id : Int) => {
+  let done = (completion_id : Int32, chore_id : Int32) => {
     let r : @core.RecentDone = {
       completion_id,
       chore_id,
@@ -327,9 +327,9 @@ test "parse_days" {
 
 ///|
 fn monthly(
-  months? : Int = 1,
-  day? : Int = 28,
-  lead_days? : Int = 7,
+  months~ : Int32 = 1,
+  day~ : Int32 = 28,
+  lead_days~ : Int32 = 7,
 ) -> @core.Repeat {
   Monthly({ months, day, lead_days, })
 }
@@ -455,7 +455,7 @@ test "dashboard sorts monthly chores by the approximate interval" {
 
 ///|
 test "dashboard puts monthly chores first in each section" {
-  let rent = (id : Int, title : String, next_due : String) => {
+  let rent = (id : Int32, title : String, next_due : String) => {
     chore(id~, title~, repeat=monthly(lead_days=3), next_due~)
   }
   let chores = [

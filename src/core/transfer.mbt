@@ -1,10 +1,10 @@
 ///|
 /// Maximum number of chores in one import.
-pub const MAX_IMPORT_CHORES : Int = 200
+pub const MAX_IMPORT_CHORES : Int32 = 200
 
 ///|
 /// Maximum number of labels in one import.
-pub const MAX_IMPORT_LABELS : Int = 100
+pub const MAX_IMPORT_LABELS : Int32 = 100
 
 ///|
 /// A chore as exported and imported. Unlike `ChoreInput`, labels are referred
@@ -257,8 +257,8 @@ pub fn ImportPlan::chore_changes(
 ///|
 /// Response of `POST /api/chores/import`.
 pub(all) struct ImportResult {
-  created : Int
-  updated : Int
+  created : Int32
+  updated : Int32
 } derive(Eq, ToJson, FromJson)
 
 ///|

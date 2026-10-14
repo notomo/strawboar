@@ -1,7 +1,7 @@
 ///|
 /// A calendar date without time or time zone.
 pub struct Date {
-  priv days : Int // days since 1970-01-01
+  priv days : Int32 // days since 1970-01-01
 } derive(Eq, Compare)
 
 ///|
@@ -18,7 +18,7 @@ pub(all) suberror DateError {
 ///|
 /// Converts a civil date to days since 1970-01-01.
 /// See http://howardhinnant.github.io/date_algorithms.html
-fn days_from_civil(year : Int, month : Int, day : Int) -> Int {
+fn days_from_civil(year : Int32, month : Int32, day : Int32) -> Int32 {
   let y = if month <= 2 { year - 1 } else { year }
   let era = (if y >= 0 { y } else { y - 399 }) / 400
   let yoe = y - era * 400
@@ -29,7 +29,7 @@ fn days_from_civil(year : Int, month : Int, day : Int) -> Int {
 }
 
 ///|
-fn civil_from_days(days : Int) -> (Int, Int, Int) {
+fn civil_from_days(days : Int32) -> (Int32, Int32, Int32) {
   let z = days + 719468
   let era = (if z >= 0 { z } else { z - 146096 }) / 146097
   let doe = z - era * 146097
@@ -44,12 +44,12 @@ fn civil_from_days(days : Int) -> (Int, Int, Int) {
 
 ///|
 pub fn Date::from_ymd(
-  year : Int,
-  month : Int,
-  day : Int,
+  year : Int32,
+  month : Int32,
+  day : Int32,
 ) -> Date raise DateError {
   let date : Date = { days: days_from_civil(year, month, day), }
-  guard month is (1..=12) && day >= 1 && date.ymd() == (year, month, day) else {
+  guard month is (1..<=12) && day >= 1 && date.ymd() == (year, month, day) else {
     raise InvalidDate("\{year}-\{month}-\{day}")
   }
   date
@@ -61,10 +61,10 @@ pub fn Date::parse(input : String) -> Date raise DateError {
   let chars = input.to_array()
   let well_formed = chars.length() == 10 &&
     chars
-    .mapi((i, c) => if i == 4 || i == 7 { c == '-' } else { c is ('0'..='9') })
+    .mapi((i, c) => if i == 4 || i == 7 { c == '-' } else { c is ('0'..<='9') })
     .all(ok => ok)
   guard well_formed else { raise InvalidDate(input) }
-  let digits = fn(start : Int, end : Int) raise DateError {
+  let digits = fn(start : Int32, end : Int32) raise DateError {
     @string.parse_int(input[start:end]) catch {
       _ => raise InvalidDate(input)
     }
@@ -74,23 +74,26 @@ pub fn Date::parse(input : String) -> Date raise DateError {
 
 ///|
 /// Returns the local date of a UNIX time with a fixed UTC offset.
-pub fn Date::from_unix_seconds(seconds : Double, offset_minutes~ : Int) -> Date {
+pub fn Date::from_unix_seconds(
+  seconds : Double,
+  offset_minutes~ : Int32,
+) -> Date {
   let local_minutes = (seconds / 60).floor() + offset_minutes.to_double()
   { days: (local_minutes / 1440).floor().to_int(), }
 }
 
 ///|
-pub fn Date::ymd(self : Date) -> (Int, Int, Int) {
+pub fn Date::ymd(self : Date) -> (Int32, Int32, Int32) {
   civil_from_days(self.days)
 }
 
 ///|
-pub fn Date::add_days(self : Date, days : Int) -> Date {
+pub fn Date::add_days(self : Date, days : Int32) -> Date {
   { days: self.days + days, }
 }
 
 ///|
-fn days_in_month(year : Int, month : Int) -> Int {
+fn days_in_month(year : Int32, month : Int32) -> Int32 {
   let (next_year, next_month) = if month == 12 {
     (year + 1, 1)
   } else {
@@ -102,7 +105,7 @@ fn days_in_month(year : Int, month : Int) -> Int {
 ///|
 /// Returns the `day` of the month `months` after the month of `self`.
 /// A day the month does not have becomes its last day.
-pub fn Date::add_months(self : Date, months : Int, day~ : Int) -> Date {
+pub fn Date::add_months(self : Date, months : Int32, day~ : Int32) -> Date {
   let (year, month, _) = self.ymd()
   let index = year * 12 + month - 1 + months
   let year = if index >= 0 { index / 12 } else { (index - 11) / 12 }
@@ -113,7 +116,7 @@ pub fn Date::add_months(self : Date, months : Int, day~ : Int) -> Date {
 
 ///|
 /// Number of days from `self` to `other` (negative if `other` is earlier).
-pub fn Date::days_until(self : Date, other : Date) -> Int {
+pub fn Date::days_until(self : Date, other : Date) -> Int32 {
   other.days - self.days
 }
 
@@ -158,7 +161,7 @@ pub fn Date::weekday(self : Date) -> Weekday {
 ///|
 pub impl Show for Date with fn output(self, logger) {
   let (year, month, day) = self.ymd()
-  let pad = fn(n : Int, width : Int) {
+  let pad = fn(n : Int32, width : Int32) {
     let s = n.to_string()
     "0".repeat(width - s.length()) + s
   }

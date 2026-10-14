@@ -54,11 +54,11 @@ fn is_local(hostname : String) -> Bool {
 }
 
 ///|
-fn json_response(body : Json, status : Int) -> @cloudflare.Response {
+fn json_response(body : Json, status : Int32) -> @cloudflare.Response {
   @cloudflare.Response::json(body.stringify(), status)
 }
 
 ///|
-fn error_response(message : String, status : Int) -> @cloudflare.Response {
+fn error_response(message : String, status : Int32) -> @cloudflare.Response {
   json_response({ "error": message.to_json() }, status)
 }

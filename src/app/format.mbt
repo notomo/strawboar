@@ -1,5 +1,5 @@
 ///|
-fn plural(count : Int, unit : String) -> String {
+fn plural(count : Int32, unit : String) -> String {
   if count == 1 {
     "1 \{unit}"
   } else {
@@ -21,9 +21,9 @@ fn interval_text(repeat : @core.Repeat) -> String {
 
 ///|
 /// e.g. `1st`, `22nd`
-fn ordinal(n : Int) -> String {
+fn ordinal(n : Int32) -> String {
   let suffix = match (n % 100, n % 10) {
-    (11..=13, _) => "th"
+    (11..<=13, _) => "th"
     (_, 1) => "st"
     (_, 2) => "nd"
     (_, 3) => "rd"
@@ -49,7 +49,7 @@ fn last_done_text(last_done : @core.Date?, today : @core.Date) -> String {
 /// e.g. `10/03`
 fn short_date(date : @core.Date) -> String {
   let (_, month, day) = date.ymd()
-  let pad = (n : Int) => if n < 10 { "0\{n}" } else { n.to_string() }
+  let pad = (n : Int32) => if n < 10 { "0\{n}" } else { n.to_string() }
   "\{pad(month)}/\{pad(day)}"
 }
 

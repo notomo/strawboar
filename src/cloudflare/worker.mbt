@@ -35,7 +35,7 @@ pub async fn Request::text(self : Request) -> String {
 pub type Response
 
 ///|
-pub extern "js" fn Response::json(body : String, status : Int) -> Response =
+pub extern "js" fn Response::json(body : String, status : Int32) -> Response =
   #| (body, status) => new Response(body, {
   #|   status,
   #|   headers: {
@@ -46,7 +46,7 @@ pub extern "js" fn Response::json(body : String, status : Int) -> Response =
 
 ///|
 /// A response without body, e.g. `204 No Content`.
-pub extern "js" fn Response::empty(status : Int) -> Response =
+pub extern "js" fn Response::empty(status : Int32) -> Response =
   #| (status) => new Response(null, { status, headers: { "cache-control": "no-store" } })
 
 ///|
