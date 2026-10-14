@@ -60,7 +60,7 @@ test "weekday" {
 test "json" {
   let date = @core.Date::parse("2026-09-24")
   inspect(date.to_json().stringify(), content="\"2026-09-24\"")
-  let decoded : @core.Date = @json.from_json("2026-09-24".to_json())
+  let decoded : @core.Date = @json.from_json(Json("2026-09-24"))
   assert_true(decoded == date)
 }
 

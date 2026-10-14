@@ -13,12 +13,12 @@ pub(all) struct ChoreInput {
 ///|
 pub impl ToJson for ChoreInput with fn to_json(self) {
   let (repeat_key, repeat_value) = self.repeat.json_field()
-  let json : Map[String, Json] = { "title": self.title.to_json() }
+  let json : Map[String, Json] = { "title": Json(self.title) }
   if self.description != "" {
-    json["description"] = self.description.to_json()
+    json["description"] = Json(self.description)
   }
   json[repeat_key] = repeat_value
-  json["labels"] = self.labels.to_json()
+  json["labels"] = Json(self.labels)
   if self.next_due is Some(next_due) {
     json["next_due"] = next_due.to_json()
   }

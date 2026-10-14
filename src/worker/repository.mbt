@@ -44,7 +44,7 @@ fn date_param(date : @core.Date?) -> @cloudflare.D1Param {
 
 ///|
 fn labels_param(labels : Array[Int32]) -> @cloudflare.D1Param {
-  Text(labels.to_json().stringify())
+  Text(Json(labels).stringify())
 }
 
 ///|

@@ -144,10 +144,7 @@ test "import plan matches labels by name and chores by title" {
       ],
     ),
   )
-  assert_eq(
-    plan.label_updates.to_json(),
-    [label(1, "bath", color=Blue)].to_json(),
-  )
+  assert_eq(Json(plan.label_updates), Json([label(1, "bath", color=Blue)]))
   assert_true(plan.label_creates == [{ name: "kitchen", color: Green, }])
 
   // After the labels are saved.

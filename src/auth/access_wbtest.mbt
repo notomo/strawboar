@@ -11,12 +11,7 @@ fn claims(
   exp~ : Double = 2000,
   email~ : String = "me@example.com",
 ) -> Json {
-  {
-    "iss": iss.to_json(),
-    "aud": aud,
-    "exp": exp.to_json(),
-    "email": email.to_json(),
-  }
+  { "iss": Json(iss), "aud": aud, "exp": Json(exp), "email": Json(email) }
 }
 
 ///|
@@ -61,7 +56,7 @@ test "validate_claims allows small clock skew" {
 test "validate_claims rejects not yet valid token" {
   let claims = claims()
   guard claims is Object(map) else { fail("claims must be an object") }
-  map["nbf"] = 1100.0.to_json()
+  map["nbf"] = Json(1100.0)
   assert_eq(validation_error(claims), "token not yet valid")
 }
 

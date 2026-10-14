@@ -51,7 +51,7 @@ pub fn LabelColor::parse(name : String) -> LabelColor? {
 
 ///|
 pub impl ToJson for LabelColor with fn to_json(self) {
-  self.name().to_json()
+  Json(self.name())
 }
 
 ///|

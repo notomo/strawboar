@@ -170,7 +170,7 @@ pub impl Show for Date with fn output(self, logger) {
 
 ///|
 pub impl ToJson for Date with fn to_json(self) {
-  self.to_string().to_json()
+  Json(self.to_string())
 }
 
 ///|

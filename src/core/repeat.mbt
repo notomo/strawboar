@@ -55,7 +55,7 @@ pub fn Repeat::align(self : Repeat, date : Date) -> Date {
 /// The field of a chore JSON object: `interval_days` or `monthly`.
 fn Repeat::json_field(self : Repeat) -> (String, Json) {
   match self {
-    AfterDone(days) => ("interval_days", days.to_json())
+    AfterDone(days) => ("interval_days", Json(days))
     Monthly(monthly) => ("monthly", monthly.to_json())
   }
 }

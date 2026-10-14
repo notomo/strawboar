@@ -169,9 +169,9 @@ pub fn Dashboard::soon_until(self : Dashboard) -> Date? {
 pub impl ToJson for Chore with fn to_json(self) {
   let (repeat_key, repeat_value) = self.repeat.json_field()
   let json : Map[String, Json] = {
-    "id": self.id.to_json(),
-    "title": self.title.to_json(),
-    "description": self.description.to_json(),
+    "id": Json(self.id),
+    "title": Json(self.title),
+    "description": Json(self.description),
   }
   json[repeat_key] = repeat_value
   json["next_due"] = self.next_due.to_json()
@@ -179,7 +179,7 @@ pub impl ToJson for Chore with fn to_json(self) {
     Some(date) => date.to_json()
     None => Json::null()
   }
-  json["labels"] = self.labels.to_json()
+  json["labels"] = Json(self.labels)
   Json::object(json)
 }
 
