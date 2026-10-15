@@ -26,6 +26,7 @@ export async function openPage({ page }: { page: Page }) {
     getDoneButton: (title: string) => page.getByRole("button", { name: `Done: ${title}` }),
 
     getRecent: () => recent,
+    getRecentTrigger: () => page.locator("#recent-trigger"),
     getRecentRow: (title: string) => recent.locator("li", { hasText: title }),
     getRecentUndoButton: (title: string) => recent.getByRole("button", { name: `Undo: ${title}` }),
 
@@ -142,6 +143,15 @@ export async function openPage({ page }: { page: Page }) {
       await expect(trigger).toHaveAttribute("aria-expanded", "true");
     },
 
+    // "Done this week" is collapsed by default.
+    openRecent: async () => {
+      const trigger = strawboarPage.getRecentTrigger();
+      if ((await trigger.getAttribute("aria-expanded")) !== "true") {
+        await trigger.click();
+      }
+      await expect(trigger).toHaveAttribute("aria-expanded", "true");
+    },
+
     complete: async (title: string) => {
       await strawboarPage.getDoneButton(title).click();
     },
@@ -151,6 +161,7 @@ export async function openPage({ page }: { page: Page }) {
     },
 
     undoFromRecent: async (title: string) => {
+      await strawboarPage.openRecent();
       await strawboarPage.getRecentUndoButton(title).click();
     },
 

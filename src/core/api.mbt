@@ -33,6 +33,21 @@ pub fn RecentDone::can_undo(
 }
 
 ///|
+/// Completions of monthly chores come first, like the dashboard sections.
+/// The order is kept otherwise. Archived chores are not in `chores` and count
+/// as not monthly.
+pub fn recent_monthly_first(
+  recent : Array[RecentDone],
+  chores : Array[Chore],
+) -> Array[RecentDone] {
+  let is_monthly = (done : RecentDone) => {
+    chores.iter().find_first(chore => chore.id == done.chore_id)
+    is Some({ repeat: Monthly(_), .. })
+  }
+  [..recent.filter(is_monthly), ..recent.filter(done => !is_monthly(done))]
+}
+
+///|
 pub extend RecentDone with Eq::{equal, not_equal}
 
 ///|

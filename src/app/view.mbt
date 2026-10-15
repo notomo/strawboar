@@ -83,7 +83,7 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
         later_section(dashboard.later, model.later_open, emit, chore => {
           later_row(chore, labels_of(chore), state_of(chore), emit)
         }),
-        recent_view(model.recent, emit),
+        recent_view(model.recent, model.chores, model.recent_open, emit),
       ])
     }
     (Failed, _) =>
@@ -216,23 +216,41 @@ fn later_section(
   if chores.is_empty() {
     return @html.nothing
   }
-  @html.section(id="later", [
+  collapsible_section(
+    "later",
+    "Later (\{chores.length()})",
+    open,
+    emit.map(open => LaterToggled(open)),
+    ul(style=[list_style()], chores.map(row)),
+  )
+}
+
+///|
+/// A section whose content is shown by clicking its title.
+fn collapsible_section(
+  id : String,
+  title : String,
+  open : Bool,
+  on_open_change : Emit[Bool],
+  content : Html,
+) -> Html {
+  @html.section(id~, [
     @rui.collapsible_root(open~, [
       @rui.collapsible_trigger(
         open~,
-        controls="later-content",
-        on_open_change=emit.map(open => LaterToggled(open)),
-        id="later-trigger",
+        controls="\{id}-content",
+        on_open_change~,
+        id="\{id}-trigger",
         style=["padding:0 0 0.5rem;align-items:center"],
         // A heading is not allowed in a button.
-        span(style=[section_title_style, muted], "Later (\{chores.length()})"),
+        span(style=[section_title_style, muted], title),
       ),
       @rui.collapsible_content(
         open~,
-        labelledby="later-trigger",
-        id="later-content",
+        labelledby="\{id}-trigger",
+        id="\{id}-content",
         body_style=["padding:0"],
-        ul(style=[list_style()], chores.map(row)),
+        content,
       ),
     ]),
   ])
@@ -425,60 +443,56 @@ fn later_row(
 }
 
 ///|
-/// Number of completions shown in "Done this week".
-let recent_limit = 5
-
-///|
-fn recent_view(recent : Array[@core.RecentDone], emit : Emit[Msg]) -> Html {
+/// "Done this week", collapsed by default like the later section.
+fn recent_view(
+  recent : Array[@core.RecentDone],
+  chores : Array[@core.Chore],
+  open : Bool,
+  emit : Emit[Msg],
+) -> Html {
   if recent.is_empty() {
     return @html.nothing
   }
-  let hidden = recent.length() - recent_limit
-  @html.section(id="recent", [
-    section_title("Done this week"),
+  collapsible_section(
+    "recent",
+    "Done this week (\{recent.length()})",
+    open,
+    emit.map(open => RecentToggled(open)),
     ul(
       style=[list_style(), "gap:0.25rem;font-size:0.875rem", muted],
-      [
-        ..recent
-        .iter()
-        .take(recent_limit)
-        .map(done => {
-          li(
-            style=[
-              "display:flex;align-items:center;gap:0.75rem;min-height:1.75rem;padding:0 0.75rem",
-            ],
-            [
-              span(
-                style=[
-                  "flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap",
-                ],
-                "✓ \{done.title}",
-              ),
-              if done.can_undo(recent) {
-                @rui.button(
-                  size=Xs,
-                  variant=Ghost,
-                  on_click=emit(UndoCompletion(done.completion_id)),
-                  attrs=@html.Attrs::build().aria_label("Undo: \{done.title}"),
-                  style=["flex-shrink:0"],
-                  "Undo",
-                )
-              } else {
-                @html.nothing
-              },
-              span(style=["flex-shrink:0"], short_date(done.done_on)),
-            ],
-          )
-        })
-        .collect(),
-        if hidden > 0 {
-          li(style=["padding:0 0.75rem"], "and \{hidden} more")
-        } else {
-          @html.nothing
-        },
-      ],
+      @core.recent_monthly_first(recent, chores)
+      .iter()
+      .map(done => {
+        li(
+          style=[
+            "display:flex;align-items:center;gap:0.75rem;min-height:1.75rem;padding:0 0.75rem",
+          ],
+          [
+            span(
+              style=[
+                "flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap",
+              ],
+              "✓ \{done.title}",
+            ),
+            if done.can_undo(recent) {
+              @rui.button(
+                size=Xs,
+                variant=Ghost,
+                on_click=emit(UndoCompletion(done.completion_id)),
+                attrs=@html.Attrs::build().aria_label("Undo: \{done.title}"),
+                style=["flex-shrink:0"],
+                "Undo",
+              )
+            } else {
+              @html.nothing
+            },
+            span(style=["flex-shrink:0"], short_date(done.done_on)),
+          ],
+        )
+      })
+      .collect(),
     ),
-  ])
+  )
 }
 
 ///|

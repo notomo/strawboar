@@ -95,6 +95,8 @@ struct Model {
   label_filter : Int32?
   /// Whether the later section is expanded. Collapsed by default.
   later_open : Bool
+  /// Whether "Done this week" is expanded. Collapsed by default.
+  recent_open : Bool
   undo : Undo?
   notice : String
 } derive(Eq)
@@ -122,6 +124,7 @@ enum Msg {
   ToggleLabel(Int32)
   FilterByLabel(Int32?)
   LaterToggled(Bool)
+  RecentToggled(Bool)
   OpenLabels
   EditLabel(Int32)
   NewLabel
@@ -407,6 +410,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
       )
     FilterByLabel(label_filter) => ({ ..model, label_filter, }, @rabbita.none)
     LaterToggled(later_open) => ({ ..model, later_open, }, @rabbita.none)
+    RecentToggled(recent_open) => ({ ..model, recent_open, }, @rabbita.none)
     OpenLabels =>
       (
         {
@@ -715,6 +719,7 @@ fn app() -> Val[Html] {
           panel_open: false,
           label_filter: None,
           later_open: false,
+          recent_open: false,
           undo: None,
           notice: "",
         },

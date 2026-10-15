@@ -317,6 +317,25 @@ test "can_undo" {
 }
 
 ///|
+test "recent_monthly_first" {
+  let done = (completion_id : Int32, chore_id : Int32) => {
+    let r : @core.RecentDone = {
+      completion_id,
+      chore_id,
+      title: "chore",
+      done_on: date("2026-09-24"),
+    }
+    r
+  }
+  let chores = [chore(id=1), chore(id=2, repeat=monthly())]
+  let recent = [done(4, 1), done(3, 2), done(2, 3), done(1, 2)]
+  assert_eq(
+    @core.recent_monthly_first(recent, chores).map(r => r.completion_id),
+    [3, 1, 4, 2],
+  )
+}
+
+///|
 test "parse_days" {
   assert_eq(@core.parse_days(" 14 "), Some(14))
   assert_eq(@core.parse_days(""), None)

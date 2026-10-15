@@ -58,7 +58,12 @@ test("marks a chore as done and undoes it", async ({ page }, testInfo) => {
   await expect(strawboar.getLaterRow(title)).toBeHidden();
   await strawboar.openLater();
   await expect(strawboar.getLaterRow(title)).toBeVisible();
-  await expect(strawboar.getRecent()).toContainText(title);
+  // "Done this week" is collapsed by default.
+  await expect(strawboar.getRecentTrigger()).toHaveAttribute("aria-expanded", "false");
+  await expect(strawboar.getRecentTrigger()).toContainText("Done this week (");
+  await expect(strawboar.getRecentRow(title)).toBeHidden();
+  await strawboar.openRecent();
+  await expect(strawboar.getRecentRow(title)).toBeVisible();
 
   await strawboar.undoFromToast();
 
@@ -177,6 +182,7 @@ test("undoes the latest completion from the recent list", async ({ page, request
 
   const strawboar = await openPage({ page });
   await expect(strawboar.getRecentRow(title)).toHaveCount(2);
+  await strawboar.openRecent();
   await expect(strawboar.getRecentUndoButton(title)).toHaveCount(1);
 
   await strawboar.undoFromRecent(title);
