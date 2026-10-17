@@ -23,7 +23,7 @@
     "@playwright/test": "^1.64.0",
     "@rabbita/vite": "^0.2.0",
     "concurrently": "^10.0.6",
-    "vite": "^7.3.6",
+    "vite": "^8.3.4",
     "wrangler": "^4.149.0"
   }
 }
