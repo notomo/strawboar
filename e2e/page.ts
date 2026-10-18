@@ -201,6 +201,14 @@ export async function openPage({ page }: { page: Page }) {
       await expect(confirmDialog).toBeHidden();
     },
 
+    // Asks to archive the chore in the panel and dismisses it by clicking outside of it.
+    dismissArchive: async () => {
+      await strawboarPage.getArchiveButton().click();
+      await expect(confirmDialog).toBeVisible();
+      await page.mouse.click(8, 8);
+      await expect(confirmDialog).toBeHidden();
+    },
+
     // The left edge is outside of the panel on every viewport.
     // On the sticky header or below it.
     tapOutsideEditor: async ({ hasTouch, onHeader = false }: { hasTouch: boolean; onHeader?: boolean }) => {

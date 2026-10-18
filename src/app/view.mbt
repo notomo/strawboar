@@ -1200,6 +1200,7 @@ fn confirm_view(panel : Panel?, emit : Emit[Msg]) -> Html {
   }
   @rui.alert_dialog(
     id=CONFIRM_ID,
+    closedby="any",
     attrs=@html.Attrs::build()
       .aria_labelledby("confirm-title")
       .aria_describedby("confirm-description"),

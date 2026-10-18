@@ -467,6 +467,8 @@ test("edits and archives a chore", async ({ page }, testInfo) => {
   await strawboar.openChore(renamed);
   await strawboar.cancelArchive();
   await expect(strawboar.getEditor()).toBeVisible();
+  await strawboar.dismissArchive();
+  await expect(strawboar.getEditor()).toBeVisible();
   await expect(strawboar.getDueRow(renamed)).toBeVisible();
 
   await strawboar.archive();
