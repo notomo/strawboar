@@ -295,8 +295,18 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
           emit.map(result => Undone(result)),
         ),
       )
-    Undone(Ok(chore)) =>
-      ({ ..model, chores: upsert(model.chores, chore), }, @rabbita.none)
+    Undone(Ok(chore)) => {
+      let model = { ..model, chores: upsert(model.chores, chore), }
+      // The history in the open panel no longer has the completion.
+      match model.editor() {
+        Some(editor) if editor.id == Some(chore.id) =>
+          (
+            model.edit(editor => { ..editor, history: Loading, }),
+            fetch_history(chore.id, emit),
+          )
+        _ => (model, @rabbita.none)
+      }
+    }
     // The completion was removed from `recent` optimistically, so reload it.
     Undone(Err(_)) => ({ ..model, notice: "Failed to undo.", }, emit(Reload))
     DismissUndo(id) =>
@@ -369,9 +379,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
             },
             @rabbita.batch([
               @dialog.show(EDITOR_ID, modal=false),
-              @http.get("/api/chores/\{id}/completions").expect_json(
-                emit.map(result => HistoryLoaded(id, result)),
-              ),
+              fetch_history(id, emit),
             ]),
           )
         None => (model, @rabbita.none)
@@ -702,6 +710,13 @@ fn Model::keep_valid_filter(self : Model) -> Model {
       { ..self, label_filter: None, }
     _ => self
   }
+}
+
+///|
+fn fetch_history(id : Int32, emit : Emit[Msg]) -> Cmd {
+  @http.get("/api/chores/\{id}/completions").expect_json(
+    emit.map(result => HistoryLoaded(id, result)),
+  )
 }
 
 ///|

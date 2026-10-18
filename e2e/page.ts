@@ -29,7 +29,6 @@ export async function openPage({ page }: { page: Page }) {
     getRecent: () => recent,
     getRecentTrigger: () => page.locator("#recent-trigger"),
     getRecentRow: (title: string) => recent.locator("li", { hasText: title }),
-    getRecentUndoButton: (title: string) => recent.getByRole("button", { name: `Undo: ${title}` }),
 
     getUndoToast: () => undoToast,
     getUndoToastButton: () => undoToast.getByRole("button", { name: "Undo" }),
@@ -55,7 +54,8 @@ export async function openPage({ page }: { page: Page }) {
       editor.getByRole("group", { name: "Labels" }).getByRole("button", { name, exact: true }),
     getFirstDueInput: () => editor.getByLabel("First due"),
     getEditorError: () => editor.locator("#chore-editor-error"),
-    getHistory: () => editor.locator("#chore-history"),
+    getHistory: () => editor.locator("#chore-history-text"),
+    getHistoryUndoButton: () => editor.locator("#chore-history").getByRole("button", { name: /^Undo/ }),
     getSaveButton: () => editor.getByRole("button", { name: "Save" }),
     getCloseButton: () => editor.getByRole("button", { name: "Close" }),
     getArchiveButton: () => editor.getByRole("button", { name: "Archive" }),
@@ -161,9 +161,13 @@ export async function openPage({ page }: { page: Page }) {
       await strawboarPage.getUndoToastButton().click();
     },
 
-    undoFromRecent: async (title: string) => {
+    openRecentChore: async (title: string) => {
       await strawboarPage.openRecent();
-      await strawboarPage.getRecentUndoButton(title).click();
+      await strawboarPage.getRecentRow(title).first().getByText(title).click();
+    },
+
+    undoFromHistory: async () => {
+      await strawboarPage.getHistoryUndoButton().click();
     },
 
     filterByLabel: async (name: string) => {

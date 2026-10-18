@@ -23,7 +23,7 @@ fn view(model : Model, emit : Emit[Msg]) -> Html {
         [header_view(model, emit), content_view(model, emit)],
       ),
       backdrop_view(model.panel_open, emit),
-      panel_view(model.panel, model.labels, emit),
+      panel_view(model.panel, model.labels, model.recent, emit),
       undo_view(model.undo, emit),
     ],
   )
@@ -62,6 +62,14 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
         Some(id) => model.chores.filter(chore => chore.has_label(id))
         None => model.chores
       }
+      // Completions of archived chores are hidden while filtering.
+      let recent = match model.label_filter {
+        Some(_) =>
+          model.recent.filter(done => {
+            chores.iter().any(chore => chore.id == done.chore_id)
+          })
+        None => model.recent
+      }
       let dashboard = @core.Dashboard::new(chores, today)
       let state_of = (chore : @core.Chore) => row_state(model, chore.id)
       let labels_of = (chore : @core.Chore) => chore.labels_in(model.labels)
@@ -89,9 +97,16 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
           },
         ),
         chore_section(Later, "Later", dashboard.later, model, emit, chore => {
-          later_row(chore, labels_of(chore), state_of(chore), emit)
+          dated_row(
+            chore.id,
+            chore.title,
+            labels_of(chore),
+            chore.next_due,
+            state_of(chore),
+            emit,
+          )
         }),
-        recent_view(model.recent, model, today, emit),
+        recent_view(recent, model, today, emit),
       ])
     }
     (Failed, _) =>
@@ -422,23 +437,26 @@ fn chore_row(
 }
 
 ///|
-fn later_row(
-  chore : @core.Chore,
+/// A row of a title and a date on the right, used by Later and Done.
+fn dated_row(
+  chore_id : Int32,
+  title : String,
   labels : Array[@core.Label],
+  date : @core.Date,
   state : RowState,
   emit : Emit[Msg],
 ) -> Html {
   card(state, [
-    edit_area(chore.id, state, emit, [
+    edit_area(chore_id, state, emit, [
       div(
         style=[
           "display:flex;align-items:baseline;justify-content:space-between;gap:0.75rem",
         ],
         [
-          title_text(chore.title, labels),
+          title_text(title, labels),
           span(
             style=["font-size:0.8125rem;flex-shrink:0", muted],
-            short_date(chore.next_due),
+            short_date(date),
           ),
         ],
       ),
@@ -468,31 +486,33 @@ fn recent_view(
       @core.recent_monthly_first(recent, model.chores)
       .iter()
       .map(done => {
-        li(style=[card_style()], [
-          div(
-            style=[
-              "flex:1;min-width:0;display:flex;align-items:baseline;justify-content:space-between;gap:0.75rem;padding:0.625rem 0.75rem",
-            ],
-            [
-              title_text(done.title, []),
-              span(
-                style=["font-size:0.8125rem;flex-shrink:0", muted],
-                short_date(done.done_on),
-              ),
-            ],
-          ),
-          if done.can_undo(recent) {
-            @rui.button(
-              variant=Outline,
-              on_click=emit(UndoCompletion(done.completion_id)),
-              attrs=@html.Attrs::build().aria_label("Undo: \{done.title}"),
-              style=["flex-shrink:0;margin-right:0.25rem"],
-              "Undo",
+        match model.chores.iter().find_first(c => c.id == done.chore_id) {
+          Some(chore) =>
+            dated_row(
+              chore.id,
+              done.title,
+              chore.labels_in(model.labels),
+              done.done_on,
+              row_state(model, chore.id),
+              emit,
             )
-          } else {
-            @html.nothing
-          },
-        ])
+          // An archived chore cannot be opened.
+          None =>
+            li(style=[card_style()], [
+              div(
+                style=[
+                  "flex:1;min-width:0;display:flex;align-items:baseline;justify-content:space-between;gap:0.75rem;padding:0.625rem 0.75rem",
+                ],
+                [
+                  title_text(done.title, []),
+                  span(
+                    style=["font-size:0.8125rem;flex-shrink:0", muted],
+                    short_date(done.done_on),
+                  ),
+                ],
+              ),
+            ])
+        }
       })
       .collect(),
     ),
@@ -500,7 +520,11 @@ fn recent_view(
 }
 
 ///|
-fn history_view(history : HistoryState) -> Html {
+fn history_view(
+  history : HistoryState,
+  latest : @core.RecentDone?,
+  emit : Emit[Msg],
+) -> Html {
   let text = match history {
     Loading => "Loading..."
     Fetched(dates) => history_text(dates)
@@ -510,8 +534,26 @@ fn history_view(history : HistoryState) -> Html {
     id="chore-history",
     style=["display:flex;flex-direction:column;gap:0.25rem"],
     [
-      span(style=["font-size:0.875rem;font-weight:500"], "History"),
-      span(style=["font-size:0.875rem", muted], text),
+      div(
+        style=[
+          "display:flex;align-items:center;justify-content:space-between;gap:0.5rem",
+        ],
+        [
+          span(style=["font-size:0.875rem;font-weight:500"], "History"),
+          match latest {
+            Some(done) =>
+              @rui.button(
+                type_="button",
+                size=Sm,
+                variant=Outline,
+                on_click=emit(UndoCompletion(done.completion_id)),
+                "Undo \{short_date(done.done_on)}",
+              )
+            None => @html.nothing
+          },
+        ],
+      ),
+      span(id="chore-history-text", style=["font-size:0.875rem", muted], text),
     ],
   )
 }
@@ -544,6 +586,7 @@ fn backdrop_view(panel_open : Bool, emit : Emit[Msg]) -> Html {
 fn panel_view(
   panel : Panel?,
   labels : Array[@core.Label],
+  recent : Array[@core.RecentDone],
   emit : Emit[Msg],
 ) -> Html {
   @rui.sheet(
@@ -557,7 +600,7 @@ fn panel_view(
     ],
     match panel {
       None => []
-      Some(ChoreEditor(editor)) => editor_content(editor, labels, emit)
+      Some(ChoreEditor(editor)) => editor_content(editor, labels, recent, emit)
       Some(Transfer(transfer)) => transfer_content(transfer, emit)
       Some(Labels(form)) => labels_content(form, labels, emit)
     },
@@ -568,6 +611,7 @@ fn panel_view(
 fn editor_content(
   editor : Editor,
   labels : Array[@core.Label],
+  recent : Array[@core.RecentDone],
   emit : Emit[Msg],
 ) -> Array[Html] {
   let is_new = editor.id is None
@@ -678,7 +722,12 @@ fn editor_content(
         if is_new {
           @html.nothing
         } else {
-          history_view(editor.history)
+          // The newest completion of the chore can be undone.
+          history_view(
+            editor.history,
+            recent.iter().find_first(done => Some(done.chore_id) == editor.id),
+            emit,
+          )
         },
         if editor.error == "" {
           @html.nothing

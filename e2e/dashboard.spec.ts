@@ -131,6 +131,13 @@ test("filters chores by label", async ({ page }, testInfo) => {
   await strawboar.save();
   await expect(strawboar.getEditor()).toBeHidden();
   await expect(strawboar.getRowLabels(fan)).toHaveCount(0);
+
+  // Completions are filtered too.
+  await strawboar.complete(bath);
+  await strawboar.filterByLabel("#weekly");
+  await expect(strawboar.getRecentRow(bath)).toHaveCount(1);
+  await strawboar.filterByLabel("#kitchen");
+  await expect(strawboar.getRecentRow(bath)).toHaveCount(0);
 });
 
 test("manages labels with colors", async ({ page }, testInfo) => {
@@ -174,7 +181,7 @@ test("manages labels with colors", async ({ page }, testInfo) => {
   await expect(strawboar.getLabelFilter()).toHaveCount(0);
 });
 
-test("undoes the latest completion from the recent list", async ({ page, request }, testInfo) => {
+test("undoes the latest completion from the panel", async ({ page, request }, testInfo) => {
   const title = uniqueTitle(testInfo, "Water plants");
   const created = await request.post("/api/chores", {
     data: { title, interval_days: 4, next_due: today(), labels: [] },
@@ -190,16 +197,20 @@ test("undoes the latest completion from the recent list", async ({ page, request
 
   const strawboar = await openPage({ page });
   await expect(strawboar.getRecentRow(title)).toHaveCount(2);
-  await strawboar.openRecent();
-  await expect(strawboar.getRecentUndoButton(title)).toHaveCount(1);
+  await strawboar.openRecentChore(title);
+  await expect(strawboar.getHistory()).toContainText(`${shortDate(0)} · ${shortDate(0)}`);
+  await expect(strawboar.getHistoryUndoButton()).toHaveCount(1);
 
-  await strawboar.undoFromRecent(title);
+  await strawboar.undoFromHistory();
   await expect(strawboar.getRecentRow(title)).toHaveCount(1);
-  await strawboar.openLater();
-  await expect(strawboar.getLaterRow(title)).toBeVisible();
+  await expect(strawboar.getHistory()).not.toContainText(" · ");
 
-  await strawboar.undoFromRecent(title);
+  // The previous completion is the latest now, so it can be undone too.
+  await strawboar.undoFromHistory();
   await expect(strawboar.getRecentRow(title)).toHaveCount(0);
+  await expect(strawboar.getHistoryUndoButton()).toHaveCount(0);
+  await expect(strawboar.getHistory()).toContainText("Not done yet.");
+  await strawboar.close();
   await expect(strawboar.getDueRow(title)).toBeVisible();
 
   await strawboar.reload();
@@ -259,7 +270,7 @@ test("shows the history of a chore", async ({ page }, testInfo) => {
 
   const [, month, day] = today().split("-");
   const label = `${month}/${day}`;
-  await expect(strawboar.getHistory()).toHaveText(`History${label}`);
+  await expect(strawboar.getHistory()).toHaveText(label);
 });
 
 test("exports and imports definitions", async ({ page }, testInfo) => {
@@ -416,7 +427,9 @@ test("edits and archives a chore", async ({ page }, testInfo) => {
 
   // Undo so that the completion does not stay in the recent list.
   await strawboar.reload();
-  await strawboar.undoFromRecent(renamed);
+  await strawboar.openRecentChore(renamed);
+  await strawboar.undoFromHistory();
+  await strawboar.close();
   await expect(strawboar.getDueRow(renamed)).toBeVisible();
 
   await strawboar.openChore(renamed);
