@@ -16,10 +16,11 @@ export async function openPage({ page }: { page: Page }) {
     getToday: () => page.locator("#today"),
     getText: (text: string) => page.getByText(text),
 
+    getDueTrigger: () => page.locator("#due-trigger"),
     getDueRows: () => page.locator("#due li"),
     getDueRow: (title: string) => page.locator("#due li", { hasText: title }),
     getSoonRow: (title: string) => page.locator("#soon li", { hasText: title }),
-    getSoonTitle: () => page.locator("#soon h2"),
+    getSoonTitle: () => page.locator("#soon-trigger"),
     getLaterTrigger: () => page.locator("#later-trigger"),
     getLaterRow: (title: string) => page.locator("#later li", { hasText: title }),
     getCurrentRow: () => page.locator('li[aria-current="true"]'),
@@ -39,7 +40,7 @@ export async function openPage({ page }: { page: Page }) {
     getRowLabels: (title: string) =>
       page.locator("#due li, #soon li, #later li", { hasText: title }).locator('[data-slot="badge"]'),
 
-    getAddButton: () => page.getByRole("button", { name: "+ Add chore" }),
+    getAddButton: () => page.getByRole("button", { name: "+ Add" }),
     getEditor: () => editor,
     getEditorBackdrop: () => page.locator("#editor-backdrop"),
     getTitleInput: () => editor.getByLabel("Title"),

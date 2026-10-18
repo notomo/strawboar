@@ -48,7 +48,7 @@ fn header_view(model : Model, emit : Emit[Msg]) -> Html {
           on_click=emit(OpenTransfer),
           "Import / Export",
         ),
-        @rui.button(on_click=emit(OpenNew), "+ Add chore"),
+        @rui.button(on_click=emit(OpenNew), "+ Add"),
       ]),
     ],
   )
@@ -75,16 +75,23 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
         } else {
           @html.nothing
         },
-        chore_section("due", "Due", dashboard.due, chore => {
+        chore_section(Due, "Due", dashboard.due, model, emit, chore => {
           chore_row(chore, labels_of(chore), today, state_of(chore), emit)
         }),
-        chore_section("soon", soon_title(dashboard), dashboard.soon, chore => {
-          chore_row(chore, labels_of(chore), today, state_of(chore), emit)
-        }),
-        later_section(dashboard.later, model.later_open, emit, chore => {
+        chore_section(
+          Soon,
+          soon_title(dashboard),
+          dashboard.soon,
+          model,
+          emit,
+          chore => {
+            chore_row(chore, labels_of(chore), today, state_of(chore), emit)
+          },
+        ),
+        chore_section(Later, "Later", dashboard.later, model, emit, chore => {
           later_row(chore, labels_of(chore), state_of(chore), emit)
         }),
-        recent_view(model.recent, model.chores, today, model.recent_open, emit),
+        recent_view(model.recent, model, today, emit),
       ])
     }
     (Failed, _) =>
@@ -172,29 +179,29 @@ fn label_filter_view(
 let section_title_style = "font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase"
 
 ///|
-fn section_title(title : String) -> Html {
-  h2(style=["margin:0 0 0.5rem", section_title_style, muted], title)
-}
-
-///|
 fn list_style() -> String {
   "list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0.5rem"
 }
 
 ///|
 fn chore_section(
-  id : String,
+  section : Section,
   title : String,
   chores : Array[@core.Chore],
+  model : Model,
+  emit : Emit[Msg],
   row : (@core.Chore) -> Html,
 ) -> Html {
   if chores.is_empty() {
     return @html.nothing
   }
-  @html.section(id~, [
-    section_title(title),
+  collapsible_section(
+    section,
+    "\{title} (\{chores.length()})",
+    model,
+    emit,
     ul(style=[list_style()], chores.map(row)),
-  ])
+  )
 }
 
 ///|
@@ -214,34 +221,22 @@ fn recent_title(count : Int32, today : @core.Date) -> String {
 }
 
 ///|
-/// The later section, collapsed by default so that the dashboard stays short.
-fn later_section(
-  chores : Array[@core.Chore],
-  open : Bool,
-  emit : Emit[Msg],
-  row : (@core.Chore) -> Html,
-) -> Html {
-  if chores.is_empty() {
-    return @html.nothing
-  }
-  collapsible_section(
-    "later",
-    "Later (\{chores.length()})",
-    open,
-    emit.map(open => LaterToggled(open)),
-    ul(style=[list_style()], chores.map(row)),
-  )
-}
-
-///|
 /// A section whose content is shown by clicking its title.
 fn collapsible_section(
-  id : String,
+  section : Section,
   title : String,
-  open : Bool,
-  on_open_change : Emit[Bool],
+  model : Model,
+  emit : Emit[Msg],
   content : Html,
 ) -> Html {
+  let id = match section {
+    Due => "due"
+    Soon => "soon"
+    Later => "later"
+    Done => "recent"
+  }
+  let open = model.open_sections.contains(section)
+  let on_open_change = emit.map(open => SectionToggled(section, open))
   @html.section(id~, [
     @rui.collapsible_root(open~, [
       @rui.collapsible_trigger(
@@ -249,7 +244,7 @@ fn collapsible_section(
         controls="\{id}-content",
         on_open_change~,
         id="\{id}-trigger",
-        style=["padding:0 0 0.5rem;align-items:center"],
+        style=["padding:0.375rem 0.5rem;align-items:center"],
         // A heading is not allowed in a button.
         span(style=[section_title_style, muted], title),
       ),
@@ -257,7 +252,8 @@ fn collapsible_section(
         open~,
         labelledby="\{id}-trigger",
         id="\{id}-content",
-        body_style=["padding:0"],
+        // A gap between the title and the list, hidden with the content.
+        body_style=["padding:0.5rem 0 0"],
         content,
       ),
     ]),
@@ -454,23 +450,22 @@ fn later_row(
 /// "Done", collapsed by default like the later section.
 fn recent_view(
   recent : Array[@core.RecentDone],
-  chores : Array[@core.Chore],
+  model : Model,
   today : @core.Date,
-  open : Bool,
   emit : Emit[Msg],
 ) -> Html {
   if recent.is_empty() {
     return @html.nothing
   }
   collapsible_section(
-    "recent",
+    Done,
     recent_title(recent.length(), today),
-    open,
-    emit.map(open => RecentToggled(open)),
+    model,
+    emit,
     ul(
       // The collapsible content is muted by default.
       style=[list_style(), "color:var(--rui-foreground)"],
-      @core.recent_monthly_first(recent, chores)
+      @core.recent_monthly_first(recent, model.chores)
       .iter()
       .map(done => {
         li(style=[card_style()], [
@@ -581,7 +576,7 @@ fn editor_content(
       @rui.sheet_title(
         id="panel-title",
         if is_new {
-          "New chore"
+          "New"
         } else {
           "Edit chore"
         },

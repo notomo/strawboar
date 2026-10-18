@@ -32,6 +32,14 @@ test("adds a chore that is due today", async ({ page }, testInfo) => {
   await strawboar.addChore(title, "7");
 
   await expect(strawboar.getDueRow(title)).toContainText("weekly · not done yet");
+
+  // Due is expanded by default and can be collapsed.
+  await expect(strawboar.getDueTrigger()).toHaveAttribute("aria-expanded", "true");
+  await expect(strawboar.getDueTrigger()).toContainText("Due (1)");
+  await strawboar.getDueTrigger().click();
+  await expect(strawboar.getDueRow(title)).toBeHidden();
+  await strawboar.getDueTrigger().click();
+  await expect(strawboar.getDueRow(title)).toBeVisible();
 });
 
 test("validates the title", async ({ page }) => {
@@ -352,7 +360,7 @@ test("keeps a monthly chore on its day", async ({ page }, testInfo) => {
   await strawboar.addMonthlyChore(title, { firstDue, leadDays: "14" });
   await expect(strawboar.getSoonRow(title)).toContainText("monthly on the");
   await expect(strawboar.getSoonRow(title)).toContainText("not done yet · due in 10 days");
-  await expect(strawboar.getSoonTitle()).toHaveText(`Soon · until ${shortDate(10)}`);
+  await expect(strawboar.getSoonTitle()).toHaveText(`Soon · until ${shortDate(10)} (1)`);
 
   // Done early, it is due on the same day of the next month.
   await strawboar.complete(title);
