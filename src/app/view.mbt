@@ -114,13 +114,6 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
       let labels_of = (chore : @core.Chore) => chore.labels_in(model.labels)
       div(style=["display:flex;flex-direction:column;gap:1.5rem"], [
         notice_view(model.notice),
-        if model.chores.is_empty() {
-          p(style=["margin:0", muted], "No chores yet. Add one to get started.")
-        } else if dashboard.due.is_empty() && dashboard.soon.is_empty() {
-          p(style=["margin:0", muted], "Nothing due. Enjoy your day.")
-        } else {
-          @html.nothing
-        },
         chore_section(Due, "Due", dashboard.due, model, emit, chore => {
           chore_row(chore, labels_of(chore), today, state_of(chore), emit)
         }),
@@ -275,9 +268,6 @@ fn chore_section(
   emit : Emit[Msg],
   row : (@core.Chore) -> Html,
 ) -> Html {
-  if chores.is_empty() {
-    return @html.nothing
-  }
   collapsible_section(
     section,
     "\{title} (\{chores.length()})",
@@ -549,9 +539,6 @@ fn recent_view(
   today : @core.Date,
   emit : Emit[Msg],
 ) -> Html {
-  if recent.is_empty() {
-    return @html.nothing
-  }
   collapsible_section(
     Done,
     recent_title(recent.length(), today),
