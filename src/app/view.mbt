@@ -921,20 +921,12 @@ fn label_picker(
   emit : Emit[Msg],
 ) -> Html {
   @rui.field([
-    div(
-      style=["display:flex;align-items:center;justify-content:space-between"],
-      [
-        @rui.field_label(id="chore-labels-label", "Labels"),
-        @rui.button(
-          size=Xs,
-          variant=Ghost,
-          on_click=emit(OpenLabels),
-          "Edit labels",
-        ),
-      ],
-    ),
+    @rui.field_label(id="chore-labels-label", "Labels"),
     if labels.is_empty() {
-      span(style=["font-size:0.875rem", muted], "No labels yet.")
+      span(
+        style=["font-size:0.875rem", muted],
+        "No labels yet. Add them from Labels in the ⋮ menu.",
+      )
     } else {
       div(
         attrs=@html.Attrs::build()
