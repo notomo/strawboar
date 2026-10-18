@@ -75,3 +75,11 @@ test "history_text" {
   )
   inspect(history_text([]), content="Not done yet.")
 }
+
+///|
+test "recent_title" {
+  inspect(
+    recent_title(3, test_date("2026-10-03")),
+    content="Done · 09/27 – 10/03 (3)",
+  )
+}

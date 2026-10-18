@@ -58,9 +58,9 @@ test("marks a chore as done and undoes it", async ({ page }, testInfo) => {
   await expect(strawboar.getLaterRow(title)).toBeHidden();
   await strawboar.openLater();
   await expect(strawboar.getLaterRow(title)).toBeVisible();
-  // "Done this week" is collapsed by default.
+  // "Done" is collapsed by default.
   await expect(strawboar.getRecentTrigger()).toHaveAttribute("aria-expanded", "false");
-  await expect(strawboar.getRecentTrigger()).toContainText("Done this week (");
+  await expect(strawboar.getRecentTrigger()).toContainText(/Done · \d{2}\/\d{2} – \d{2}\/\d{2} \(\d+\)/);
   await expect(strawboar.getRecentRow(title)).toBeHidden();
   await strawboar.openRecent();
   await expect(strawboar.getRecentRow(title)).toBeVisible();

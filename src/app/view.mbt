@@ -83,7 +83,7 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
         later_section(dashboard.later, model.later_open, emit, chore => {
           later_row(chore, labels_of(chore), state_of(chore), emit)
         }),
-        recent_view(model.recent, model.chores, model.recent_open, emit),
+        recent_view(model.recent, model.chores, today, model.recent_open, emit),
       ])
     }
     (Failed, _) =>
@@ -203,6 +203,13 @@ fn soon_title(dashboard : @core.Dashboard) -> String {
     Some(date) => "Soon · until \{short_date(date)}"
     None => "Soon"
   }
+}
+
+///|
+/// e.g. `Done · 10/12 – 10/18 (3)`, so that it is clear which days the section covers.
+fn recent_title(count : Int32, today : @core.Date) -> String {
+  let from = today.add_days(1 - @core.RECENT_DAYS)
+  "Done · \{short_date(from)} – \{short_date(today)} (\{count})"
 }
 
 ///|
@@ -443,10 +450,11 @@ fn later_row(
 }
 
 ///|
-/// "Done this week", collapsed by default like the later section.
+/// "Done", collapsed by default like the later section.
 fn recent_view(
   recent : Array[@core.RecentDone],
   chores : Array[@core.Chore],
+  today : @core.Date,
   open : Bool,
   emit : Emit[Msg],
 ) -> Html {
@@ -455,7 +463,7 @@ fn recent_view(
   }
   collapsible_section(
     "recent",
-    "Done this week (\{recent.length()})",
+    recent_title(recent.length(), today),
     open,
     emit.map(open => RecentToggled(open)),
     ul(

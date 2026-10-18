@@ -95,7 +95,7 @@ struct Model {
   label_filter : Int32?
   /// Whether the later section is expanded. Collapsed by default.
   later_open : Bool
-  /// Whether "Done this week" is expanded. Collapsed by default.
+  /// Whether "Done" is expanded. Collapsed by default.
   recent_open : Bool
   undo : Undo?
   notice : String

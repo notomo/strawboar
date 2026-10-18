@@ -143,7 +143,7 @@ export async function openPage({ page }: { page: Page }) {
       await expect(trigger).toHaveAttribute("aria-expanded", "true");
     },
 
-    // "Done this week" is collapsed by default.
+    // "Done" is collapsed by default.
     openRecent: async () => {
       const trigger = strawboarPage.getRecentTrigger();
       if ((await trigger.getAttribute("aria-expanded")) !== "true") {
