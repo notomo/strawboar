@@ -1,6 +1,15 @@
 import { expect, type Page } from "@playwright/test";
 
 export async function openPage({ page }: { page: Page }) {
+  // Skip the transitions of panels and dialogs, which every action would wait for. Kept after reload.
+  await page.addInitScript(() => {
+    document.addEventListener("DOMContentLoaded", () => {
+      const style = document.createElement("style");
+      style.textContent =
+        "*, *::before, *::after, ::backdrop { transition-duration: 0s !important; transition-delay: 0s !important; animation-duration: 0s !important; }";
+      document.head.append(style);
+    });
+  });
   await page.goto("/");
 
   const editor = page.getByRole("dialog");
