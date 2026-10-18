@@ -68,12 +68,3 @@ fn chore_status(chore : @core.Chore, today : @core.Date) -> String {
   }
   "\{last_done_text(chore.last_done, today)}\{due}"
 }
-
-///|
-fn history_text(dates : Array[@core.Date]) -> String {
-  if dates.is_empty() {
-    "Not done yet."
-  } else {
-    dates.map(short_date).join(" · ")
-  }
-}

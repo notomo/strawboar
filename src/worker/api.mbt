@@ -120,8 +120,6 @@ async fn route(
       let completed = complete_chore(db, parse_id(id), today())
       json_response(completed.to_json(), 200)
     }
-    ("GET", ["api", "chores", id, "completions"]) =>
-      json_response(list_history(db, parse_id(id)).to_json(), 200)
     ("DELETE", ["api", "completions", id]) => {
       let chore = undo_completion(db, parse_id(id))
       json_response(chore.to_json(), 200)

@@ -228,18 +228,22 @@ test("undoes the latest completion from the panel", async ({ page, request }, te
   const strawboar = await openPage({ page });
   await expect(strawboar.getRecentRow(title)).toHaveCount(2);
   await strawboar.openRecentChore(title);
-  await expect(strawboar.getHistory()).toContainText(`${shortDate(0)} · ${shortDate(0)}`);
-  await expect(strawboar.getHistoryUndoButton()).toHaveCount(1);
+  await strawboar.askUndoLastDone();
+  await expect(strawboar.getConfirmDialog()).toContainText(`done on ${shortDate(0)}`);
+  await strawboar.getConfirmCancelButton().click();
+  await expect(strawboar.getRecentRow(title)).toHaveCount(2);
 
-  await strawboar.undoFromHistory();
+  await strawboar.undoLastDone();
   await expect(strawboar.getRecentRow(title)).toHaveCount(1);
-  await expect(strawboar.getHistory()).not.toContainText(" · ");
 
   // The previous completion is the latest now, so it can be undone too.
-  await strawboar.undoFromHistory();
+  await strawboar.undoLastDone();
   await expect(strawboar.getRecentRow(title)).toHaveCount(0);
-  await expect(strawboar.getHistoryUndoButton()).toHaveCount(0);
-  await expect(strawboar.getHistory()).toContainText("Not done yet.");
+  await strawboar.askUndoLastDone();
+  await expect(strawboar.getConfirmDialog()).toContainText("Nothing to undo");
+  await strawboar.getConfirmButton("OK").click();
+  await expect(strawboar.getConfirmDialog()).toBeHidden();
+  await expect(strawboar.getEditor()).toBeVisible();
   await strawboar.close();
   await expect(strawboar.getDueRow(title)).toBeVisible();
 
@@ -404,7 +408,7 @@ test("edits and archives a chore", async ({ page }, testInfo) => {
   await strawboar.openRecentChore(renamed);
   await expect(strawboar.getDescriptionInput()).toHaveValue(description);
   // Undo so that the completion does not stay in the recent list.
-  await strawboar.undoFromHistory();
+  await strawboar.undoLastDone();
   await strawboar.close();
   await expect(strawboar.getDueRow(renamed)).toBeVisible();
 

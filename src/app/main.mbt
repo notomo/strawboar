@@ -18,13 +18,6 @@ enum Load {
 } derive(Eq)
 
 ///|
-enum HistoryState {
-  Loading
-  Fetched(Array[@core.Date])
-  Unavailable
-} derive(Eq)
-
-///|
 enum RepeatKind {
   AfterDone
   Monthly
@@ -48,7 +41,6 @@ struct Editor {
   /// Selected label ids.
   labels : Array[Int32]
   error : String
-  history : HistoryState
 } derive(Eq)
 
 ///|
@@ -86,6 +78,14 @@ enum Section {
 } derive(Eq)
 
 ///|
+/// An action of the panel that asks for confirmation first.
+enum Confirm {
+  ConfirmArchive
+  ConfirmUndo
+  ConfirmDeleteLabel
+} derive(Eq)
+
+///|
 struct Undo {
   completion_id : Int32
   title : String
@@ -108,6 +108,8 @@ struct Model {
   /// Expanded sections. Due and Soon are expanded by default, Later and Done are not.
   open_sections : Array[Section]
   undo : Undo?
+  /// The action shown in the confirmation dialog.
+  confirm : Confirm?
   notice : String
 } derive(Eq)
 
@@ -122,7 +124,6 @@ enum Msg {
   DismissUndo(Int32)
   OpenNew
   OpenEdit(Int32)
-  HistoryLoaded(Int32, Result[@core.History, Error])
   TitleChanged(String)
   DescriptionChanged(String)
   RepeatChanged(RepeatKind)
@@ -151,8 +152,8 @@ enum Msg {
   Saved(Result[@core.Chore, Error])
   Archive
   Archived(Error?)
-  /// Opens the confirmation of the destructive action of the panel.
-  AskConfirm
+  /// Opens the confirmation of an action of the panel.
+  AskConfirm(Confirm)
   ClosePanel
   PanelClosed
 }
@@ -300,18 +301,8 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
           emit.map(result => Undone(result)),
         ),
       )
-    Undone(Ok(chore)) => {
-      let model = { ..model, chores: upsert(model.chores, chore), }
-      // The history in the open panel no longer has the completion.
-      match model.editor() {
-        Some(editor) if editor.id == Some(chore.id) =>
-          (
-            model.edit(editor => { ..editor, history: Loading, }),
-            fetch_history(chore.id, emit),
-          )
-        _ => (model, @rabbita.none)
-      }
-    }
+    Undone(Ok(chore)) =>
+      ({ ..model, chores: upsert(model.chores, chore), }, @rabbita.none)
     // The completion was removed from `recent` optimistically, so reload it.
     Undone(Err(_)) => ({ ..model, notice: "Failed to undo.", }, emit(Reload))
     DismissUndo(id) =>
@@ -338,7 +329,6 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
               next_due,
               labels: model.label_filter.map(id => [id]).unwrap_or([]),
               error: "",
-              history: Fetched([]),
             }),
           ),
           panel_open: true,
@@ -377,28 +367,13 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
                   next_due: chore.next_due.to_string(),
                   labels: chore.labels,
                   error: "",
-                  history: Loading,
                 }),
               ),
               panel_open: true,
             },
-            @rabbita.batch([
-              @dialog.show(EDITOR_ID, modal=false),
-              fetch_history(id, emit),
-            ]),
+            @dialog.show(EDITOR_ID, modal=false),
           )
         None => (model, @rabbita.none)
-      }
-    HistoryLoaded(id, result) =>
-      match model.editor() {
-        Some(editor) if editor.id == Some(id) => {
-          let history = match result {
-            Ok(history) => Fetched(history.dates)
-            Err(_) => Unavailable
-          }
-          (model.edit(editor => { ..editor, history, }), @rabbita.none)
-        }
-        _ => (model, @rabbita.none)
       }
     TitleChanged(title) =>
       (model.edit(editor => { ..editor, title, }), @rabbita.none)
@@ -669,7 +644,8 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
         }),
         @rabbita.none,
       )
-    AskConfirm => (model, @dialog.show(CONFIRM_ID))
+    AskConfirm(confirm) =>
+      ({ ..model, confirm: Some(confirm), }, @dialog.show(CONFIRM_ID))
     ClosePanel => ({ ..model, panel_open: false, }, @dialog.close(EDITOR_ID))
     PanelClosed => ({ ..model, panel_open: false, }, @rabbita.none)
   }
@@ -719,10 +695,13 @@ fn Model::keep_valid_filter(self : Model) -> Model {
 }
 
 ///|
-fn fetch_history(id : Int32, emit : Emit[Msg]) -> Cmd {
-  @http.get("/api/chores/\{id}/completions").expect_json(
-    emit.map(result => HistoryLoaded(id, result)),
-  )
+/// The latest completion of the chore being edited, which can be undone.
+fn Model::latest_done(self : Model) -> @core.RecentDone? {
+  match self.editor() {
+    Some({ id: Some(id), .. }) =>
+      self.recent.iter().find_first(done => done.chore_id == id)
+    _ => None
+  }
 }
 
 ///|
@@ -750,6 +729,7 @@ fn app() -> Val[Html] {
           label_filter: None,
           open_sections: [Due, Soon],
           undo: None,
+          confirm: None,
           notice: "",
         },
         emit(Reload),
@@ -757,7 +737,9 @@ fn app() -> Val[Html] {
     },
     update~,
   )
-  model.view2(menu_view(emit), (model, menu) => view(model, menu, emit))
+  model.view3(menu_view(emit), chore_menu_view(emit), (model, menu, chore_menu) => {
+    view(model, menu, chore_menu, emit)
+  })
 }
 
 ///|

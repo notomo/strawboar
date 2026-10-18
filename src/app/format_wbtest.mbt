@@ -68,15 +68,6 @@ test "dates" {
 }
 
 ///|
-test "history_text" {
-  inspect(
-    history_text([test_date("2026-09-24"), test_date("2026-09-17")]),
-    content="09/24 · 09/17",
-  )
-  inspect(history_text([]), content="Not done yet.")
-}
-
-///|
 test "recent_title" {
   inspect(
     recent_title(3, test_date("2026-10-03")),

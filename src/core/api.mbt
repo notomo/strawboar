@@ -57,21 +57,6 @@ pub extend RecentDone with ToJson::{to_json}
 pub extend RecentDone with @json.FromJson::{from_json}
 
 ///|
-/// Response of `GET /api/chores/:id/completions`, newest first.
-pub(all) struct History {
-  dates : Array[Date]
-} derive(Eq, ToJson, FromJson)
-
-///|
-pub extend History with Eq::{equal, not_equal}
-
-///|
-pub extend History with ToJson::{to_json}
-
-///|
-pub extend History with @json.FromJson::{from_json}
-
-///|
 pub extend ChoreList with Eq::{equal, not_equal}
 
 ///|

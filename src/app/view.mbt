@@ -9,7 +9,12 @@ let muted = "color:var(--rui-muted-foreground)"
 let panel_width = "24rem"
 
 ///|
-fn view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
+fn view(
+  model : Model,
+  menu : Html,
+  chore_menu : Html,
+  emit : Emit[Msg],
+) -> Html {
   @rui.theme(
     mode=Dark,
     style=[
@@ -32,8 +37,8 @@ fn view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
         ),
       ),
       backdrop_view(model.panel_open, emit),
-      panel_view(model.panel, model.labels, model.recent, emit),
-      confirm_view(model.panel, emit),
+      panel_view(model.panel, model.labels, chore_menu, emit),
+      confirm_view(model, emit),
       undo_view(model.undo, emit),
     ],
   )
@@ -231,6 +236,34 @@ fn menu_view(emit : Emit[Msg]) -> Val[Html] {
         [
           menu_item(menu, emit(OpenTransfer), "Import / Export"),
           menu_item(menu, emit(OpenLabels), "Labels"),
+        ],
+      ),
+    ])
+  })
+}
+
+///|
+/// The menu next to the save button of the chore panel. It is created once
+/// like the app menu, so its items do not depend on the chore.
+fn chore_menu_view(emit : Emit[Msg]) -> Val[Html] {
+  @rui.dropdown_menu(id="chore-menu", menu => {
+    span([
+      @rui.dropdown_menu_trigger(
+        menu,
+        variant=Ghost,
+        size=Icon,
+        aria_label="Chore actions",
+        style=["font-size:1.25rem"],
+        "⋮",
+      ),
+      @rui.dropdown_menu_content(
+        menu,
+        align=End,
+        aria_label="Chore actions",
+        style=["--rui-menu-min-width:0"],
+        [
+          menu_item(menu, emit(AskConfirm(ConfirmUndo)), "Undo last done"),
+          menu_item(menu, emit(AskConfirm(ConfirmArchive)), "Archive"),
         ],
       ),
     ])
@@ -584,45 +617,6 @@ fn recent_view(
 }
 
 ///|
-fn history_view(
-  history : HistoryState,
-  latest : @core.RecentDone?,
-  emit : Emit[Msg],
-) -> Html {
-  let text = match history {
-    Loading => "Loading..."
-    Fetched(dates) => history_text(dates)
-    Unavailable => "Failed to load history."
-  }
-  div(
-    id="chore-history",
-    style=["display:flex;flex-direction:column;gap:0.25rem"],
-    [
-      div(
-        style=[
-          "display:flex;align-items:center;justify-content:space-between;gap:0.5rem",
-        ],
-        [
-          span(style=["font-size:0.875rem;font-weight:500"], "History"),
-          match latest {
-            Some(done) =>
-              @rui.button(
-                type_="button",
-                size=Sm,
-                variant=Outline,
-                on_click=emit(UndoCompletion(done.completion_id)),
-                "Undo \{short_date(done.done_on)}",
-              )
-            None => @html.nothing
-          },
-        ],
-      ),
-      span(id="chore-history-text", style=["font-size:0.875rem", muted], text),
-    ],
-  )
-}
-
-///|
 fn field_view(id : String, label : String, input : Html) -> Html {
   @rui.field([@rui.field_label(for_=id, label), input])
 }
@@ -650,7 +644,7 @@ fn backdrop_view(panel_open : Bool, emit : Emit[Msg]) -> Html {
 fn panel_view(
   panel : Panel?,
   labels : Array[@core.Label],
-  recent : Array[@core.RecentDone],
+  chore_menu : Html,
   emit : Emit[Msg],
 ) -> Html {
   @rui.sheet(
@@ -664,7 +658,8 @@ fn panel_view(
     ],
     match panel {
       None => []
-      Some(ChoreEditor(editor)) => editor_content(editor, labels, recent, emit)
+      Some(ChoreEditor(editor)) =>
+        editor_content(editor, labels, chore_menu, emit)
       Some(Transfer(transfer)) => transfer_content(transfer, emit)
       Some(Labels(form)) => labels_content(form, labels, emit)
     },
@@ -675,7 +670,7 @@ fn panel_view(
 fn editor_content(
   editor : Editor,
   labels : Array[@core.Label],
-  recent : Array[@core.RecentDone],
+  chore_menu : Html,
   emit : Emit[Msg],
 ) -> Array[Html] {
   let is_new = editor.id is None
@@ -785,16 +780,6 @@ fn editor_content(
         } else {
           @html.nothing
         },
-        if is_new {
-          @html.nothing
-        } else {
-          // The newest completion of the chore can be undone.
-          history_view(
-            editor.history,
-            recent.iter().find_first(done => Some(done.chore_id) == editor.id),
-            emit,
-          )
-        },
         if editor.error == "" {
           @html.nothing
         } else {
@@ -802,20 +787,15 @@ fn editor_content(
         },
         div(
           style=[
-            "display:flex;justify-content:space-between;gap:0.5rem;margin-top:auto",
+            "display:flex;justify-content:flex-end;gap:0.5rem;margin-top:auto",
           ],
           [
-            if is_new {
-              span("")
-            } else {
-              @rui.button(
-                type_="button",
-                variant=Ghost,
-                on_click=emit(AskConfirm),
-                "Archive",
-              )
-            },
             @rui.button(type_="submit", "Save"),
+            if is_new {
+              @html.nothing
+            } else {
+              chore_menu
+            },
           ],
         ),
       ],
@@ -1094,7 +1074,7 @@ fn labels_content(
               @rui.button(
                 type_="button",
                 variant=Ghost,
-                on_click=emit(AskConfirm),
+                on_click=emit(AskConfirm(ConfirmDeleteLabel)),
                 "Delete",
               )
             },
@@ -1209,23 +1189,37 @@ fn transfer_content(transfer : Transfer, emit : Emit[Msg]) -> Array[Html] {
 ///|
 /// Asks before an action that is hard to undo: archiving the chore or
 /// deleting the label open in the panel.
-fn confirm_view(panel : Panel?, emit : Emit[Msg]) -> Html {
-  let (title, description, action, msg) = match panel {
-    Some(Labels({ id: Some(_), name, .. })) =>
+fn confirm_view(model : Model, emit : Emit[Msg]) -> Html {
+  // `None` as the action only lets the dialog be closed.
+  let (title, description, action) = match (model.confirm, model.panel) {
+    (Some(ConfirmDeleteLabel), Some(Labels({ id: Some(_), name, .. }))) =>
       (
         "Delete label?",
         "\"\{name}\" is removed from every chore.",
-        "Delete",
-        DeleteLabel,
+        Some(("Delete", DeleteLabel)),
       )
-    Some(ChoreEditor({ id: Some(_), title, .. })) =>
+    (Some(ConfirmArchive), Some(ChoreEditor({ id: Some(_), title, .. }))) =>
       (
         "Archive chore?",
         "\"\{title}\" is hidden from the dashboard.",
-        "Archive",
-        Archive,
+        Some(("Archive", Archive)),
       )
-    _ => ("", "", "", Archive)
+    (Some(ConfirmUndo), Some(ChoreEditor({ id: Some(_), title, .. }))) =>
+      match model.latest_done() {
+        Some(done) =>
+          (
+            "Undo last done?",
+            "\"\{title}\" done on \{short_date(done.done_on)} is undone.",
+            Some(("Undo", UndoCompletion(done.completion_id))),
+          )
+        None =>
+          (
+            "Nothing to undo",
+            "\"\{title}\" was not done in the last 7 days.",
+            None,
+          )
+      }
+    _ => ("", "", None)
   }
   @rui.alert_dialog(
     id=CONFIRM_ID,
@@ -1239,16 +1233,22 @@ fn confirm_view(panel : Panel?, emit : Emit[Msg]) -> Html {
         @rui.alert_dialog_title(id="confirm-title", title),
         @rui.alert_dialog_description(id="confirm-description", description),
       ]),
-      @rui.alert_dialog_footer([
-        @rui.alert_dialog_cancel("Cancel"),
-        // Submitting the form closes the dialog. Closing it otherwise does nothing.
-        @rui.button(
-          type_="submit",
-          variant=Destructive,
-          on_click=emit(msg),
-          action,
-        ),
-      ]),
+      @rui.alert_dialog_footer(
+        match action {
+          Some((text, msg)) =>
+            [
+              @rui.alert_dialog_cancel("Cancel"),
+              // Submitting the form closes the dialog. Closing it otherwise does nothing.
+              @rui.button(
+                type_="submit",
+                variant=Destructive,
+                on_click=emit(msg),
+                text,
+              ),
+            ]
+          None => [@rui.alert_dialog_cancel("OK")]
+        },
+      ),
     ]),
   )
 }

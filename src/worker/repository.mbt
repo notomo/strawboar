@@ -320,31 +320,6 @@ async fn list_recent_done(
 }
 
 ///|
-let history_limit = 20
-
-///|
-async fn list_history(db : @cloudflare.D1Database, id : Int32) -> @core.History {
-  // Also checks that the chore exists.
-  let _ = find_chore(db, id)
-  let rows = db
-    .prepare(
-      "SELECT done_on FROM completions WHERE chore_id = ? ORDER BY done_on DESC, id DESC LIMIT ?",
-    )
-    .bind([Integer(id), Integer(history_limit)])
-    .all()
-  let dates = decode_rows(rows).map(row => {
-    guard row is { "done_on": done_on, .. } else {
-      raise InternalError("invalid history row")
-    }
-    let date : @core.Date = @json.from_json(done_on) catch {
-      error => raise InternalError("invalid history row: \{error}")
-    }
-    date
-  })
-  { dates, }
-}
-
-///|
 let label_columns = "id, name, color"
 
 ///|

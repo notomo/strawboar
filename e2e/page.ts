@@ -64,11 +64,9 @@ export async function openPage({ page }: { page: Page }) {
       editor.getByRole("group", { name: "Labels" }).getByRole("button", { name, exact: true }),
     getFirstDueInput: () => editor.getByLabel("First due"),
     getEditorError: () => editor.locator("#chore-editor-error"),
-    getHistory: () => editor.locator("#chore-history-text"),
-    getHistoryUndoButton: () => editor.locator("#chore-history").getByRole("button", { name: /^Undo/ }),
     getSaveButton: () => editor.getByRole("button", { name: "Save" }),
     getCloseButton: () => editor.getByRole("button", { name: "Close" }),
-    getArchiveButton: () => editor.getByRole("button", { name: "Archive" }),
+    getChoreMenuButton: () => editor.getByRole("button", { name: "Chore actions" }),
 
     getConfirmDialog: () => confirmDialog,
     getConfirmButton: (name: string) => confirmDialog.getByRole("button", { name, exact: true }),
@@ -181,8 +179,16 @@ export async function openPage({ page }: { page: Page }) {
       await strawboarPage.getRecentRow(title).first().getByText(title).click();
     },
 
-    undoFromHistory: async () => {
-      await strawboarPage.getHistoryUndoButton().click();
+    // Asks to undo the latest completion of the chore in the panel.
+    askUndoLastDone: async () => {
+      await strawboarPage.openChoreMenuItem("Undo last done");
+      await expect(confirmDialog).toBeVisible();
+    },
+
+    undoLastDone: async () => {
+      await strawboarPage.askUndoLastDone();
+      await strawboarPage.getConfirmButton("Undo").click();
+      await expect(confirmDialog).toBeHidden();
     },
 
     toggleLabelFilter: async (name: string) => {
@@ -197,14 +203,19 @@ export async function openPage({ page }: { page: Page }) {
       await strawboarPage.getCloseButton().click();
     },
 
+    openChoreMenuItem: async (name: string) => {
+      await strawboarPage.getChoreMenuButton().click();
+      await strawboarPage.getMenuItem(name).click();
+    },
+
     archive: async () => {
-      await strawboarPage.getArchiveButton().click();
+      await strawboarPage.openChoreMenuItem("Archive");
       await strawboarPage.getConfirmButton("Archive").click();
     },
 
     // Asks to archive the chore in the panel and cancels it.
     cancelArchive: async () => {
-      await strawboarPage.getArchiveButton().click();
+      await strawboarPage.openChoreMenuItem("Archive");
       await expect(confirmDialog).toBeVisible();
       await strawboarPage.getConfirmCancelButton().click();
       await expect(confirmDialog).toBeHidden();
@@ -212,7 +223,7 @@ export async function openPage({ page }: { page: Page }) {
 
     // Asks to archive the chore in the panel and dismisses it by clicking outside of it.
     dismissArchive: async () => {
-      await strawboarPage.getArchiveButton().click();
+      await strawboarPage.openChoreMenuItem("Archive");
       await expect(confirmDialog).toBeVisible();
       await page.mouse.click(8, 8);
       await expect(confirmDialog).toBeHidden();
