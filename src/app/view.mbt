@@ -9,7 +9,7 @@ let muted = "color:var(--rui-muted-foreground)"
 let panel_width = "24rem"
 
 ///|
-fn view(model : Model, emit : Emit[Msg]) -> Html {
+fn view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
   @rui.theme(
     mode=Dark,
     style=[
@@ -20,7 +20,7 @@ fn view(model : Model, emit : Emit[Msg]) -> Html {
         style=[
           "box-sizing:border-box;padding:1.25rem 1rem;max-width:40rem;margin:0 auto;display:flex;flex-direction:column;gap:1.5rem",
         ],
-        [header_view(model, emit), content_view(model, emit)],
+        [header_view(model, menu, emit), content_view(model, emit)],
       ),
       backdrop_view(model.panel_open, emit),
       panel_view(model.panel, model.labels, model.recent, emit),
@@ -30,7 +30,7 @@ fn view(model : Model, emit : Emit[Msg]) -> Html {
 }
 
 ///|
-fn header_view(model : Model, emit : Emit[Msg]) -> Html {
+fn header_view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
   div(
     style=[
       "display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.5rem",
@@ -42,13 +42,9 @@ fn header_view(model : Model, emit : Emit[Msg]) -> Html {
         style=["margin:0;font-size:1.5rem;font-weight:600;white-space:nowrap"],
         model.today.map(long_date).unwrap_or(""),
       ),
-      div(style=["display:flex;gap:0.5rem;margin-left:auto"], [
-        @rui.button(
-          variant=Outline,
-          on_click=emit(OpenTransfer),
-          "Import / Export",
-        ),
-        @rui.button(on_click=emit(OpenNew), "+ Add"),
+      div(style=["display:flex;gap:0.25rem;margin-left:auto"], [
+        @rui.button(size=Lg, on_click=emit(OpenNew), "+ Add"),
+        menu,
       ]),
     ],
   )
@@ -179,14 +175,51 @@ fn label_filter_view(
           }),
         ],
       ),
-      @rui.button(
-        size=Sm,
-        variant=Ghost,
-        on_click=emit(OpenLabels),
-        style=["flex-shrink:0;margin-left:auto"],
-        "Edit labels",
-      ),
     ],
+  )
+}
+
+///|
+/// The menu next to the add button, for actions used less often.
+/// It is stateful, so it is created once and passed to `view`.
+fn menu_view(emit : Emit[Msg]) -> Val[Html] {
+  @rui.dropdown_menu(id="app-menu", menu => {
+    span([
+      @rui.dropdown_menu_trigger(
+        menu,
+        variant=Ghost,
+        size=IconLg,
+        aria_label="Menu",
+        // Wider than the icon size so that it is easy to tap.
+        style=["width:3rem;font-size:1.25rem"],
+        "⋮",
+      ),
+      @rui.dropdown_menu_content(
+        menu,
+        align=End,
+        aria_label="Menu",
+        // Fit the items instead of the default minimum width.
+        style=["--rui-menu-min-width:0"],
+        [
+          menu_item(menu, emit(OpenTransfer), "Import / Export"),
+          menu_item(menu, emit(OpenLabels), "Edit labels"),
+        ],
+      ),
+    ])
+  })
+}
+
+///|
+fn menu_item(
+  menu : @rui.DropdownMenuScope,
+  on_select : Cmd,
+  label : String,
+) -> Html {
+  @rui.dropdown_menu_item(
+    menu,
+    on_select~,
+    style=["padding:0.5rem 0.75rem"],
+    label,
   )
 }
 

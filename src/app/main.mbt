@@ -751,7 +751,7 @@ fn app() -> Val[Html] {
     },
     update~,
   )
-  model.view(model => view(model, emit))
+  model.view2(menu_view(emit), (model, menu) => view(model, menu, emit))
 }
 
 ///|

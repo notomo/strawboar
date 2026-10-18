@@ -60,7 +60,8 @@ export async function openPage({ page }: { page: Page }) {
     getCloseButton: () => editor.getByRole("button", { name: "Close" }),
     getArchiveButton: () => editor.getByRole("button", { name: "Archive" }),
 
-    getLabelsButton: () => editor.getByRole("button", { name: "Edit labels", exact: true }),
+    getMenuButton: () => page.getByRole("button", { name: "Menu" }),
+    getMenuItem: (name: string) => page.getByRole("menuitem", { name }),
     getLabelList: () => editor.locator("#label-list"),
     getLabelListButton: (name: string) => editor.getByRole("button", { name: `Edit label: ${name}` }),
     getLabelNameInput: () => editor.getByLabel("Name"),
@@ -70,13 +71,13 @@ export async function openPage({ page }: { page: Page }) {
     getDeleteLabelButton: () => editor.getByRole("button", { name: "Delete" }),
     getLabelFormError: () => editor.locator("#label-form-error"),
 
-    getTransferButton: () => page.getByRole("button", { name: "Import / Export" }),
     getDefinitionsInput: () => editor.getByLabel("Labels and chores (JSON)"),
     getImportButton: () => editor.getByRole("button", { name: "Import", exact: true }),
     getTransferError: () => editor.locator("#transfer-error"),
 
     openTransfer: async () => {
-      await strawboarPage.getTransferButton().click();
+      await strawboarPage.getMenuButton().click();
+      await strawboarPage.getMenuItem("Import / Export").click();
     },
 
     importDefinitions: async (text: string) => {
@@ -106,10 +107,9 @@ export async function openPage({ page }: { page: Page }) {
       await expect(editor).toBeHidden();
     },
 
-    // Through the chore editor, which offers it even when there is no label yet.
     openLabels: async () => {
-      await strawboarPage.getAddButton().click();
-      await strawboarPage.getLabelsButton().click();
+      await strawboarPage.getMenuButton().click();
+      await strawboarPage.getMenuItem("Edit labels").click();
       await expect(strawboarPage.getLabelNameInput()).toBeVisible();
     },
 
