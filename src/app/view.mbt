@@ -32,7 +32,7 @@ fn view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
 ///|
 /// The header and the label filter, kept at the top while scrolling.
 /// It is above the backdrop like the rows raised while the panel is open,
-/// so that they do not scroll over it.
+/// so that they do not scroll over it, and has its own backdrop instead.
 fn sticky_view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
   div(
     style=[
@@ -41,7 +41,24 @@ fn sticky_view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
     [
       header_view(model, menu, emit),
       label_filter_view(model.labels, model.label_filter, emit),
+      sticky_backdrop_view(model.panel_open, emit),
     ],
+  )
+}
+
+///|
+/// Closes the panel when tapping the sticky header, like `backdrop_view`.
+fn sticky_backdrop_view(panel_open : Bool, emit : Emit[Msg]) -> Html {
+  if !panel_open {
+    return @html.nothing
+  }
+  div(
+    id="sticky-backdrop",
+    style=[
+      "position:absolute;inset:0;background:rgb(0 0 0 / 0.4);cursor:pointer",
+    ],
+    on_click=emit(ClosePanel),
+    "",
   )
 }
 

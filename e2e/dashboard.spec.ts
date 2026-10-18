@@ -238,6 +238,20 @@ test("closes the panel by tapping outside of it", async ({ page }, testInfo) => 
   await expect(strawboar.getTitleInput()).toHaveValue(second);
 });
 
+test("closes the panel by tapping the header", async ({ page }, testInfo) => {
+  const title = uniqueTitle(testInfo, "Sweep porch");
+  const strawboar = await openPage({ page });
+  await strawboar.addChore(title, "7");
+
+  // The panel covers the whole screen on mobile.
+  test.skip(strawboar.isNarrow(), "the header is not visible beside the panel");
+  await strawboar.openChore(title);
+  await expect(strawboar.getTitleInput()).toHaveValue(title);
+
+  await strawboar.tapOutsideEditor({ hasTouch: !!testInfo.project.use.hasTouch, onHeader: true });
+  await expect(strawboar.getEditor()).toBeHidden();
+});
+
 test("switches the panel to another chore while it is open", async ({ page }, testInfo) => {
   const first = uniqueTitle(testInfo, "Wipe windows");
   const second = uniqueTitle(testInfo, "Descale kettle");

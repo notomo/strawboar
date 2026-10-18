@@ -187,11 +187,13 @@ export async function openPage({ page }: { page: Page }) {
     },
 
     // The left edge is outside of the panel on every viewport.
-    tapOutsideEditor: async ({ hasTouch }: { hasTouch: boolean }) => {
+    // On the sticky header or below it.
+    tapOutsideEditor: async ({ hasTouch, onHeader = false }: { hasTouch: boolean; onHeader?: boolean }) => {
+      const y = onHeader ? 8 : 300;
       if (hasTouch) {
-        await page.touchscreen.tap(8, 300);
+        await page.touchscreen.tap(8, y);
       } else {
-        await page.mouse.click(8, 300);
+        await page.mouse.click(8, y);
       }
     },
 
