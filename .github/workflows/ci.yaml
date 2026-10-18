@@ -27,7 +27,6 @@ jobs:
       - uses: hustcer/setup-moonbit@87e2bdf5cf20d3b6f5c5f266a8a513f503bb5b76 # v1.25
       - run: moon update
 
-      - run: npm run build
       - run: npm run check
       - run: npm run test
       - run: cp .dev.vars.example .dev.vars
