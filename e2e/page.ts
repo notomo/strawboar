@@ -55,8 +55,8 @@ export async function openPage({ page }: { page: Page }) {
     getTitleInput: () => editor.getByLabel("Title"),
     getDescriptionInput: () => editor.getByLabel("Description"),
     getIntervalInput: () => editor.getByLabel("Every (days)"),
-    getRepeatButton: (name: string) =>
-      editor.getByRole("group", { name: "Repeat" }).getByRole("button", { name, exact: true }),
+    getRepeatTab: (name: string) =>
+      editor.getByRole("tablist", { name: "Repeat" }).getByRole("tab", { name, exact: true }),
     getMonthsInput: () => editor.getByLabel("Every (months)"),
     getDayInput: () => editor.getByLabel("Day of month"),
     getLeadDaysInput: () => editor.getByLabel("Soon from (days before)"),
@@ -113,7 +113,7 @@ export async function openPage({ page }: { page: Page }) {
     addMonthlyChore: async (title: string, { firstDue, leadDays }: { firstDue: string; leadDays: string }) => {
       await strawboarPage.getAddButton().click();
       await strawboarPage.getTitleInput().fill(title);
-      await strawboarPage.getRepeatButton("Monthly").click();
+      await strawboarPage.getRepeatTab("Monthly").click();
       await strawboarPage.getMonthsInput().fill("1");
       await strawboarPage.getLeadDaysInput().fill(leadDays);
       await strawboarPage.getFirstDueInput().fill(firstDue);

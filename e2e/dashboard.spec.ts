@@ -370,7 +370,7 @@ test("keeps a monthly chore on its day", async ({ page }, testInfo) => {
   await expect(strawboar.getSoonRow(title)).toBeVisible();
 
   await strawboar.openChore(title);
-  await expect(strawboar.getRepeatButton("Monthly")).toHaveAttribute("aria-pressed", "true");
+  await expect(strawboar.getRepeatTab("Monthly")).toHaveAttribute("aria-selected", "true");
   await expect(strawboar.getDayInput()).toHaveValue(String(Number(firstDue.slice(8))));
   await strawboar.getLeadDaysInput().fill("0");
   await strawboar.save();

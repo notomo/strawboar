@@ -715,52 +715,62 @@ fn editor_content(
             on_input=emit.map(value => DescriptionChanged(value)),
           ),
         ),
-        repeat_picker(editor.repeat, emit),
-        ..match editor.repeat {
-          AfterDone =>
-            [
-              number_field(
-                "chore-interval",
-                "Every (days)",
-                min=1,
-                max=@core.MAX_INTERVAL_DAYS,
-                editor.interval,
-                emit.map(value => IntervalChanged(value)),
-              ),
-            ]
-          Monthly =>
-            [
-              number_field(
-                "chore-months",
-                "Every (months)",
-                min=1,
-                max=@core.MAX_INTERVAL_MONTHS,
-                editor.months,
-                emit.map(value => MonthsChanged(value)),
-              ),
-              // A new chore is due on the day of its first due date.
-              if is_new {
-                @html.nothing
-              } else {
+        label_picker(editor.labels, labels, emit),
+        repeat_tabs(
+          editor.repeat,
+          [
+            (
+              AfterDone,
+              "After done",
+              [
                 number_field(
-                  "chore-day",
-                  "Day of month",
+                  "chore-interval",
+                  "Every (days)",
                   min=1,
-                  max=31,
-                  editor.day,
-                  emit.map(value => DayChanged(value)),
-                )
-              },
-              number_field(
-                "chore-lead-days",
-                "Soon from (days before)",
-                min=0,
-                max=@core.MAX_INTERVAL_MONTHS * 28,
-                editor.lead_days,
-                emit.map(value => LeadDaysChanged(value)),
-              ),
-            ]
-        },
+                  max=@core.MAX_INTERVAL_DAYS,
+                  editor.interval,
+                  emit.map(value => IntervalChanged(value)),
+                ),
+              ],
+            ),
+            (
+              Monthly,
+              "Monthly",
+              [
+                number_field(
+                  "chore-months",
+                  "Every (months)",
+                  min=1,
+                  max=@core.MAX_INTERVAL_MONTHS,
+                  editor.months,
+                  emit.map(value => MonthsChanged(value)),
+                ),
+                // A new chore is due on the day of its first due date.
+                if is_new {
+                  @html.nothing
+                } else {
+                  number_field(
+                    "chore-day",
+                    "Day of month",
+                    min=1,
+                    max=31,
+                    editor.day,
+                    emit.map(value => DayChanged(value)),
+                  )
+                },
+                number_field(
+                  "chore-lead-days",
+                  "Soon from (days before)",
+                  min=0,
+                  max=@core.MAX_INTERVAL_MONTHS * 28,
+                  editor.lead_days,
+                  emit.map(value => LeadDaysChanged(value)),
+                ),
+              ],
+            ),
+          ],
+          emit,
+        ),
         if is_new {
           field_view(
             "chore-next-due",
@@ -775,7 +785,6 @@ fn editor_content(
         } else {
           @html.nothing
         },
-        label_picker(editor.labels, labels, emit),
         if is_new {
           @html.nothing
         } else {
@@ -839,26 +848,67 @@ fn number_field(
 }
 
 ///|
-/// Chooses whether the chore is due after it was done or on a fixed day.
-fn repeat_picker(selected : RepeatKind, emit : Emit[Msg]) -> Html {
+/// Chooses whether the chore is due after it was done or on a fixed day,
+/// showing the fields of the selected kind.
+fn repeat_tabs(
+  selected : RepeatKind,
+  kinds : Array[(RepeatKind, String, Array[Html])],
+  emit : Emit[Msg],
+) -> Html {
+  let value = (kind : RepeatKind) => {
+    match kind {
+      AfterDone => "after-done"
+      Monthly => "monthly"
+    }
+  }
+  let on_value_change = emit.map(value => {
+    RepeatChanged(
+      match value {
+        "monthly" => Monthly
+        _ => AfterDone
+      },
+    )
+  })
   @rui.field([
     @rui.field_label(id="chore-repeat-label", "Repeat"),
-    div(
-      attrs=@html.Attrs::build()
-        .role("group")
-        .aria_labelledby("chore-repeat-label"),
-      style=["display:flex;flex-wrap:wrap;gap:0.5rem"],
-      [(AfterDone, "After done"), (Monthly, "Monthly")].map(option => {
-        let (kind, text) = option
-        let pressed = selected == kind
-        @rui.button(
-          size=Sm,
-          variant=if pressed { Secondary } else { Outline },
-          on_click=emit(RepeatChanged(kind)),
-          attrs=@html.Attrs::build().aria_pressed(pressed.to_string()),
-          text,
-        )
-      }),
+    @rui.tabs_root(
+      value=value(selected),
+      style=["gap:1rem"],
+      [
+        @rui.tabs_list(
+          attrs=@html.Attrs::build().aria_labelledby("chore-repeat-label"),
+          style=["width:100%"],
+          kinds.map(kind => {
+            let (kind, text, _) = kind
+            @rui.tabs_trigger(
+              id="chore-repeat-\{value(kind)}",
+              value=value(kind),
+              selected=selected == kind,
+              controls="chore-repeat-\{value(kind)}-panel",
+              on_value_change~,
+              text,
+            )
+          }),
+        ),
+        ..kinds.map(kind => {
+          let (kind, _, fields) = kind
+          @rui.tabs_content(
+            id="chore-repeat-\{value(kind)}-panel",
+            value=value(kind),
+            selected=selected == kind,
+            labelledby="chore-repeat-\{value(kind)}",
+            // Only the fields of the selected kind are rendered.
+            if selected == kind {
+              div(
+                style=["display:flex;flex-direction:column;gap:1.25rem"],
+                fields,
+              )
+            } else {
+              @html.nothing
+            },
+          )
+        }),
+      ],
     ),
   ])
 }
