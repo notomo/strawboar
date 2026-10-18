@@ -36,7 +36,7 @@ fn view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
 fn sticky_view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
   div(
     style=[
-      "position:sticky;top:0;z-index:12;display:flex;flex-direction:column;gap:0.75rem;padding:1.25rem 0 0.5rem;background:var(--rui-background)",
+      "position:sticky;top:0;z-index:12;display:flex;flex-direction:column;gap:0.75rem;padding:1.25rem 0 0.75rem;border-bottom:1px solid var(--rui-input);box-shadow:0 8px 12px -8px rgb(0 0 0 / 0.8);background:var(--rui-background)",
     ],
     [
       header_view(model, menu, emit),
