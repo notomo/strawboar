@@ -18,13 +18,29 @@ fn view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
     [
       div(
         style=[
-          "box-sizing:border-box;padding:1.25rem 1rem;max-width:40rem;margin:0 auto;display:flex;flex-direction:column;gap:1.5rem",
+          "box-sizing:border-box;padding:0 1rem 1.25rem;max-width:40rem;margin:0 auto;display:flex;flex-direction:column;gap:1rem",
         ],
-        [header_view(model, menu, emit), content_view(model, emit)],
+        [sticky_view(model, menu, emit), content_view(model, emit)],
       ),
       backdrop_view(model.panel_open, emit),
       panel_view(model.panel, model.labels, model.recent, emit),
       undo_view(model.undo, emit),
+    ],
+  )
+}
+
+///|
+/// The header and the label filter, kept at the top while scrolling.
+/// It is above the backdrop like the rows raised while the panel is open,
+/// so that they do not scroll over it.
+fn sticky_view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
+  div(
+    style=[
+      "position:sticky;top:0;z-index:12;display:flex;flex-direction:column;gap:0.75rem;padding:1.25rem 0 0.5rem;background:var(--rui-background)",
+    ],
+    [
+      header_view(model, menu, emit),
+      label_filter_view(model.labels, model.label_filter, emit),
     ],
   )
 }
@@ -71,7 +87,6 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
       let labels_of = (chore : @core.Chore) => chore.labels_in(model.labels)
       div(style=["display:flex;flex-direction:column;gap:1.5rem"], [
         notice_view(model.notice),
-        label_filter_view(model.labels, model.label_filter, emit),
         if model.chores.is_empty() {
           p(style=["margin:0", muted], "No chores yet. Add one to get started.")
         } else if dashboard.due.is_empty() && dashboard.soon.is_empty() {
@@ -129,9 +144,7 @@ fn notice_view(notice : String) -> Html {
 }
 
 ///|
-/// Filters the dashboard by a label, next to the button that opens the labels panel.
-/// Hidden until a label exists, so that it takes no space; the chore editor
-/// also opens the labels panel.
+/// Filters the dashboard by a label. Hidden until a label exists, so that it takes no space.
 fn label_filter_view(
   labels : Array[@core.Label],
   label_filter : Int32?,
@@ -155,26 +168,21 @@ fn label_filter_view(
     )
   }
   div(
-    style=["display:flex;align-items:center;gap:0.5rem;margin-bottom:-0.5rem"],
+    id="label-filter",
+    attrs=@html.Attrs::build().role("group").aria_label("Filter by label"),
+    style=["display:flex;gap:0.5rem;overflow-x:auto;min-width:0"],
     [
-      div(
-        id="label-filter",
-        attrs=@html.Attrs::build().role("group").aria_label("Filter by label"),
-        style=["display:flex;gap:0.5rem;overflow-x:auto;flex:1;min-width:0"],
-        [
-          chip("All", [@html.text("All")], None),
-          ..labels.map(label => {
-            chip(
-              "#\{label.name}",
-              [
-                span(style=["color:\{color_value(label.color)}"], "#"),
-                @html.text(label.name),
-              ],
-              Some(label.id),
-            )
-          }),
-        ],
-      ),
+      chip("All", [@html.text("All")], None),
+      ..labels.map(label => {
+        chip(
+          "#\{label.name}",
+          [
+            span(style=["color:\{color_value(label.color)}"], "#"),
+            @html.text(label.name),
+          ],
+          Some(label.id),
+        )
+      }),
     ],
   )
 }
