@@ -217,7 +217,7 @@ fn new_label_form(labels : Array[@core.Label]) -> LabelForm {
   let color = @core.label_colors
     .iter()
     .find_first(color => !labels.iter().any(label => label.color == color))
-    .unwrap_or(Gray)
+    .unwrap_or(@core.label_colors[0])
   { id: None, name: "", color, error: "", }
 }
 

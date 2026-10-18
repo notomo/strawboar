@@ -113,9 +113,9 @@ test("filters chores by label", async ({ page }, testInfo) => {
 
   await expect(strawboar.getRowLabels(bath)).toHaveText(["bath", "weekly"]);
 
-  await expect(strawboar.getLabelFilterButtons()).toHaveText(["All", "#bath", "#kitchen", "#weekly"]);
-  await strawboar.filterByLabel("#kitchen");
-  await expect(strawboar.getLabelFilterButton("#kitchen")).toHaveAttribute("aria-pressed", "true");
+  await expect(strawboar.getLabelFilterButtons()).toHaveText(["All", "bath", "kitchen", "weekly"]);
+  await strawboar.filterByLabel("kitchen");
+  await expect(strawboar.getLabelFilterButton("kitchen")).toHaveAttribute("aria-pressed", "true");
   await expect(strawboar.getDueRow(fan)).toBeVisible();
   await expect(strawboar.getDueRow(bath)).toHaveCount(0);
 
@@ -134,9 +134,9 @@ test("filters chores by label", async ({ page }, testInfo) => {
 
   // Completions are filtered too.
   await strawboar.complete(bath);
-  await strawboar.filterByLabel("#weekly");
+  await strawboar.filterByLabel("weekly");
   await expect(strawboar.getRecentRow(bath)).toHaveCount(1);
-  await strawboar.filterByLabel("#kitchen");
+  await strawboar.filterByLabel("kitchen");
   await expect(strawboar.getRecentRow(bath)).toHaveCount(0);
 });
 
@@ -319,7 +319,7 @@ test("exports and imports definitions", async ({ page }, testInfo) => {
 test("opens import/export at the top of a long list", async ({ page, request }, testInfo) => {
   const labelIds: number[] = [];
   for (const name of ["a", "b"]) {
-    const response = await request.post("/api/labels", { data: { name, color: "gray" } });
+    const response = await request.post("/api/labels", { data: { name, color: "blue" } });
     labelIds.push(((await response.json()) as { id: number }).id);
   }
   for (let i = 0; i < 15; i++) {

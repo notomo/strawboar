@@ -58,7 +58,7 @@ test "export and parse definitions" {
       #|    },
       #|    {
       #|      "name": "weekly",
-      #|      "color": "gray"
+      #|      "color": "blue"
       #|    }
       #|  ],
       #|  "chores": [
@@ -108,7 +108,7 @@ test "parse_definitions errors" {
         ),
       )
     }),
-    content="Label #1: name and a color (gray, red, orange, yellow, green, teal, blue, purple, pink) are required.",
+    content="Label #1: name and a color (red, orange, yellow, green, teal, blue, purple, pink) are required.",
   )
   inspect(
     import_error(() => {

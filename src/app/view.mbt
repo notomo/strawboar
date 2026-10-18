@@ -153,18 +153,24 @@ fn label_filter_view(
   if labels.is_empty() {
     return @html.nothing
   }
-  let chip = (name : String, content : Array[Html], value : Int32?) => {
+  // Colored by the label, not the primary color, so that only the add button stands out.
+  let chip = (name : String, value : Int32?, color : String) => {
     let pressed = label_filter == value
     @rui.button(
       size=Sm,
-      variant=if pressed { Default } else { Outline },
+      variant=Outline,
       on_click=emit(FilterByLabel(value)),
-      // The flex layout would put a space between "#" and the name.
-      attrs=@html.Attrs::build()
-        .aria_label(name)
-        .aria_pressed(pressed.to_string()),
-      style=["flex-shrink:0;gap:0"],
-      content,
+      attrs=@html.Attrs::build().aria_pressed(pressed.to_string()),
+      // Hex alpha suffixes: 0x33 = 20%, 0x66 = 40%.
+      style=[
+        "flex-shrink:0",
+        if pressed {
+          "color:\{color};background:\{color}33;border-color:\{color}"
+        } else {
+          "border-color:\{color}66"
+        },
+      ],
+      name,
     )
   }
   div(
@@ -172,16 +178,10 @@ fn label_filter_view(
     attrs=@html.Attrs::build().role("group").aria_label("Filter by label"),
     style=["display:flex;gap:0.5rem;overflow-x:auto;min-width:0"],
     [
-      chip("All", [@html.text("All")], None),
+      // A neutral gray, which no label has.
+      chip("All", None, "#a1a1aa"),
       ..labels.map(label => {
-        chip(
-          "#\{label.name}",
-          [
-            span(style=["color:\{color_value(label.color)}"], "#"),
-            @html.text(label.name),
-          ],
-          Some(label.id),
-        )
+        chip(label.name, Some(label.id), color_value(label.color))
       }),
     ],
   )
@@ -363,7 +363,6 @@ fn card(state : RowState, content : Array[Html]) -> Html {
 /// CSS color of a label color, readable on the dark theme.
 fn color_value(color : @core.LabelColor) -> String {
   match color {
-    Gray => "#a1a1aa"
     Red => "#f87171"
     Orange => "#fb923c"
     Yellow => "#facc15"

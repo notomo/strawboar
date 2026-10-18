@@ -1,8 +1,8 @@
 ///|
 /// Colors a label can have. The palette is fixed so that every label stays
-/// readable on the dark theme.
+/// readable on the dark theme. There is no gray, as it would look like the
+/// neutral UI.
 pub(all) enum LabelColor {
-  Gray
   Red
   Orange
   Yellow
@@ -18,7 +18,6 @@ pub extend LabelColor with Eq::{equal, not_equal}
 
 ///|
 pub let label_colors : Array[LabelColor] = [
-  Gray,
   Red,
   Orange,
   Yellow,
@@ -32,7 +31,6 @@ pub let label_colors : Array[LabelColor] = [
 ///|
 pub fn LabelColor::name(self : LabelColor) -> String {
   match self {
-    Gray => "gray"
     Red => "red"
     Orange => "orange"
     Yellow => "yellow"

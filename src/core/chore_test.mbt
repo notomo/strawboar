@@ -165,7 +165,7 @@ test "chore json round trip" {
 fn label(
   id : Int32,
   name : String,
-  color~ : @core.LabelColor = Gray,
+  color~ : @core.LabelColor = Blue,
 ) -> @core.Label {
   { id, name, color, }
 }
