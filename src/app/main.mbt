@@ -5,6 +5,9 @@ using @rabbita {type Cmd, type Emit, type Html, type Val}
 const EDITOR_ID = "chore-editor"
 
 ///|
+const CONFIRM_ID = "confirm-dialog"
+
+///|
 const UNDO_DURATION_MS = 8000
 
 ///|
@@ -148,6 +151,8 @@ enum Msg {
   Saved(Result[@core.Chore, Error])
   Archive
   Archived(Error?)
+  /// Opens the confirmation of the destructive action of the panel.
+  AskConfirm
   ClosePanel
   PanelClosed
 }
@@ -664,6 +669,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
         }),
         @rabbita.none,
       )
+    AskConfirm => (model, @dialog.show(CONFIRM_ID))
     ClosePanel => ({ ..model, panel_open: false, }, @dialog.close(EDITOR_ID))
     PanelClosed => ({ ..model, panel_open: false, }, @rabbita.none)
   }

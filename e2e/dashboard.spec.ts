@@ -352,6 +352,22 @@ test("opens import/export at the top of a long list", async ({ page, request }, 
   expect(await strawboar.getDefinitionsScroll()).toEqual({ panel: 0, textarea: 0 });
 });
 
+test("keeps the section title at the top while scrolling", async ({ page, request }, testInfo) => {
+  for (let i = 0; i < 20; i++) {
+    const response = await request.post("/api/chores", {
+      data: { title: uniqueTitle(testInfo, `Chore ${i}`), interval_days: 7, next_due: today(), labels: [] },
+    });
+    expect(response.ok()).toBeTruthy();
+  }
+  const strawboar = await openPage({ page });
+  await expect(strawboar.getDueRows()).toHaveCount(20);
+
+  await strawboar.scrollToBottom();
+  await expect(strawboar.getDueRows().first()).not.toBeInViewport();
+  await expect(strawboar.getDueTrigger()).toBeInViewport();
+  await expect(strawboar.getToday()).toBeInViewport();
+});
+
 test("serves the web app manifest", async ({ request }) => {
   const response = await request.get("/manifest.webmanifest");
   expect(response.ok()).toBeTruthy();
@@ -449,9 +465,13 @@ test("edits and archives a chore", async ({ page }, testInfo) => {
   await expect(strawboar.getDueRow(renamed)).toBeVisible();
 
   await strawboar.openChore(renamed);
+  await strawboar.cancelArchive();
+  await expect(strawboar.getEditor()).toBeVisible();
+  await expect(strawboar.getDueRow(renamed)).toBeVisible();
+
   await strawboar.archive();
   await expect(strawboar.getEditor()).toBeHidden();
-  await expect(strawboar.getText(renamed)).toHaveCount(0);
+  await expect(strawboar.getDueRow(renamed)).toHaveCount(0);
 
   await strawboar.reload();
   await expect(strawboar.getToday()).not.toBeEmpty();

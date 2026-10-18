@@ -13,17 +13,27 @@ fn view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
   @rui.theme(
     mode=Dark,
     style=[
-      "min-height:100dvh;background:var(--rui-background);color:var(--rui-foreground)",
+      "height:100dvh;display:flex;flex-direction:column;background:var(--rui-background);color:var(--rui-foreground)",
     ],
     [
+      div(style=["flex-shrink:0;padding:0 1rem"], [
+        sticky_view(model, menu, emit),
+      ]),
+      // Scrolled instead of the page, so that the section titles can stick
+      // below the header whatever its height is.
       div(
-        style=[
-          "box-sizing:border-box;padding:0 1rem 1.25rem;max-width:40rem;margin:0 auto;display:flex;flex-direction:column;gap:1rem",
-        ],
-        [sticky_view(model, menu, emit), content_view(model, emit)],
+        id="dashboard",
+        style=["flex:1;min-height:0;overflow-y:auto;padding:0 1rem"],
+        div(
+          style=[
+            "box-sizing:border-box;max-width:40rem;margin:0 auto;padding:1rem 0 1.25rem",
+          ],
+          content_view(model, emit),
+        ),
       ),
       backdrop_view(model.panel_open, emit),
       panel_view(model.panel, model.labels, model.recent, emit),
+      confirm_view(model.panel, emit),
       undo_view(model.undo, emit),
     ],
   )
@@ -32,28 +42,28 @@ fn view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
 ///|
 /// The header and the label filter, kept at the top while scrolling.
 /// It is above the backdrop like the rows raised while the panel is open,
-/// so that they do not scroll over it, and has its own backdrop instead.
+/// so that its shadow is not hidden by them, and has its own backdrop instead.
 fn sticky_view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
   div(
     style=[
-      "position:sticky;top:0;z-index:12;display:flex;flex-direction:column;gap:0.75rem;padding:1.25rem 0 0.75rem;border-bottom:1px solid var(--rui-input);box-shadow:0 8px 12px -8px rgb(0 0 0 / 0.8);background:var(--rui-background)",
+      "box-sizing:border-box;max-width:40rem;margin:0 auto;position:relative;z-index:12;display:flex;flex-direction:column;gap:0.75rem;padding:1.25rem 0 0.75rem;border-bottom:1px solid var(--rui-input);box-shadow:0 8px 12px -8px rgb(0 0 0 / 0.8);background:var(--rui-background)",
     ],
     [
       header_view(model, menu, emit),
       label_filter_view(model.labels, model.label_filter, emit),
-      sticky_backdrop_view(model.panel_open, emit),
+      raised_backdrop_view(model.panel_open, emit),
     ],
   )
 }
 
 ///|
-/// Closes the panel when tapping the sticky header, like `backdrop_view`.
-fn sticky_backdrop_view(panel_open : Bool, emit : Emit[Msg]) -> Html {
+/// Closes the panel when tapping an element raised above the backdrop,
+/// like `backdrop_view`. The element must be positioned.
+fn raised_backdrop_view(panel_open : Bool, emit : Emit[Msg]) -> Html {
   if !panel_open {
     return @html.nothing
   }
   div(
-    id="sticky-backdrop",
     style=[
       "position:absolute;inset:0;background:rgb(0 0 0 / 0.4);cursor:pointer",
     ],
@@ -147,7 +157,10 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
           @rui.button(variant=Outline, on_click=emit(Reload), "Retry"),
         ],
       )
-    _ => @rui.spinner(label="Loading")
+    _ =>
+      div(style=["display:flex;justify-content:center;padding:4rem 0"], [
+        @rui.spinner(label="Loading", style=["width:2rem;height:2rem", muted]),
+      ])
   }
 }
 
@@ -224,7 +237,7 @@ fn menu_view(emit : Emit[Msg]) -> Val[Html] {
         style=["--rui-menu-min-width:0"],
         [
           menu_item(menu, emit(OpenTransfer), "Import / Export"),
-          menu_item(menu, emit(OpenLabels), "Edit labels"),
+          menu_item(menu, emit(OpenLabels), "Labels"),
         ],
       ),
     ])
@@ -309,14 +322,24 @@ fn collapsible_section(
   let on_open_change = emit.map(open => SectionToggled(section, open))
   @html.section(id~, [
     @rui.collapsible_root(open~, [
-      @rui.collapsible_trigger(
-        open~,
-        controls="\{id}-content",
-        on_open_change~,
-        id="\{id}-trigger",
-        style=["padding:0.375rem 0.5rem;align-items:center"],
-        // A heading is not allowed in a button.
-        span(style=[section_title_style, muted], title),
+      // Kept at the top of the dashboard while its section is scrolled.
+      // It is above the backdrop like the header.
+      div(
+        style=[
+          "position:sticky;top:0;z-index:12;background:var(--rui-background)",
+        ],
+        [
+          @rui.collapsible_trigger(
+            open~,
+            controls="\{id}-content",
+            on_open_change~,
+            id="\{id}-trigger",
+            style=["padding:0.375rem 0.5rem;align-items:center"],
+            // A heading is not allowed in a button.
+            span(style=[section_title_style, muted], title),
+          ),
+          raised_backdrop_view(model.panel_open, emit),
+        ],
       ),
       @rui.collapsible_content(
         open~,
@@ -671,14 +694,7 @@ fn editor_content(
   let is_new = editor.id is None
   [
     @rui.sheet_header([
-      @rui.sheet_title(
-        id="panel-title",
-        if is_new {
-          "New"
-        } else {
-          "Edit chore"
-        },
-      ),
+      @rui.sheet_title(id="panel-title", if is_new { "New" } else { "Edit" }),
     ]),
     @html.form(
       on_submit=emit(Submit),
@@ -799,7 +815,7 @@ fn editor_content(
               @rui.button(
                 type_="button",
                 variant=Ghost,
-                on_click=emit(Archive),
+                on_click=emit(AskConfirm),
                 "Archive",
               )
             },
@@ -1049,7 +1065,7 @@ fn labels_content(
               @rui.button(
                 type_="button",
                 variant=Ghost,
-                on_click=emit(DeleteLabel),
+                on_click=emit(AskConfirm),
                 "Delete",
               )
             },
@@ -1159,4 +1175,50 @@ fn transfer_content(transfer : Transfer, emit : Emit[Msg]) -> Array[Html] {
       ],
     ),
   ]
+}
+
+///|
+/// Asks before an action that is hard to undo: archiving the chore or
+/// deleting the label open in the panel.
+fn confirm_view(panel : Panel?, emit : Emit[Msg]) -> Html {
+  let (title, description, action, msg) = match panel {
+    Some(Labels({ id: Some(_), name, .. })) =>
+      (
+        "Delete label?",
+        "\"\{name}\" is removed from every chore.",
+        "Delete",
+        DeleteLabel,
+      )
+    Some(ChoreEditor({ id: Some(_), title, .. })) =>
+      (
+        "Archive chore?",
+        "\"\{title}\" is hidden from the dashboard.",
+        "Archive",
+        Archive,
+      )
+    _ => ("", "", "", Archive)
+  }
+  @rui.alert_dialog(
+    id=CONFIRM_ID,
+    attrs=@html.Attrs::build()
+      .aria_labelledby("confirm-title")
+      .aria_describedby("confirm-description"),
+    style=["position:fixed;z-index:30"],
+    @html.form(method_="dialog", [
+      @rui.alert_dialog_header([
+        @rui.alert_dialog_title(id="confirm-title", title),
+        @rui.alert_dialog_description(id="confirm-description", description),
+      ]),
+      @rui.alert_dialog_footer([
+        @rui.alert_dialog_cancel("Cancel"),
+        // Submitting the form closes the dialog. Closing it otherwise does nothing.
+        @rui.button(
+          type_="submit",
+          variant=Destructive,
+          on_click=emit(msg),
+          action,
+        ),
+      ]),
+    ]),
+  )
 }

@@ -7,6 +7,7 @@ export async function openPage({ page }: { page: Page }) {
   const labelFilter = page.locator("#label-filter");
   const recent = page.locator("#recent");
   const undoToast = page.locator("#undo-toast");
+  const confirmDialog = page.getByRole("alertdialog");
 
   const strawboarPage = {
     reload: async () => {
@@ -60,6 +61,10 @@ export async function openPage({ page }: { page: Page }) {
     getCloseButton: () => editor.getByRole("button", { name: "Close" }),
     getArchiveButton: () => editor.getByRole("button", { name: "Archive" }),
 
+    getConfirmDialog: () => confirmDialog,
+    getConfirmButton: (name: string) => confirmDialog.getByRole("button", { name, exact: true }),
+    getConfirmCancelButton: () => confirmDialog.getByRole("button", { name: "Cancel" }),
+
     getMenuButton: () => page.getByRole("button", { name: "Menu" }),
     getMenuItem: (name: string) => page.getByRole("menuitem", { name }),
     getLabelList: () => editor.locator("#label-list"),
@@ -109,7 +114,7 @@ export async function openPage({ page }: { page: Page }) {
 
     openLabels: async () => {
       await strawboarPage.getMenuButton().click();
-      await strawboarPage.getMenuItem("Edit labels").click();
+      await strawboarPage.getMenuItem("Labels").click();
       await expect(strawboarPage.getLabelNameInput()).toBeVisible();
     },
 
@@ -129,6 +134,7 @@ export async function openPage({ page }: { page: Page }) {
 
     deleteLabel: async () => {
       await strawboarPage.getDeleteLabelButton().click();
+      await strawboarPage.getConfirmButton("Delete").click();
     },
 
     openChore: async (title: string) => {
@@ -184,6 +190,15 @@ export async function openPage({ page }: { page: Page }) {
 
     archive: async () => {
       await strawboarPage.getArchiveButton().click();
+      await strawboarPage.getConfirmButton("Archive").click();
+    },
+
+    // Asks to archive the chore in the panel and cancels it.
+    cancelArchive: async () => {
+      await strawboarPage.getArchiveButton().click();
+      await expect(confirmDialog).toBeVisible();
+      await strawboarPage.getConfirmCancelButton().click();
+      await expect(confirmDialog).toBeHidden();
     },
 
     // The left edge is outside of the panel on every viewport.
@@ -205,14 +220,20 @@ export async function openPage({ page }: { page: Page }) {
         textarea: textarea.scrollTop,
       })),
 
+    scrollToBottom: async () => {
+      await page.locator("#dashboard").evaluate((element) => element.scrollTo(0, element.scrollHeight));
+    },
+
+    // Of the page and of the dashboard scrolled below the header.
     getOverflow: () =>
-      page.evaluate(() => {
-        const root = document.scrollingElement!;
-        return {
-          x: root.scrollWidth - root.clientWidth,
-          y: root.scrollHeight - root.clientHeight,
-        };
-      }),
+      page.evaluate(() =>
+        [document.scrollingElement!, document.getElementById("dashboard")!]
+          .map((element) => ({
+            x: element.scrollWidth - element.clientWidth,
+            y: element.scrollHeight - element.clientHeight,
+          }))
+          .reduce((a, b) => ({ x: Math.max(a.x, b.x), y: Math.max(a.y, b.y) })),
+      ),
   };
 
   return strawboarPage;
