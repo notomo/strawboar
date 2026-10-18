@@ -170,7 +170,7 @@ export async function openPage({ page }: { page: Page }) {
       await strawboarPage.getHistoryUndoButton().click();
     },
 
-    filterByLabel: async (name: string) => {
+    toggleLabelFilter: async (name: string) => {
       await strawboarPage.getLabelFilterButton(name).click();
     },
 

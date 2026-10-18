@@ -113,13 +113,15 @@ test("filters chores by label", async ({ page }, testInfo) => {
 
   await expect(strawboar.getRowLabels(bath)).toHaveText(["bath", "weekly"]);
 
-  await expect(strawboar.getLabelFilterButtons()).toHaveText(["All", "bath", "kitchen", "weekly"]);
-  await strawboar.filterByLabel("kitchen");
+  await expect(strawboar.getLabelFilterButtons()).toHaveText(["bath", "kitchen", "weekly"]);
+  await strawboar.toggleLabelFilter("kitchen");
   await expect(strawboar.getLabelFilterButton("kitchen")).toHaveAttribute("aria-pressed", "true");
   await expect(strawboar.getDueRow(fan)).toBeVisible();
   await expect(strawboar.getDueRow(bath)).toHaveCount(0);
 
-  await strawboar.filterByLabel("All");
+  // Clicking the active label clears the filter.
+  await strawboar.toggleLabelFilter("kitchen");
+  await expect(strawboar.getLabelFilterButton("kitchen")).toHaveAttribute("aria-pressed", "false");
   await expect(strawboar.getDueRow(bath)).toBeVisible();
 
   // Labels are kept after reload and can be edited.
@@ -134,9 +136,9 @@ test("filters chores by label", async ({ page }, testInfo) => {
 
   // Completions are filtered too.
   await strawboar.complete(bath);
-  await strawboar.filterByLabel("weekly");
+  await strawboar.toggleLabelFilter("weekly");
   await expect(strawboar.getRecentRow(bath)).toHaveCount(1);
-  await strawboar.filterByLabel("kitchen");
+  await strawboar.toggleLabelFilter("kitchen");
   await expect(strawboar.getRecentRow(bath)).toHaveCount(0);
 });
 

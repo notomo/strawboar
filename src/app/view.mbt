@@ -153,37 +153,34 @@ fn label_filter_view(
   if labels.is_empty() {
     return @html.nothing
   }
-  // Colored by the label, not the primary color, so that only the add button stands out.
-  let chip = (name : String, value : Int32?, color : String) => {
-    let pressed = label_filter == value
-    @rui.button(
-      size=Sm,
-      variant=Outline,
-      on_click=emit(FilterByLabel(value)),
-      attrs=@html.Attrs::build().aria_pressed(pressed.to_string()),
-      // Hex alpha suffixes: 0x33 = 20%, 0x66 = 40%.
-      style=[
-        "flex-shrink:0",
-        if pressed {
-          "color:\{color};background:\{color}33;border-color:\{color}"
-        } else {
-          "border-color:\{color}66"
-        },
-      ],
-      name,
-    )
-  }
   div(
     id="label-filter",
     attrs=@html.Attrs::build().role("group").aria_label("Filter by label"),
     style=["display:flex;gap:0.5rem;overflow-x:auto;min-width:0"],
-    [
-      // A neutral gray, which no label has.
-      chip("All", None, "#a1a1aa"),
-      ..labels.map(label => {
-        chip(label.name, Some(label.id), color_value(label.color))
-      }),
-    ],
+    labels.map(label => {
+      let pressed = label_filter == Some(label.id)
+      let color = color_value(label.color)
+      // Colored by the label, not the primary color, so that only the add button stands out.
+      @rui.button(
+        size=Sm,
+        variant=Outline,
+        // Clicking the active label clears the filter.
+        on_click=emit(
+          FilterByLabel(if pressed { None } else { Some(label.id) }),
+        ),
+        attrs=@html.Attrs::build().aria_pressed(pressed.to_string()),
+        // Hex alpha suffixes: 0x33 = 20%, 0x66 = 40%.
+        style=[
+          "flex-shrink:0",
+          if pressed {
+            "color:\{color};background:\{color}33;border-color:\{color}"
+          } else {
+            "border-color:\{color}66"
+          },
+        ],
+        label.name,
+      )
+    }),
   )
 }
 
