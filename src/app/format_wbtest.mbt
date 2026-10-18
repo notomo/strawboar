@@ -63,7 +63,7 @@ test "ordinal" {
 
 ///|
 test "dates" {
-  inspect(long_date(test_date("2026-09-24")), content="Thu, 09/24")
+  inspect(long_date(test_date("2026-09-24")), content="2026-09-24 (Thu)")
   inspect(short_date(test_date("2026-10-03")), content="10/03")
 }
 

@@ -54,9 +54,9 @@ fn short_date(date : @core.Date) -> String {
 }
 
 ///|
-/// e.g. `Thu, 09/24`
+/// e.g. `2026-09-24 (Thu)`
 fn long_date(date : @core.Date) -> String {
-  "\{date.weekday().label()}, \{short_date(date)}"
+  "\{date} (\{date.weekday().label()})"
 }
 
 ///|

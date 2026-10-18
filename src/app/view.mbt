@@ -33,15 +33,16 @@ fn view(model : Model, emit : Emit[Msg]) -> Html {
 fn header_view(model : Model, emit : Emit[Msg]) -> Html {
   div(
     style=[
-      "display:flex;align-items:center;justify-content:space-between;gap:0.5rem",
+      "display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.5rem",
     ],
     [
+      // The buttons wrap below the date on a narrow screen.
       h1(
         id="today",
-        style=["margin:0;font-size:1.5rem;font-weight:600"],
+        style=["margin:0;font-size:1.5rem;font-weight:600;white-space:nowrap"],
         model.today.map(long_date).unwrap_or(""),
       ),
-      div(style=["display:flex;gap:0.5rem"], [
+      div(style=["display:flex;gap:0.5rem;margin-left:auto"], [
         @rui.button(
           variant=Outline,
           on_click=emit(OpenTransfer),
@@ -467,36 +468,36 @@ fn recent_view(
     open,
     emit.map(open => RecentToggled(open)),
     ul(
-      style=[list_style(), "gap:0.25rem;font-size:0.875rem", muted],
+      // The collapsible content is muted by default.
+      style=[list_style(), "color:var(--rui-foreground)"],
       @core.recent_monthly_first(recent, chores)
       .iter()
       .map(done => {
-        li(
-          style=[
-            "display:flex;align-items:center;gap:0.75rem;min-height:1.75rem;padding:0 0.75rem",
-          ],
-          [
-            span(
-              style=[
-                "flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap",
-              ],
-              "✓ \{done.title}",
-            ),
-            if done.can_undo(recent) {
-              @rui.button(
-                size=Xs,
-                variant=Ghost,
-                on_click=emit(UndoCompletion(done.completion_id)),
-                attrs=@html.Attrs::build().aria_label("Undo: \{done.title}"),
-                style=["flex-shrink:0"],
-                "Undo",
-              )
-            } else {
-              @html.nothing
-            },
-            span(style=["flex-shrink:0"], short_date(done.done_on)),
-          ],
-        )
+        li(style=[card_style()], [
+          div(
+            style=[
+              "flex:1;min-width:0;display:flex;align-items:baseline;justify-content:space-between;gap:0.75rem;padding:0.625rem 0.75rem",
+            ],
+            [
+              title_text(done.title, []),
+              span(
+                style=["font-size:0.8125rem;flex-shrink:0", muted],
+                short_date(done.done_on),
+              ),
+            ],
+          ),
+          if done.can_undo(recent) {
+            @rui.button(
+              variant=Outline,
+              on_click=emit(UndoCompletion(done.completion_id)),
+              attrs=@html.Attrs::build().aria_label("Undo: \{done.title}"),
+              style=["flex-shrink:0;margin-right:0.25rem"],
+              "Undo",
+            )
+          } else {
+            @html.nothing
+          },
+        ])
       })
       .collect(),
     ),
