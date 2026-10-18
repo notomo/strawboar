@@ -29,6 +29,11 @@ test("adds a chore that is due today", async ({ page }, testInfo) => {
   const title = uniqueTitle(testInfo, "Clean bath");
   const strawboar = await openPage({ page });
 
+  await strawboar.getAddButton().click();
+  await strawboar.save();
+  await expect(strawboar.getEditorError()).toHaveText("Title is required.");
+  await strawboar.close();
+
   await strawboar.addChore(title, "7");
 
   await expect(strawboar.getDueRow(title)).toContainText("weekly · not done yet");
@@ -40,15 +45,6 @@ test("adds a chore that is due today", async ({ page }, testInfo) => {
   await expect(strawboar.getDueRow(title)).toBeHidden();
   await strawboar.getDueTrigger().click();
   await expect(strawboar.getDueRow(title)).toBeVisible();
-});
-
-test("validates the title", async ({ page }) => {
-  const strawboar = await openPage({ page });
-
-  await strawboar.getAddButton().click();
-  await strawboar.save();
-
-  await expect(strawboar.getEditorError()).toHaveText("Title is required.");
 });
 
 test("marks a chore as done and undoes it", async ({ page }, testInfo) => {
@@ -80,7 +76,7 @@ test("marks a chore as done and undoes it", async ({ page }, testInfo) => {
   await expect(strawboar.getRecentRow(title)).toHaveCount(0);
 });
 
-test("highlights the chore open in the panel", async ({ page }, testInfo) => {
+test("opens and closes the panel", async ({ page }, testInfo) => {
   const first = uniqueTitle(testInfo, "Clean bath");
   const second = uniqueTitle(testInfo, "Change toothbrush");
   const strawboar = await openPage({ page });
@@ -89,13 +85,45 @@ test("highlights the chore open in the panel", async ({ page }, testInfo) => {
   const current = strawboar.getCurrentRow();
   await expect(current).toHaveCount(0);
 
+  // The chore open in the panel is highlighted.
   await strawboar.openChore(first);
+  await expect(strawboar.getTitleInput()).toHaveValue(first);
   await expect(current).toHaveCount(1);
   await expect(current).toContainText(first);
 
   await strawboar.close();
   await expect(strawboar.getEditor()).toBeHidden();
   await expect(current).toHaveCount(0);
+
+  await strawboar.openChore(second);
+  await expect(strawboar.getTitleInput()).toHaveValue(second);
+  await strawboar.tapOutsideEditor({ hasTouch: !!testInfo.project.use.hasTouch });
+  await expect(strawboar.getEditor()).toBeHidden();
+  await expect(strawboar.getEditorBackdrop()).toHaveCount(0);
+
+  // Nothing is left over the dashboard.
+  await strawboar.openChore(first);
+  await expect(strawboar.getTitleInput()).toHaveValue(first);
+});
+
+test("switches the panel and closes it by tapping the header", async ({ page }, testInfo) => {
+  const first = uniqueTitle(testInfo, "Wipe windows");
+  const second = uniqueTitle(testInfo, "Descale kettle");
+  const strawboar = await openPage({ page });
+  // The panel covers the whole screen on mobile.
+  test.skip(strawboar.isNarrow(), "neither the chores nor the header are visible beside the panel");
+  await strawboar.addChore(first, "7");
+  await strawboar.addChore(second, "30");
+
+  await strawboar.openChore(first);
+  await expect(strawboar.getTitleInput()).toHaveValue(first);
+  await strawboar.openChore(second);
+  await expect(strawboar.getEditor()).toBeVisible();
+  await expect(strawboar.getTitleInput()).toHaveValue(second);
+  await expect(strawboar.getCurrentRow()).toContainText(second);
+
+  await strawboar.tapOutsideEditor({ hasTouch: !!testInfo.project.use.hasTouch, onHeader: true });
+  await expect(strawboar.getEditor()).toBeHidden();
 });
 
 test("filters chores by label", async ({ page }, testInfo) => {
@@ -220,75 +248,6 @@ test("undoes the latest completion from the panel", async ({ page, request }, te
   await expect(strawboar.getRecentRow(title)).toHaveCount(0);
 });
 
-test("closes the panel by tapping outside of it", async ({ page }, testInfo) => {
-  const first = uniqueTitle(testInfo, "Clean bath");
-  const second = uniqueTitle(testInfo, "Change toothbrush");
-  const strawboar = await openPage({ page });
-  await strawboar.addChore(first, "7");
-  await strawboar.addChore(second, "30");
-
-  await strawboar.openChore(first);
-  await expect(strawboar.getTitleInput()).toHaveValue(first);
-
-  await strawboar.tapOutsideEditor({ hasTouch: !!testInfo.project.use.hasTouch });
-  await expect(strawboar.getEditor()).toBeHidden();
-  await expect(strawboar.getEditorBackdrop()).toHaveCount(0);
-
-  await strawboar.openChore(second);
-  await expect(strawboar.getTitleInput()).toHaveValue(second);
-});
-
-test("closes the panel by tapping the header", async ({ page }, testInfo) => {
-  const title = uniqueTitle(testInfo, "Sweep porch");
-  const strawboar = await openPage({ page });
-  await strawboar.addChore(title, "7");
-
-  // The panel covers the whole screen on mobile.
-  test.skip(strawboar.isNarrow(), "the header is not visible beside the panel");
-  await strawboar.openChore(title);
-  await expect(strawboar.getTitleInput()).toHaveValue(title);
-
-  await strawboar.tapOutsideEditor({ hasTouch: !!testInfo.project.use.hasTouch, onHeader: true });
-  await expect(strawboar.getEditor()).toBeHidden();
-});
-
-test("switches the panel to another chore while it is open", async ({ page }, testInfo) => {
-  const first = uniqueTitle(testInfo, "Wipe windows");
-  const second = uniqueTitle(testInfo, "Descale kettle");
-  const strawboar = await openPage({ page });
-  await strawboar.addChore(first, "7");
-  await strawboar.addChore(second, "30");
-
-  await strawboar.openChore(first);
-  await expect(strawboar.getTitleInput()).toHaveValue(first);
-
-  // The panel covers the whole screen on mobile.
-  test.skip(strawboar.isNarrow(), "no chore is visible beside the panel");
-  await strawboar.openChore(second);
-  await expect(strawboar.getEditor()).toBeVisible();
-  await expect(strawboar.getTitleInput()).toHaveValue(second);
-  await expect(strawboar.getCurrentRow()).toContainText(second);
-});
-
-test("shows the history of a chore", async ({ page }, testInfo) => {
-  const title = uniqueTitle(testInfo, "Water plants");
-  const strawboar = await openPage({ page });
-  await strawboar.addChore(title, "4");
-
-  await strawboar.openChore(title);
-  await expect(strawboar.getHistory()).toContainText("Not done yet.");
-  await strawboar.close();
-  await expect(strawboar.getEditor()).toBeHidden();
-
-  await strawboar.complete(title);
-  await strawboar.openLater();
-  await strawboar.openChore(title);
-
-  const [, month, day] = today().split("-");
-  const label = `${month}/${day}`;
-  await expect(strawboar.getHistory()).toHaveText(label);
-});
-
 test("exports and imports definitions", async ({ page }, testInfo) => {
   const existing = uniqueTitle(testInfo, "Clean bath");
   const added = uniqueTitle(testInfo, "Descale kettle");
@@ -309,8 +268,6 @@ test("exports and imports definitions", async ({ page }, testInfo) => {
   await expect(strawboar.getTransferError()).toHaveText(
     "Chore #1: title, interval_days or monthly, and labels are required.",
   );
-  await strawboar.importDefinitions(JSON.stringify({ labels: [], chores: [{ ...exported.chores[0], labels: ["daily"] }] }));
-  await expect(strawboar.getTransferError()).toHaveText("Chore #1: Unknown label: daily");
 
   // Matched by name and title: existing ones are updated and others are added.
   const definitions = {
@@ -421,26 +378,10 @@ test("keeps a monthly chore on its day", async ({ page }, testInfo) => {
   await expect(strawboar.getLaterRow(title)).toContainText(shortDate(10));
 });
 
-test("keeps a multi-line description", async ({ page }, testInfo) => {
-  const title = uniqueTitle(testInfo, "Clean filter");
-  const description = "1. Remove the filter\n2. Wash it\n3. Dry it";
-  const strawboar = await openPage({ page });
-  await strawboar.addChore(title, "14");
-
-  await strawboar.openChore(title);
-  await expect(strawboar.getDescriptionInput()).toHaveValue("");
-  await strawboar.getDescriptionInput().fill(description);
-  await strawboar.save();
-  await expect(strawboar.getEditor()).toBeHidden();
-
-  await strawboar.reload();
-  await strawboar.openChore(title);
-  await expect(strawboar.getDescriptionInput()).toHaveValue(description);
-});
-
 test("edits and archives a chore", async ({ page }, testInfo) => {
   const title = uniqueTitle(testInfo, "Wash sheets");
   const renamed = uniqueTitle(testInfo, "Wash all sheets");
+  const description = "1. Strip the bed\n2. Wash them\n3. Dry them";
   const strawboar = await openPage({ page });
   await strawboar.addChore(title, "30");
 
@@ -453,13 +394,16 @@ test("edits and archives a chore", async ({ page }, testInfo) => {
   await expect(strawboar.getFirstDueInput()).toHaveCount(0);
   await strawboar.getTitleInput().fill(renamed);
   await strawboar.getIntervalInput().fill("20");
+  await expect(strawboar.getDescriptionInput()).toHaveValue("");
+  await strawboar.getDescriptionInput().fill(description);
   await strawboar.save();
   await expect(strawboar.getEditor()).toBeHidden();
   await expect(strawboar.getLaterRow(renamed)).toContainText(shortDate(20));
 
-  // Undo so that the completion does not stay in the recent list.
   await strawboar.reload();
   await strawboar.openRecentChore(renamed);
+  await expect(strawboar.getDescriptionInput()).toHaveValue(description);
+  // Undo so that the completion does not stay in the recent list.
   await strawboar.undoFromHistory();
   await strawboar.close();
   await expect(strawboar.getDueRow(renamed)).toBeVisible();

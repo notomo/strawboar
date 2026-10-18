@@ -58,6 +58,9 @@ e2e/             # Playwright tests
 - **API**: routes are in `src/worker/api.mbt`, D1 queries in `src/worker/repository.mbt`.
 - **UI**: use `rui` components (dark theme) and inline `style` for layout. One chore per row; clickable areas must look clickable. Editing happens in a non-modal panel (`rui.sheet`) overlaid on the right, not a modal. Less frequent actions (Import / Export, Labels) live in the ⋮ menu (`rui.dropdown_menu`, created once in `app` because it is stateful) next to the add button. Actions that are hard to undo (archiving a chore, deleting a label) ask for confirmation in a `rui.alert_dialog` first, which a click outside of it cancels. The header and the label filter stay at the top, and the dashboard below them scrolls by itself (`#dashboard`) so that each section title sticks at its top. Dates are shown as `MM/dd`, except today at the top (`yyyy-MM-dd (ddd)`). The dashboard must fit in the first view without scrolling on both desktop and mobile (checked in E2E). All UI text is in English.
 - **E2E**: keep all locators and UI actions in the page object returned by `openPage` in `e2e/page.ts`; specs must not call `page.locator`/`getBy*` directly.
+  - E2E covers what needs the browser, the Worker and D1 together: the main user flows (each through the UI and kept after reload), layout and scrolling, differences between devices, how panels and dialogs open and close, and what the Worker serves.
+  - Rules that live in `src/core` (dates, urgency, ordering, validation, import matching) are covered by its unit tests. E2E checks one representative case of each, e.g. one error message per form.
+  - One test per user goal. Extend an existing test with a related check instead of adding a near-duplicate one.
 - **Rabbita**: follow `.mooncakes/moonbit-community/rabbita` conventions (`create_state`, `create_resource`, `@http`); avoid escape hatches such as `@cmd.effect` or `@dom`.
 
 ## Coding Style
