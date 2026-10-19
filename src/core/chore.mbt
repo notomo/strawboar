@@ -16,9 +16,8 @@ pub(all) struct Chore {
 pub extend Chore with Eq::{equal, not_equal}
 
 ///|
-/// How pressing a chore is. Overdue chores are simply `Due`; they never pile up.
+/// How pressing a chore is. Overdue chores are simply `Soon`; they never pile up.
 pub(all) enum Urgency {
-  Due
   Soon
   Later
 } derive(Eq)
@@ -33,17 +32,16 @@ pub fn Chore::days_left(self : Chore, today : Date) -> Int32 {
 
 ///|
 /// `Soon` covers the last 20% of the interval (at least one day for long
-/// intervals), or the lead days of a monthly chore.
+/// intervals), or the lead days of a monthly chore, and anything overdue.
 pub fn Chore::urgency(self : Chore, today : Date) -> Urgency {
   let days_left = self.days_left(today)
   let soon = match self.repeat {
     AfterDone(days) => days_left * 5 <= days
     Monthly({ lead_days, .. }) => days_left <= lead_days
   }
-  match (days_left <= 0, soon) {
-    (true, _) => Due
-    (false, true) => Soon
-    (false, false) => Later
+  match soon {
+    true => Soon
+    false => Later
   }
 }
 
@@ -110,7 +108,6 @@ pub fn Chore::labels_in(self : Chore, labels : Array[Label]) -> Array[Label] {
 
 ///|
 pub(all) struct Dashboard {
-  due : Array[Chore]
   soon : Array[Chore]
   later : Array[Chore]
 }
@@ -128,8 +125,8 @@ fn Chore::compare_kind(self : Chore, other : Chore) -> Int32 {
 }
 
 ///|
-/// Each section puts monthly chores first. Due and soon chores are then ordered
-/// by progress, and later chores by due date.
+/// Each section puts monthly chores first. Soon chores are then ordered by
+/// progress, so overdue ones come first, and later chores by due date.
 pub fn Dashboard::new(chores : Array[Chore], today : Date) -> Dashboard {
   let then_by = (a : Chore, b : Chore, compare : (Chore, Chore) -> Int32) => {
     match a.compare_kind(b) {
@@ -143,8 +140,6 @@ pub fn Dashboard::new(chores : Array[Chore], today : Date) -> Dashboard {
   let pick = (urgency : Urgency) => {
     chores.filter(chore => chore.urgency(today) == urgency)
   }
-  let due = pick(Due)
-  due.sort_by(by_progress)
   let soon = pick(Soon)
   soon.sort_by(by_progress)
   let later = pick(Later)
@@ -156,7 +151,7 @@ pub fn Dashboard::new(chores : Array[Chore], today : Date) -> Dashboard {
       }
     })
   })
-  { due, soon, later, }
+  { soon, later, }
 }
 
 ///|

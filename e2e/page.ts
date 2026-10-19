@@ -26,11 +26,9 @@ export async function openPage({ page }: { page: Page }) {
     getToday: () => page.locator("#today"),
     getText: (text: string) => page.getByText(text),
 
-    getDueTrigger: () => page.locator("#due-trigger"),
-    getDueRows: () => page.locator("#due li"),
-    getDueRow: (title: string) => page.locator("#due li", { hasText: title }),
+    getSoonTrigger: () => page.locator("#soon-trigger"),
+    getSoonRows: () => page.locator("#soon li"),
     getSoonRow: (title: string) => page.locator("#soon li", { hasText: title }),
-    getSoonTitle: () => page.locator("#soon-trigger"),
     getLaterTrigger: () => page.locator("#later-trigger"),
     getLaterRow: (title: string) => page.locator("#later li", { hasText: title }),
     getCurrentRow: () => page.locator('li[aria-current="true"]'),
@@ -47,7 +45,7 @@ export async function openPage({ page }: { page: Page }) {
     getLabelFilterButtons: () => labelFilter.getByRole("button"),
     getLabelFilterButton: (name: string) => labelFilter.getByRole("button", { name }),
     getRowLabels: (title: string) =>
-      page.locator("#due li, #soon li, #later li", { hasText: title }).locator('[data-slot="badge"]'),
+      page.locator("#soon li, #later li", { hasText: title }).locator('[data-slot="badge"]'),
 
     getAddButton: () => page.getByRole("button", { name: "+ Add" }),
     getEditor: () => editor,
@@ -145,7 +143,7 @@ export async function openPage({ page }: { page: Page }) {
     },
 
     openChore: async (title: string) => {
-      await page.locator("#due li, #soon li, #later li", { hasText: title }).getByText(title).click();
+      await page.locator("#soon li, #later li", { hasText: title }).getByText(title).click();
     },
 
     // Later is collapsed by default.

@@ -119,9 +119,6 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
       let labels_of = (chore : @core.Chore) => chore.labels_in(model.labels)
       div(style=["display:flex;flex-direction:column;gap:1.5rem"], [
         notice_view(model.notice),
-        chore_section(Due, "Due", dashboard.due, model, emit, chore => {
-          chore_row(chore, labels_of(chore), today, state_of(chore), emit)
-        }),
         chore_section(
           Soon,
           soon_title(dashboard),
@@ -336,7 +333,6 @@ fn collapsible_section(
   content : Html,
 ) -> Html {
   let id = match section {
-    Due => "due"
     Soon => "soon"
     Later => "later"
     Done => "recent"

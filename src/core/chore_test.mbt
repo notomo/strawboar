@@ -30,7 +30,6 @@ fn chore(
 ///|
 fn urgency_label(chore : @core.Chore, today : String) -> String {
   match chore.urgency(date(today)) {
-    Due => "due"
     Soon => "soon"
     Later => "later"
   }
@@ -39,8 +38,8 @@ fn urgency_label(chore : @core.Chore, today : String) -> String {
 ///|
 test "urgency" {
   let c = chore(interval_days=10, next_due="2026-09-24")
-  inspect(urgency_label(c, "2026-09-30"), content="due")
-  inspect(urgency_label(c, "2026-09-24"), content="due")
+  inspect(urgency_label(c, "2026-09-30"), content="soon")
+  inspect(urgency_label(c, "2026-09-24"), content="soon")
   inspect(urgency_label(c, "2026-09-22"), content="soon")
   inspect(urgency_label(c, "2026-09-21"), content="later")
   // a daily chore is only shown on the day
@@ -136,10 +135,9 @@ test "dashboard groups and sorts chores" {
   let dashboard = @core.Dashboard::new(chores, date("2026-09-24"))
   let titles = (chores : Array[@core.Chore]) => chores.map(c => c.title)
   // elapsed fraction: 9/7 > 32/30 > 1/1
-  assert_eq(titles(dashboard.due), [
-    "weekly overdue 2d", "monthly overdue 2d", "daily today",
+  assert_eq(titles(dashboard.soon), [
+    "weekly overdue 2d", "monthly overdue 2d", "daily today", "soon",
   ])
-  assert_eq(titles(dashboard.soon), ["soon"])
   assert_eq(titles(dashboard.later), ["later a", "later b"])
 }
 
@@ -358,7 +356,7 @@ test "monthly urgency follows the lead days" {
   let c = chore(repeat=monthly(lead_days=21), next_due="2026-10-28")
   inspect(urgency_label(c, "2026-10-06"), content="later")
   inspect(urgency_label(c, "2026-10-07"), content="soon")
-  inspect(urgency_label(c, "2026-10-28"), content="due")
+  inspect(urgency_label(c, "2026-10-28"), content="soon")
   let no_lead = chore(repeat=monthly(lead_days=0), next_due="2026-10-28")
   inspect(urgency_label(no_lead, "2026-10-27"), content="later")
 }
@@ -487,8 +485,9 @@ test "dashboard puts monthly chores first in each section" {
   ]
   let dashboard = @core.Dashboard::new(chores, date("2026-10-11"))
   let titles = (chores : Array[@core.Chore]) => chores.map(c => c.title)
-  assert_eq(titles(dashboard.due), ["rent due", "weekly due"])
-  assert_eq(titles(dashboard.soon), ["rent soon", "weekly soon"])
+  assert_eq(titles(dashboard.soon), [
+    "rent due", "rent soon", "weekly due", "weekly soon",
+  ])
   assert_eq(titles(dashboard.later), ["rent later", "weekly later"])
   assert_eq(dashboard.soon_until().map(d => d.to_string()), Some("2026-10-13"))
 }

@@ -60,7 +60,7 @@ fn long_date(date : @core.Date) -> String {
 }
 
 ///|
-/// The status following the interval in a due chore row.
+/// The status following the interval in a soon chore row.
 fn chore_status(chore : @core.Chore, today : @core.Date) -> String {
   let due = match chore.days_left(today) {
     left if left > 0 => " · due in \{plural(left, "day")}"

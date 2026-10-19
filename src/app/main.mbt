@@ -71,7 +71,6 @@ enum Panel {
 ///|
 /// A dashboard section that can be collapsed.
 enum Section {
-  Due
   Soon
   Later
   Done
@@ -105,7 +104,7 @@ struct Model {
   panel_open : Bool
   /// Only chores with this label are shown when set.
   label_filter : Int32?
-  /// Expanded sections. Due and Soon are expanded by default, Later and Done are not.
+  /// Expanded sections. Soon is expanded by default, Later and Done are not.
   open_sections : Array[Section]
   undo : Undo?
   /// The action shown in the confirmation dialog.
@@ -727,7 +726,7 @@ fn app() -> Val[Html] {
           panel: None,
           panel_open: false,
           label_filter: None,
-          open_sections: [Due, Soon],
+          open_sections: [Soon],
           undo: None,
           confirm: None,
           notice: "",

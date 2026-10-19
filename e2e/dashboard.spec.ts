@@ -36,15 +36,15 @@ test("adds a chore that is due today", async ({ page }, testInfo) => {
 
   await strawboar.addChore(title, "7");
 
-  await expect(strawboar.getDueRow(title)).toContainText("weekly · not done yet");
+  await expect(strawboar.getSoonRow(title)).toContainText("weekly · not done yet");
 
-  // Due is expanded by default and can be collapsed.
-  await expect(strawboar.getDueTrigger()).toHaveAttribute("aria-expanded", "true");
-  await expect(strawboar.getDueTrigger()).toContainText("Due (1)");
-  await strawboar.getDueTrigger().click();
-  await expect(strawboar.getDueRow(title)).toBeHidden();
-  await strawboar.getDueTrigger().click();
-  await expect(strawboar.getDueRow(title)).toBeVisible();
+  // Soon is expanded by default and can be collapsed.
+  await expect(strawboar.getSoonTrigger()).toHaveAttribute("aria-expanded", "true");
+  await expect(strawboar.getSoonTrigger()).toHaveText(`Soon · until ${shortDate(0)} (1)`);
+  await strawboar.getSoonTrigger().click();
+  await expect(strawboar.getSoonRow(title)).toBeHidden();
+  await strawboar.getSoonTrigger().click();
+  await expect(strawboar.getSoonRow(title)).toBeVisible();
 });
 
 test("marks a chore as done and undoes it", async ({ page }, testInfo) => {
@@ -55,7 +55,7 @@ test("marks a chore as done and undoes it", async ({ page }, testInfo) => {
   await strawboar.complete(title);
 
   await expect(strawboar.getUndoToast()).toContainText(`Done: ${title}`);
-  await expect(strawboar.getDueRow(title)).toHaveCount(0);
+  await expect(strawboar.getSoonRow(title)).toHaveCount(0);
   // Later is collapsed by default.
   await expect(strawboar.getLaterTrigger()).toHaveAttribute("aria-expanded", "false");
   await expect(strawboar.getLaterTrigger()).toContainText("Later (1)");
@@ -72,7 +72,7 @@ test("marks a chore as done and undoes it", async ({ page }, testInfo) => {
   await strawboar.undoFromToast();
 
   await expect(strawboar.getUndoToast()).toBeHidden();
-  await expect(strawboar.getDueRow(title)).toBeVisible();
+  await expect(strawboar.getSoonRow(title)).toBeVisible();
   await expect(strawboar.getRecentRow(title)).toHaveCount(0);
 });
 
@@ -144,13 +144,13 @@ test("filters chores by label", async ({ page }, testInfo) => {
   await expect(strawboar.getLabelFilterButtons()).toHaveText(["bath", "kitchen", "weekly"]);
   await strawboar.toggleLabelFilter("kitchen");
   await expect(strawboar.getLabelFilterButton("kitchen")).toHaveAttribute("aria-pressed", "true");
-  await expect(strawboar.getDueRow(fan)).toBeVisible();
-  await expect(strawboar.getDueRow(bath)).toHaveCount(0);
+  await expect(strawboar.getSoonRow(fan)).toBeVisible();
+  await expect(strawboar.getSoonRow(bath)).toHaveCount(0);
 
   // Clicking the active label clears the filter.
   await strawboar.toggleLabelFilter("kitchen");
   await expect(strawboar.getLabelFilterButton("kitchen")).toHaveAttribute("aria-pressed", "false");
-  await expect(strawboar.getDueRow(bath)).toBeVisible();
+  await expect(strawboar.getSoonRow(bath)).toBeVisible();
 
   // Labels are kept after reload and can be edited.
   await strawboar.reload();
@@ -206,7 +206,7 @@ test("manages labels with colors", async ({ page }, testInfo) => {
   await expect(badge).toHaveCount(0);
 
   await strawboar.reload();
-  await expect(strawboar.getDueRow(title)).toBeVisible();
+  await expect(strawboar.getSoonRow(title)).toBeVisible();
   await expect(badge).toHaveCount(0);
   await expect(strawboar.getLabelFilter()).toHaveCount(0);
 });
@@ -245,10 +245,10 @@ test("undoes the latest completion from the panel", async ({ page, request }, te
   await expect(strawboar.getConfirmDialog()).toBeHidden();
   await expect(strawboar.getEditor()).toBeVisible();
   await strawboar.close();
-  await expect(strawboar.getDueRow(title)).toBeVisible();
+  await expect(strawboar.getSoonRow(title)).toBeVisible();
 
   await strawboar.reload();
-  await expect(strawboar.getDueRow(title)).toContainText("not done yet");
+  await expect(strawboar.getSoonRow(title)).toContainText("not done yet");
   await expect(strawboar.getRecentRow(title)).toHaveCount(0);
 });
 
@@ -290,7 +290,7 @@ test("exports and imports definitions", async ({ page }, testInfo) => {
   await expect(strawboar.getRowLabels(existing)).toHaveText(["bath", "daily"]);
   await expect(strawboar.getRowLabels(existing).first()).toHaveCSS("color", "rgb(248, 113, 113)");
   await expect(strawboar.getRowLabels(added)).toHaveText(["kitchen"]);
-  await expect(strawboar.getDueRows()).toHaveCount(2);
+  await expect(strawboar.getSoonRows()).toHaveCount(2);
 });
 
 test("opens import/export at the top of a long list", async ({ page, request }, testInfo) => {
@@ -321,11 +321,11 @@ test("keeps the section title at the top while scrolling", async ({ page, reques
     expect(response.ok()).toBeTruthy();
   }
   const strawboar = await openPage({ page });
-  await expect(strawboar.getDueRows()).toHaveCount(20);
+  await expect(strawboar.getSoonRows()).toHaveCount(20);
 
   await strawboar.scrollToBottom();
-  await expect(strawboar.getDueRows().first()).not.toBeInViewport();
-  await expect(strawboar.getDueTrigger()).toBeInViewport();
+  await expect(strawboar.getSoonRows().first()).not.toBeInViewport();
+  await expect(strawboar.getSoonTrigger()).toBeInViewport();
   await expect(strawboar.getToday()).toBeInViewport();
 });
 
@@ -364,7 +364,7 @@ test("keeps a monthly chore on its day", async ({ page }, testInfo) => {
   await strawboar.addMonthlyChore(title, { firstDue, leadDays: "14" });
   await expect(strawboar.getSoonRow(title)).toContainText("monthly on the");
   await expect(strawboar.getSoonRow(title)).toContainText("not done yet · due in 10 days");
-  await expect(strawboar.getSoonTitle()).toHaveText(`Soon · until ${shortDate(10)} (1)`);
+  await expect(strawboar.getSoonTrigger()).toHaveText(`Soon · until ${shortDate(10)} (1)`);
 
   // Done early, it is due on the same day of the next month.
   await strawboar.complete(title);
@@ -410,18 +410,18 @@ test("edits and archives a chore", async ({ page }, testInfo) => {
   // Undo so that the completion does not stay in the recent list.
   await strawboar.undoLastDone();
   await strawboar.close();
-  await expect(strawboar.getDueRow(renamed)).toBeVisible();
+  await expect(strawboar.getSoonRow(renamed)).toBeVisible();
 
   await strawboar.openChore(renamed);
   await strawboar.cancelArchive();
   await expect(strawboar.getEditor()).toBeVisible();
   await strawboar.dismissArchive();
   await expect(strawboar.getEditor()).toBeVisible();
-  await expect(strawboar.getDueRow(renamed)).toBeVisible();
+  await expect(strawboar.getSoonRow(renamed)).toBeVisible();
 
   await strawboar.archive();
   await expect(strawboar.getEditor()).toBeHidden();
-  await expect(strawboar.getDueRow(renamed)).toHaveCount(0);
+  await expect(strawboar.getSoonRow(renamed)).toHaveCount(0);
 
   await strawboar.reload();
   await expect(strawboar.getToday()).not.toBeEmpty();
@@ -447,7 +447,7 @@ test("fits in the first view without scrolling", async ({ page, request }, testI
   }
 
   const strawboar = await openPage({ page });
-  await expect(strawboar.getDueRows().first()).toBeVisible();
+  await expect(strawboar.getSoonRows().first()).toBeVisible();
 
   expect(await strawboar.getOverflow()).toEqual({ x: 0, y: 0 });
 });
