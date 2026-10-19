@@ -184,26 +184,12 @@ fn label_filter_view(
     style=["display:flex;gap:0.5rem;overflow-x:auto;min-width:0"],
     labels.map(label => {
       let pressed = label_filter == Some(label.id)
-      let color = color_value(label.color)
-      // Colored by the label, not the primary color, so that only the add button stands out.
-      @rui.button(
-        size=Sm,
-        variant=Outline,
-        // Clicking the active label clears the filter.
-        on_click=emit(
-          FilterByLabel(if pressed { None } else { Some(label.id) }),
-        ),
-        attrs=@html.Attrs::build().aria_pressed(pressed.to_string()),
-        // Hex alpha suffixes: 0x33 = 20%, 0x66 = 40%.
-        style=[
-          "flex-shrink:0",
-          if pressed {
-            "color:\{color};background:\{color}33;border-color:\{color}"
-          } else {
-            "border-color:\{color}66"
-          },
-        ],
-        label.name,
+      // Clicking the active label clears the filter.
+      label_toggle(
+        label,
+        pressed,
+        FilterByLabel(if pressed { None } else { Some(label.id) }),
+        emit,
       )
     }),
   )
@@ -431,13 +417,44 @@ fn color_value(color : @core.LabelColor) -> String {
 }
 
 ///|
+/// The look of a label, shared by every place that shows one.
+/// It is tinted by its color when on, and only has a faint border of it when off,
+/// so that a toggled-on label looks the same as the badge on the rows.
+fn label_chip_style(color : @core.LabelColor, on~ : Bool = true) -> String {
+  let color = color_value(color)
+  // Hex alpha suffixes: 0x26 = 15%, 0x66 = 40%.
+  if on {
+    "color:\{color};background:\{color}26;border-color:\{color}66"
+  } else {
+    "border-color:\{color}66"
+  }
+}
+
+///|
 fn label_badge(label : @core.Label) -> Html {
-  let color = color_value(label.color)
   @rui.badge(
     variant=Outline,
-    // Hex alpha suffixes: 0x26 = 15%, 0x66 = 40%.
+    style=["font-weight:400", label_chip_style(label.color)],
+    label.name,
+  )
+}
+
+///|
+/// A label that can be turned on and off, used by the label filter and the chore panel.
+fn label_toggle(
+  label : @core.Label,
+  pressed : Bool,
+  on_click : Msg,
+  emit : Emit[Msg],
+) -> Html {
+  @rui.button(
+    size=Sm,
+    variant=Outline,
+    on_click=emit(on_click),
+    attrs=@html.Attrs::build().aria_pressed(pressed.to_string()),
     style=[
-      "font-weight:400;color:\{color};background:\{color}26;border-color:\{color}66",
+      "flex-shrink:0;font-weight:400",
+      label_chip_style(label.color, on=pressed),
     ],
     label.name,
   )
@@ -910,34 +927,11 @@ fn label_picker(
           .aria_labelledby("chore-labels-label"),
         style=["display:flex;flex-wrap:wrap;gap:0.5rem"],
         labels.map(label => {
-          let pressed = selected.contains(label.id)
-          @rui.button(
-            size=Sm,
-            variant=if pressed { Secondary } else { Outline },
-            on_click=emit(ToggleLabel(label.id)),
-            attrs=@html.Attrs::build().aria_pressed(pressed.to_string()),
-            style=[
-              if pressed {
-                "border-color:\{color_value(label.color)}"
-              } else {
-                ""
-              },
-            ],
-            [
-              span(
-                attrs=@html.Attrs::build().aria_hidden("true"),
-                style=[
-                  "width:0.625rem;height:0.625rem;border-radius:9999px;background:\{color_value(label.color)}",
-                  if pressed {
-                    ""
-                  } else {
-                    "opacity:0.5"
-                  },
-                ],
-                "",
-              ),
-              @html.text(label.name),
-            ],
+          label_toggle(
+            label,
+            selected.contains(label.id),
+            ToggleLabel(label.id),
+            emit,
           )
         }),
       )
@@ -969,16 +963,26 @@ fn labels_content(
         ],
         labels.map(label => {
           let current = form.id == Some(label.id)
+          // The label being edited has a ring like the selected color below,
+          // so that it is not mistaken for a toggle.
           li([
             @rui.button(
               size=Sm,
-              variant=if current { Secondary } else { Ghost },
+              variant=Outline,
               on_click=emit(EditLabel(label.id)),
               attrs=@html.Attrs::build()
                 .aria_label("Edit label: \{label.name}")
                 .aria_current(current.to_string()),
-              style=["padding:0.25rem"],
-              label_badge(label),
+              style=[
+                "font-weight:400",
+                label_chip_style(label.color),
+                if current {
+                  "box-shadow:0 0 0 2px var(--rui-background),0 0 0 4px \{color_value(label.color)}"
+                } else {
+                  ""
+                },
+              ],
+              label.name,
             ),
           ])
         }),
