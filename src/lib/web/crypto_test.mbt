@@ -10,31 +10,27 @@ let test_signature = "V05nICFh_-Itqw3egsGmyevhZAQ_H9vOVMeaV1EUh8xCZcRNxUcF_cU4yz
 
 ///|
 async test "verify_rs256 accepts a valid signature" {
-  assert_true(
-    @cloudflare.verify_rs256(test_jwk, test_signing_input, test_signature),
-  )
+  assert_true(@web.verify_rs256(test_jwk, test_signing_input, test_signature))
 }
 
 ///|
 async test "verify_rs256 rejects a tampered input" {
   assert_false(
-    @cloudflare.verify_rs256(test_jwk, test_signing_input + "x", test_signature),
+    @web.verify_rs256(test_jwk, test_signing_input + "x", test_signature),
   )
 }
 
 ///|
 async test "verify_rs256 rejects malformed input" {
-  assert_false(
-    @cloudflare.verify_rs256("{}", test_signing_input, test_signature),
-  )
-  assert_false(@cloudflare.verify_rs256(test_jwk, test_signing_input, "!!"))
+  assert_false(@web.verify_rs256("{}", test_signing_input, test_signature))
+  assert_false(@web.verify_rs256(test_jwk, test_signing_input, "!!"))
 }
 
 ///|
 test "base64url_decode" {
   assert_eq(
-    @cloudflare.base64url_decode("eyJlbWFpbCI6Im1lQGV4YW1wbGUuY29tIn0"),
+    @web.base64url_decode("eyJlbWFpbCI6Im1lQGV4YW1wbGUuY29tIn0"),
     "{\"email\":\"me@example.com\"}",
   )
-  assert_eq(@cloudflare.base64url_decode("!!"), "")
+  assert_eq(@web.base64url_decode("!!"), "")
 }

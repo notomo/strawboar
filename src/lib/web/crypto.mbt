@@ -1,19 +1,4 @@
 ///|
-extern "js" fn fetch_text_ffi(url : String) -> @js_async.Promise[String] =
-  #| async (url) => {
-  #|   const response = await fetch(url);
-  #|   if (!response.ok) {
-  #|     throw new Error(`failed to fetch ${url}: ${response.status}`);
-  #|   }
-  #|   return response.text();
-  #| }
-
-///|
-pub async fn fetch_text(url : String) -> String {
-  fetch_text_ffi(url).wait()
-}
-
-///|
 extern "js" fn verify_rs256_ffi(
   jwk : String,
   signing_input : String,
@@ -65,8 +50,3 @@ pub extern "js" fn base64url_decode(input : String) -> String =
   #|     return "";
   #|   }
   #| }
-
-///|
-/// Current UNIX time in seconds.
-pub extern "js" fn now_seconds() -> Double =
-  #| () => Date.now() / 1000

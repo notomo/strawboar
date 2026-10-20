@@ -1,20 +1,17 @@
 ///|
 /// Worker `fetch` handler, called from `worker/index.js`.
 pub fn fetch(
-  request : @cloudflare.Request,
+  request : @web.Request,
   env : @cloudflare.Env,
-) -> @js_async.Promise[@cloudflare.Response] {
+) -> @js_async.Promise[@web.Response] {
   @js_async.Promise::from_async(() => handle(request, env))
 }
 
 ///|
-async fn handle(
-  request : @cloudflare.Request,
-  env : @cloudflare.Env,
-) -> @cloudflare.Response {
+async fn handle(request : @web.Request, env : @cloudflare.Env) -> @web.Response {
   // Only the owner can pass Access, so the identity itself is not used yet.
   let _identity = authenticate(request, env) catch {
-    @auth.AuthError(message) => {
+    @cloudflare.AccessError(message) => {
       println("unauthorized: \{message}")
       return error_response("unauthorized", 401)
     }
@@ -31,21 +28,19 @@ async fn handle(
 
 ///|
 async fn authenticate(
-  request : @cloudflare.Request,
+  request : @web.Request,
   env : @cloudflare.Env,
-) -> @auth.Identity raise @auth.AuthError {
+) -> @cloudflare.AccessIdentity raise @cloudflare.AccessError {
   // Only for `wrangler dev`: `.dev.vars` is never deployed.
   let bypass_email = env.string_var("DEV_AUTH_BYPASS_EMAIL")
   if bypass_email != "" && is_local(request.hostname()) {
     return { email: bypass_email, }
   }
-  let token = request.header("cf-access-jwt-assertion")
-  guard token != "" else { raise @auth.AuthError("token is missing") }
-  let config : @auth.AccessConfig = {
+  let config : @cloudflare.AccessConfig = {
     team_domain: env.string_var("ACCESS_TEAM_DOMAIN"),
     audience: env.string_var("ACCESS_AUD"),
   }
-  @auth.verify(token, config, @cloudflare.now_seconds())
+  @cloudflare.verify_access(request, config, @web.now_seconds())
 }
 
 ///|
@@ -54,11 +49,22 @@ fn is_local(hostname : String) -> Bool {
 }
 
 ///|
-fn json_response(body : Json, status : Int32) -> @cloudflare.Response {
-  @cloudflare.Response::json(body.stringify(), status)
+/// API responses depend on the user's data, so they are never cached.
+fn no_store() -> Map[String, String] {
+  { "cache-control": "no-store" }
 }
 
 ///|
-fn error_response(message : String, status : Int32) -> @cloudflare.Response {
+fn json_response(body : Json, status : Int32) -> @web.Response {
+  @web.Response::json(body.stringify(), status, headers=no_store())
+}
+
+///|
+fn empty_response(status : Int32) -> @web.Response {
+  @web.Response::empty(status, headers=no_store())
+}
+
+///|
+fn error_response(message : String, status : Int32) -> @web.Response {
   json_response({ "error": Json(message) }, status)
 }

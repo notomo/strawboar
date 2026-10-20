@@ -17,7 +17,7 @@ fn claims(
 ///|
 fn validation_error(claims : Json, config~ : AccessConfig = config) -> String {
   try validate_claims(claims, config, 1000) catch {
-    AuthError(message) => message
+    AccessError(message) => message
   } noraise {
     _ => "ok"
   }
@@ -71,7 +71,7 @@ test "validate_claims rejects missing config" {
 ///|
 fn parse_error(token : String) -> String {
   try parse_token(token) catch {
-    AuthError(message) => message
+    AccessError(message) => message
   } noraise {
     _ => "ok"
   }

@@ -12,7 +12,7 @@ let local_offset_minutes = 540
 ///|
 fn today() -> @core.Date {
   @core.Date::from_unix_seconds(
-    @cloudflare.now_seconds(),
+    @web.now_seconds(),
     offset_minutes=local_offset_minutes,
   )
 }
@@ -29,7 +29,7 @@ fn parse_id(segment : StringView) -> Int32 raise ApiError {
 }
 
 ///|
-async fn read_json(request : @cloudflare.Request) -> Json {
+async fn read_json(request : @web.Request) -> Json {
   @json.parse(request.text()) catch {
     _ => raise BadRequest("Invalid JSON.")
   }
@@ -37,7 +37,7 @@ async fn read_json(request : @cloudflare.Request) -> Json {
 
 ///|
 async fn read_chore_input(
-  request : @cloudflare.Request,
+  request : @web.Request,
   db : @cloudflare.D1Database,
 ) -> @core.ChoreInput {
   let json = read_json(request)
@@ -53,7 +53,7 @@ async fn read_chore_input(
 ///|
 /// `id` is the label being edited.
 async fn read_label_input(
-  request : @cloudflare.Request,
+  request : @web.Request,
   db : @cloudflare.D1Database,
   id? : Int32,
 ) -> @core.LabelInput {
@@ -69,9 +69,9 @@ async fn read_label_input(
 
 ///|
 async fn route(
-  request : @cloudflare.Request,
+  request : @web.Request,
   db : @cloudflare.D1Database,
-) -> @cloudflare.Response {
+) -> @web.Response {
   let segments = request
     .pathname()
     .split("/")
@@ -114,7 +114,7 @@ async fn route(
     }
     ("DELETE", ["api", "chores", id]) => {
       archive_chore(db, parse_id(id))
-      @cloudflare.Response::empty(204)
+      empty_response(204)
     }
     ("POST", ["api", "chores", id, "complete"]) => {
       let completed = complete_chore(db, parse_id(id), today())
@@ -136,7 +136,7 @@ async fn route(
     }
     ("DELETE", ["api", "labels", id]) => {
       delete_label(db, parse_id(id))
-      @cloudflare.Response::empty(204)
+      empty_response(204)
     }
     _ => raise NotFound
   }

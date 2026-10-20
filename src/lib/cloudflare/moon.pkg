@@ -1,5 +1,6 @@
 import {
-  "internal/strawboar/cloudflare",
+  "internal/strawboar/lib/web",
+  "moonbitlang/async/js_async",
   "moonbitlang/core/json",
 }
 
