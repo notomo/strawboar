@@ -170,7 +170,11 @@ fn label(
 
 ///|
 fn validation_message(input : @core.ChoreInput) -> String {
-  try input.validate([label(1, "bath"), label(2, "weekly")]) catch {
+  try
+    input.validate([label(1, "bath"), label(2, "weekly")], chores=[
+      chore(id=5, title="Wash car"),
+    ])
+  catch {
     ValidationError(message) => message
   } noraise {
     valid =>
@@ -196,9 +200,9 @@ test "validate" {
     validation_message({ ..input, title: "a".repeat(101), }),
     content="Title must be at most 100 characters.",
   )
-  let valid = input.validate([]) catch { _ => abort("invalid") }
+  let valid = input.validate([], chores=[]) catch { _ => abort("invalid") }
   inspect(valid.description, content="")
-  let valid = { ..input, description: "  1. Fill\n2. Wash\n\n", }.validate([]) catch {
+  let valid = { ..input, description: "  1. Fill\n2. Wash\n\n", }.validate([], chores=[]) catch {
     _ => abort("invalid")
   }
   inspect(
@@ -228,6 +232,18 @@ test "validate" {
     validation_message({ ..input, labels: Array::makei(11, i => i), }),
     content="A chore can have at most 10 labels.",
   )
+  inspect(
+    validation_message({ ..input, title: " Wash car", }),
+    content="A chore titled Wash car already exists.",
+  )
+  let edited = { ..input, title: "Wash car", }.validate(
+    [],
+    chores=[chore(id=5, title="Wash car")],
+    id=5,
+  ) catch {
+    _ => abort("invalid")
+  }
+  inspect(edited.title, content="Wash car")
 }
 
 ///|

@@ -39,16 +39,19 @@ async fn read_json(request : @web.Request) -> Json {
 }
 
 ///|
+/// `id` is the chore being edited.
 async fn read_chore_input(
   request : @web.Request,
   db : @cloudflare.D1Database,
+  id? : Int32,
 ) -> @core.ChoreInput {
   let json = read_json(request)
   let input : @core.ChoreInput = @json.from_json(json) catch {
     _ => raise BadRequest("Invalid chore.")
   }
   let labels = list_labels(db)
-  input.validate(labels) catch {
+  let chores = list_chores(db)
+  input.validate(labels, chores~, id?) catch {
     ValidationError(message) => raise BadRequest(message)
   }
 }
@@ -119,7 +122,7 @@ async fn route(
     }
     ("PUT", ["api", "chores", id]) => {
       let id = parse_id(id)
-      let input = read_chore_input(request, db)
+      let input = read_chore_input(request, db, id~)
       let chore = find_chore(db, id).edit(input)
       json_response(update_chore(db, chore).to_json(), 200)
     }

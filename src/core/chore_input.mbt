@@ -121,12 +121,21 @@ pub(all) suberror ValidationError {
 ///|
 /// Returns the input with a trimmed title and description and without
 /// duplicate labels, or
-/// raises a user-facing message. Every label must be one of `labels`.
+/// raises a user-facing message. Every label must be one of `labels`, and the
+/// title must differ from the other `chores`; `id` is the chore being edited.
+/// Titles are unique because the import matches chores by title.
 pub fn ChoreInput::validate(
   self : ChoreInput,
   labels : Array[Label],
+  chores~ : Array[Chore],
+  id? : Int32,
 ) -> ChoreInput raise ValidationError {
   let title = validate_title(self.title)
+  guard !chores
+    .iter()
+    .any(chore => chore.title == title && Some(chore.id) != id) else {
+    raise ValidationError("A chore titled \{title} already exists.")
+  }
   let description = validate_description(self.description)
   self.repeat.validate()
   let ids = validate_labels(self.labels)

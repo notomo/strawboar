@@ -177,6 +177,7 @@ fn upsert(
 fn Editor::input(
   self : Editor,
   labels : Array[@core.Label],
+  chores : Array[@core.Chore],
 ) -> @core.ChoreInput raise @core.ValidationError {
   // The due date of an existing chore follows its completions.
   let next_due = match self.id {
@@ -217,7 +218,7 @@ fn Editor::input(
     next_due,
     labels: self.labels,
   }
-  input.validate(labels)
+  input.validate(labels, chores~, id?=self.id)
 }
 
 ///|
@@ -521,7 +522,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
     Submit =>
       match model.editor() {
         Some(editor) =>
-          try editor.input(model.labels) catch {
+          try editor.input(model.labels, model.chores) catch {
             ValidationError(error) =>
               (model.edit(editor => { ..editor, error, }), @rabbita.none)
           } noraise {
