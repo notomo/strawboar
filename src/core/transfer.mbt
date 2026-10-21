@@ -59,8 +59,9 @@ pub extend ChoreDefinition with ToJson::{to_json}
 pub extend ChoreDefinition with @json.FromJson::{from_json}
 
 ///|
-/// Returns the definition with a trimmed title and description and without
-/// duplicate labels, or raises a user-facing message. Every label must be one of `label_names`.
+/// Returns the definition with a trimmed title, description and label names
+/// and without duplicate labels, or raises a user-facing message. Every label
+/// must be one of `label_names`, which are trimmed like `LabelInput::validate`.
 fn ChoreDefinition::validate(
   self : ChoreDefinition,
   label_names : Array[String],
@@ -68,7 +69,7 @@ fn ChoreDefinition::validate(
   let title = validate_title(self.title)
   let description = validate_description(self.description)
   self.repeat.validate()
-  let labels = validate_labels(self.labels)
+  let labels = validate_labels(self.labels.map(name => name.trim().to_owned()))
   labels.each(name => {
     guard label_names.contains(name) else {
       raise ValidationError("Unknown label: \{name}")

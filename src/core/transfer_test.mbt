@@ -210,6 +210,23 @@ test "import plan errors" {
 }
 
 ///|
+test "import trims label names of chores" {
+  let plan = @core.ImportPlan::new(
+    [label(1, "bath")],
+    definitions(labels=[{ name: " kitchen ", color: Red, }], [
+      definition("a", labels=[" kitchen", "bath ", "kitchen"]),
+    ]),
+  )
+  assert_eq(plan.chores.map(c => c.labels), [["kitchen", "bath"]])
+  let changes = plan.chore_changes(
+    [],
+    [label(1, "bath"), label(2, "kitchen")],
+    date("2026-09-30"),
+  )
+  assert_eq(changes.creates.map(c => c.0.labels), [[2, 1]])
+}
+
+///|
 test "monthly definitions" {
   let text =
     #|{"labels":[],"chores":[
