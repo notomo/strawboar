@@ -25,6 +25,10 @@ jobs:
       - run: npx playwright install --with-deps chromium webkit
 
       - uses: hustcer/setup-moonbit@87e2bdf5cf20d3b6f5c5f266a8a513f503bb5b76 # v1.25
+        with:
+          # The toolchain used locally (moonc in `moon version --all`).
+          version: 0.10.15+943464bfa
+          core-version: 0.10.15+943464bfa
       - run: moon update
 
       - run: npm run check
