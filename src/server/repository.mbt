@@ -259,7 +259,8 @@ async fn complete_chore(
 
 ///|
 /// Deletes the completion and restores the chore to the state before it.
-/// Only the latest completion of a chore can be undone (see `@core.RecentDone::can_undo`).
+/// Only the latest completion of a chore can be undone (see `@core.RecentDone::can_undo`),
+/// and `Conflict` is raised if another one is added meanwhile.
 async fn undo_completion(
   db : @cloudflare.D1Database,
   completion_id : Int32,
@@ -285,23 +286,34 @@ async fn undo_completion(
   guard latest_id.to_int() == completion_id else {
     raise BadRequest("Only the latest completion of a chore can be undone.")
   }
+  // Checked again in the batch, because the chore may be completed after the
+  // read. Both statements see the same completions, as the update does not change them.
+  let latest = "(SELECT MAX(id) FROM completions WHERE chore_id = ?) = ?"
+  let latest_params : Array[@cloudflare.D1Param] = [
+    Integer(chore_id.to_int()),
+    Integer(completion_id),
+  ]
   let results = db.batch([
     db
     .prepare(
-      "UPDATE chores SET next_due = ?, last_done = ? WHERE id = ? RETURNING \{chore_columns}",
+      "UPDATE chores SET next_due = ?, last_done = ? WHERE id = ? AND \{latest} RETURNING \{chore_columns}",
     )
-    .bind([
-      text_or_null(previous_next_due),
-      text_or_null(previous_last_done),
-      Integer(chore_id.to_int()),
-    ]),
+    .bind(
+      [
+        text_or_null(previous_next_due),
+        text_or_null(previous_last_done),
+        Integer(chore_id.to_int()),
+        ..latest_params,
+      ],
+    ),
     db
-    .prepare("DELETE FROM completions WHERE id = ?")
-    .bind([Integer(completion_id)]),
+    .prepare("DELETE FROM completions WHERE id = ? AND \{latest}")
+    .bind([Integer(completion_id), ..latest_params]),
   ])
-  guard results is [chore_rows, _] && first_row(chore_rows) is Some(chore_row) else {
-    raise NotFound
+  guard results is [chore_rows, _] else {
+    raise InternalError("unexpected batch result")
   }
+  guard first_row(chore_rows) is Some(chore_row) else { raise Conflict }
   decode_chore(chore_row)
 }
 
