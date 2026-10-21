@@ -404,6 +404,12 @@ test "edit moves a monthly chore to its day in the month it is due" {
   // from after done
   let c = chore(interval_days=14, next_due="2026-10-12", last_done="2026-09-28")
   inspect(c.edit(edit_repeat(monthly(day=31))).next_due, content="2026-10-31")
+  // not earlier than it was due
+  inspect(c.edit(edit_repeat(monthly(day=1))).next_due, content="2026-11-01")
+  inspect(
+    c.edit(edit_repeat(monthly(months=2, day=1))).next_due,
+    content="2026-12-01",
+  )
   // back to after done
   inspect(edited.edit(edit_input(7)).next_due, content="2026-10-04")
 }

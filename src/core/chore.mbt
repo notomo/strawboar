@@ -79,7 +79,8 @@ pub fn Chore::complete(self : Chore, today : Date) -> Chore {
 /// Returns the chore with the edited fields, so that a new interval applies
 /// right away. Once done, it is due `days` after the last completion; a chore
 /// never done keeps its due date. A monthly chore is due on its day in the
-/// month it is due.
+/// month it is due. A chore that becomes monthly is not due earlier than
+/// before, so that it does not become soon right after it was done.
 pub fn Chore::edit(self : Chore, input : ChoreInput) -> Chore {
   {
     ..self,
@@ -90,7 +91,14 @@ pub fn Chore::edit(self : Chore, input : ChoreInput) -> Chore {
     next_due: match (input.repeat, self.last_done) {
       (AfterDone(days), Some(last_done)) => last_done.add_days(days)
       (AfterDone(_), None) => self.next_due
-      (Monthly(_), _) => input.repeat.align(self.next_due)
+      (Monthly({ months, day, .. }), _) => {
+        let next_due = input.repeat.align(self.next_due)
+        match self.repeat {
+          AfterDone(_) if next_due < self.next_due =>
+            next_due.add_months(months, day~)
+          _ => next_due
+        }
+      }
     },
   }
 }
