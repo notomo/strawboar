@@ -201,6 +201,8 @@ async fn archive_chore(db : @cloudflare.D1Database, id : Int32) -> Unit {
 }
 
 ///|
+/// Raises `Conflict` when the chore was completed or edited after it was read,
+/// e.g. by a second press of the button, so that it is not completed twice.
 async fn complete_chore(
   db : @cloudflare.D1Database,
   id : Int32,
@@ -208,33 +210,51 @@ async fn complete_chore(
 ) -> @core.Completed {
   let before = find_chore(db, id)
   let after = before.complete(today)
+  // Both statements see the chore as read, because the insert does not change it.
+  let unchanged = "id = ? AND next_due = ? AND archived = 0"
+  let unchanged_params : Array[@cloudflare.D1Param] = [
+    Integer(id),
+    date_param(Some(before.next_due)),
+  ]
   let results = db.batch([
     db
     .prepare(
-      "UPDATE chores SET next_due = ?, last_done = ? WHERE id = ? RETURNING \{chore_columns}",
+      "INSERT INTO completions (chore_id, done_on, previous_next_due, previous_last_done) SELECT ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM chores WHERE \{unchanged}) RETURNING id",
     )
-    .bind([
-      date_param(Some(after.next_due)),
-      date_param(after.last_done),
-      Integer(id),
-    ]),
+    .bind(
+      [
+        Integer(id),
+        Text(today.to_string()),
+        date_param(Some(before.next_due)),
+        date_param(before.last_done),
+        ..unchanged_params,
+      ],
+    ),
     db
     .prepare(
-      "INSERT INTO completions (chore_id, done_on, previous_next_due, previous_last_done) VALUES (?, ?, ?, ?) RETURNING id",
+      "UPDATE chores SET next_due = ?, last_done = ? WHERE \{unchanged} RETURNING \{chore_columns}",
     )
-    .bind([
-      Integer(id),
-      Text(today.to_string()),
-      date_param(Some(before.next_due)),
-      date_param(before.last_done),
-    ]),
+    .bind(
+      [
+        date_param(Some(after.next_due)),
+        date_param(after.last_done),
+        ..unchanged_params,
+      ],
+    ),
   ])
-  guard results is [chore_rows, completion_rows] &&
-    first_row(chore_rows) is Some(chore_row) &&
-    first_row(completion_rows) is Some({ "id": Number(completion_id, ..), .. }) else {
-    raise InternalError("unexpected batch result")
+  match results {
+    [[], []] => raise Conflict
+    [completion_rows, chore_rows] =>
+      match (first_row(completion_rows), first_row(chore_rows)) {
+        (Some({ "id": Number(completion_id, ..), .. }), Some(chore_row)) =>
+          {
+            chore: decode_chore(chore_row),
+            completion_id: completion_id.to_int(),
+          }
+        _ => raise InternalError("unexpected batch result")
+      }
+    _ => raise InternalError("unexpected batch result")
   }
-  { chore: decode_chore(chore_row), completion_id: completion_id.to_int(), }
 }
 
 ///|

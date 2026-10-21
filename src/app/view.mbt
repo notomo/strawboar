@@ -126,7 +126,14 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
           model,
           emit,
           chore => {
-            chore_row(chore, labels_of(chore), today, state_of(chore), emit)
+            chore_row(
+              chore,
+              labels_of(chore),
+              today,
+              state_of(chore),
+              model.completing.contains(chore.id),
+              emit,
+            )
           },
         ),
         chore_section(Later, "Later", dashboard.later, model, emit, chore => {
@@ -526,6 +533,7 @@ fn chore_row(
   labels : Array[@core.Label],
   today : @core.Date,
   state : RowState,
+  completing : Bool,
   emit : Emit[Msg],
 ) -> Html {
   card(state, [
@@ -541,6 +549,7 @@ fn chore_row(
     ]),
     @rui.button(
       variant=Outline,
+      disabled=completing,
       on_click=emit(Complete(chore.id)),
       attrs=@html.Attrs::build().aria_label("Done: \{chore.title}"),
       style=["flex-shrink:0;margin-right:0.25rem"],

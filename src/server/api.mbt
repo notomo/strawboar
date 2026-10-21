@@ -2,6 +2,8 @@
 priv suberror ApiError {
   BadRequest(String)
   NotFound
+  /// The data changed since it was read, e.g. by another request.
+  Conflict
   InternalError(String)
 }
 

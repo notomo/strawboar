@@ -107,6 +107,8 @@ struct Model {
   /// Expanded sections. Soon is expanded by default, Later and Done are not.
   open_sections : Array[Section]
   undo : Undo?
+  /// Chores whose completion is being sent, so that it is not sent twice.
+  completing : Array[Int32]
   /// The action shown in the confirmation dialog.
   confirm : Confirm?
   notice : String
@@ -117,7 +119,7 @@ enum Msg {
   Reload
   Loaded(Result[@core.ChoreList, Error])
   Complete(Int32)
-  Completed(Result[@core.Completed, Error])
+  Completed(Int32, Result[@core.Completed, Error])
   UndoCompletion(Int32)
   Undone(Result[@core.Chore, Error])
   DismissUndo(Int32)
@@ -252,17 +254,19 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
         @rabbita.none,
       )
     Loaded(Err(_)) => ({ ..model, load: Failed, }, @rabbita.none)
+    Complete(id) if model.completing.contains(id) => (model, @rabbita.none)
     Complete(id) =>
       (
-        { ..model, notice: "", },
+        { ..model, notice: "", completing: [..model.completing, id], },
         @http.post("/api/chores/\{id}/complete")
         .with_text("")
-        .expect_json(emit.map(result => Completed(result))),
+        .expect_json(emit.map(result => Completed(id, result))),
       )
-    Completed(Ok(completed)) =>
+    Completed(id, Ok(completed)) =>
       (
         {
           ..model,
+          completing: model.completing.filter(c => c != id),
           chores: upsert(model.chores, completed.chore),
           undo: Some({
             completion_id: completed.completion_id,
@@ -287,7 +291,11 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
           UNDO_DURATION_MS,
         ),
       )
-    Completed(Err(_)) => failed(model, "Failed to mark as done.")
+    Completed(id, Err(_)) =>
+      failed(
+        { ..model, completing: model.completing.filter(c => c != id), },
+        "Failed to mark as done.",
+      )
     UndoCompletion(completion_id) =>
       (
         {
@@ -728,6 +736,7 @@ fn app() -> Val[Html] {
           label_filter: None,
           open_sections: [Soon],
           undo: None,
+          completing: [],
           confirm: None,
           notice: "",
         },

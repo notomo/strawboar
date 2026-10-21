@@ -19,6 +19,7 @@ async fn handle(request : @web.Request, env : @cloudflare.Env) -> @web.Response 
   route(request, env.d1("DB")) catch {
     BadRequest(message) => error_response(message, 400)
     NotFound => error_response("not found", 404)
+    Conflict => error_response("conflict", 409)
     error => {
       println("internal error: \{error}")
       error_response("internal error", 500)
