@@ -21,7 +21,7 @@
       "migrations_dir": "migrations"
     }
   ],
-  // ACCESS_TEAM_DOMAIN and ACCESS_AUD are set as Worker secrets (`wrangler secret put`).
+  // ACCESS_TEAM_DOMAIN, ACCESS_AUD and ALLOWED_EMAILS (comma separated) are set as Worker secrets (`wrangler secret put`).
   "workers_dev": true,
   "preview_urls": false,
   "observability": { "enabled": true }

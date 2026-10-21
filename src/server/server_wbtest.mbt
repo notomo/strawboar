@@ -20,3 +20,15 @@ test "is_same_origin" {
     ),
   )
 }
+
+///|
+test "is_allowed_email" {
+  assert_true(is_allowed_email("me@example.com", "me@example.com"))
+  assert_true(
+    is_allowed_email("Me@Example.com", "other@example.com, me@example.com"),
+  )
+  assert_false(is_allowed_email("me@example.com", "other@example.com"))
+  assert_false(is_allowed_email("me@example.com", ""))
+  assert_false(is_allowed_email("", ""))
+  assert_false(is_allowed_email("", "me@example.com,"))
+}

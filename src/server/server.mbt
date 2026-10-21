@@ -9,7 +9,6 @@ pub fn fetch(
 
 ///|
 async fn handle(request : @web.Request, env : @cloudflare.Env) -> @web.Response {
-  // Only the owner can pass Access, so the identity itself is not used yet.
   let _identity = authenticate(request, env) catch {
     @cloudflare.AccessError(message) => {
       println("unauthorized: \{message}")
@@ -42,7 +41,21 @@ async fn authenticate(
     team_domain: env.string_var("ACCESS_TEAM_DOMAIN"),
     audience: env.string_var("ACCESS_AUD"),
   }
-  @cloudflare.verify_access(request, config, @web.now_seconds())
+  let identity = @cloudflare.verify_access(request, config, @web.now_seconds())
+  // Checked besides the Access policy, in case it lets in more people.
+  guard is_allowed_email(identity.email, env.string_var("ALLOWED_EMAILS")) else {
+    raise @cloudflare.AccessError("email not allowed: \{identity.email}")
+  }
+  identity
+}
+
+///|
+/// Whether `email` is one of `allowed`, comma separated emails, ignoring case.
+/// Nobody is allowed when `allowed` is empty, e.g. the secret is not set.
+fn is_allowed_email(email : String, allowed : String) -> Bool {
+  let email = email.trim().to_lower()
+  email != "" &&
+  allowed.split(",").any(entry => entry.trim().to_lower() == email)
 }
 
 ///|
