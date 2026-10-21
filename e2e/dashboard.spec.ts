@@ -1,5 +1,15 @@
-import { expect, test, type TestInfo } from "@playwright/test";
+import { test as base, expect, type TestInfo } from "@playwright/test";
 import { openPage } from "./page";
+
+// The Worker rejects requests that change data without being same-origin,
+// so API calls of the tests send the origin like a browser does.
+const test = base.extend({
+  request: async ({ playwright, baseURL }, use) => {
+    const request = await playwright.request.newContext({ baseURL, extraHTTPHeaders: { origin: baseURL! } });
+    await use(request);
+    await request.dispose();
+  },
+});
 
 // Start each test from an empty dashboard.
 test.beforeEach(async ({ request }) => {
@@ -334,6 +344,13 @@ test("serves the web app manifest", async ({ request }) => {
   expect(response.ok()).toBeTruthy();
   expect(await response.json()).toMatchObject({ name: "strawboar", display: "standalone" });
   expect((await request.get("/icon-192.png")).ok()).toBeTruthy();
+});
+
+test("rejects changes from another site", async ({ playwright, baseURL }) => {
+  const request = await playwright.request.newContext({ baseURL, extraHTTPHeaders: { origin: "https://example.com" } });
+  expect((await request.post("/api/chores/import", { data: "{}" })).status()).toBe(403);
+  expect((await request.get("/api/chores")).ok()).toBeTruthy();
+  await request.dispose();
 });
 
 function shortDate(offsetDays: number): string {

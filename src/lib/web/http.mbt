@@ -12,6 +12,11 @@ pub extern "js" fn Request::pathname(self : Request) -> String =
   #| (r) => new URL(r.url).pathname
 
 ///|
+/// The origin of the request URL, e.g. `https://example.com`.
+pub extern "js" fn Request::origin(self : Request) -> String =
+  #| (r) => new URL(r.url).origin
+
+///|
 pub extern "js" fn Request::hostname(self : Request) -> String =
   #| (r) => new URL(r.url).hostname
 

@@ -19,6 +19,7 @@ async fn handle(request : @web.Request, env : @cloudflare.Env) -> @web.Response 
   route(request, env.d1("DB")) catch {
     BadRequest(message) => error_response(message, 400)
     NotFound => error_response("not found", 404)
+    Forbidden => error_response("forbidden", 403)
     Conflict => error_response("conflict", 409)
     error => {
       println("internal error: \{error}")
@@ -42,6 +43,24 @@ async fn authenticate(
     audience: env.string_var("ACCESS_AUD"),
   }
   @cloudflare.verify_access(request, config, @web.now_seconds())
+}
+
+///|
+/// Whether a request may change data, against cross-site request forgery: a
+/// form of another site can send a simple request, e.g. `text/plain` without
+/// a preflight. `Sec-Fetch-Site` is required, or `Origin` if it is missing
+/// (`fetch_site` and `origin` are empty when the header is absent).
+fn is_same_origin(
+  http_method~ : String,
+  fetch_site~ : String,
+  origin~ : String,
+  request_origin~ : String,
+) -> Bool {
+  match (http_method, fetch_site) {
+    ("GET" | "HEAD", _) => true
+    (_, "") => origin == request_origin
+    (_, site) => site == "same-origin"
+  }
 }
 
 ///|

@@ -2,6 +2,7 @@
 priv suberror ApiError {
   BadRequest(String)
   NotFound
+  Forbidden
   /// The data changed since it was read, e.g. by another request.
   Conflict
   InternalError(String)
@@ -74,6 +75,14 @@ async fn route(
   request : @web.Request,
   db : @cloudflare.D1Database,
 ) -> @web.Response {
+  guard is_same_origin(
+    http_method=request.method_(),
+    fetch_site=request.header("sec-fetch-site"),
+    origin=request.header("origin"),
+    request_origin=request.origin(),
+  ) else {
+    raise Forbidden
+  }
   let segments = request
     .pathname()
     .split("/")
