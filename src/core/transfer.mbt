@@ -20,17 +20,13 @@ pub(all) struct ChoreDefinition {
 
 ///|
 pub impl ToJson for ChoreDefinition with fn to_json(self) {
-  let (repeat_key, repeat_value) = self.repeat.json_field()
-  let json : Map[String, Json] = { "title": Json(self.title) }
-  if self.description != "" {
-    json["description"] = Json(self.description)
-  }
-  json[repeat_key] = repeat_value
-  json["labels"] = Json(self.labels)
-  if self.next_due is Some(next_due) {
-    json["next_due"] = next_due.to_json()
-  }
-  Json::object(json)
+  chore_json(
+    title=self.title,
+    description=self.description,
+    repeat=self.repeat,
+    next_due=self.next_due,
+    labels=Json(self.labels),
+  )
 }
 
 ///|
@@ -42,12 +38,7 @@ pub impl @json.FromJson for ChoreDefinition with fn from_json(json, path) {
     title,
     description: read_description(json, path),
     repeat: Repeat::read_json(json, path),
-    next_due: match json {
-      { "next_due": Null, .. } => None
-      { "next_due": next_due, .. } =>
-        Some(@json.from_json(next_due, path=path.add_key("next_due")))
-      _ => None
-    },
+    next_due: read_next_due(json, path),
     labels: @json.from_json(labels, path=path.add_key("labels")),
   }
 }
