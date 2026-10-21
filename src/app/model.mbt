@@ -105,6 +105,9 @@ struct Model {
 ///|
 enum Msg {
   Reload
+  /// Reloads the whole page, which signs in again when the Access session has
+  /// expired: its redirect makes every API request fail until then.
+  ReloadPage
   Loaded(Result[@core.ChoreList, Error])
   Complete(Int32)
   Completed(Int32, Result[@core.Completed, Error])

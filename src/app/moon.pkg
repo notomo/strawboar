@@ -4,6 +4,7 @@ import {
   "moonbit-community/rabbita/dialog",
   "moonbit-community/rabbita/html",
   "moonbit-community/rabbita/http",
+  "moonbit-community/rabbita/nav",
   "moonbit-community/rui",
 }
 

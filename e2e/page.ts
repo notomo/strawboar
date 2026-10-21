@@ -1,6 +1,10 @@
 import { expect, type Page } from "@playwright/test";
 
-export async function openPage({ page }: { page: Page }) {
+// `failFirstLoad` makes the first `GET /api/chores` fail, like when the Access session has expired.
+export async function openPage({ page, failFirstLoad = false }: { page: Page; failFirstLoad?: boolean }) {
+  if (failFirstLoad) {
+    await page.route("**/api/chores", (route) => route.abort(), { times: 1 });
+  }
   // Skip the transitions of panels and dialogs, which every action would wait for. Kept after reload.
   await page.addInitScript(() => {
     document.addEventListener("DOMContentLoaded", () => {
@@ -21,6 +25,9 @@ export async function openPage({ page }: { page: Page }) {
   const strawboarPage = {
     reload: async () => {
       await page.reload();
+    },
+    reloadPageAfterFailure: async () => {
+      await page.getByRole("button", { name: "Reload page" }).click();
     },
 
     getToday: () => page.locator("#today"),

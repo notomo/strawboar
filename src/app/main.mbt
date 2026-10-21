@@ -18,6 +18,7 @@ fn failed(model : Model, message : String) -> (Model, Cmd) {
 ///|
 fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
   match msg {
+    ReloadPage => (model, @nav.reload())
     Reload =>
       (
         { ..model, load: Loading, },

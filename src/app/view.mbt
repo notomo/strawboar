@@ -151,8 +151,11 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
           "display:flex;flex-direction:column;gap:0.5rem;align-items:flex-start",
         ],
         [
-          p(style=["margin:0"], "Failed to load chores."),
-          @rui.button(variant=Outline, on_click=emit(Reload), "Retry"),
+          p(
+            style=["margin:0"],
+            "Failed to load chores. Reloading the page also signs in again if the session has expired.",
+          ),
+          @rui.button(variant=Outline, on_click=emit(ReloadPage), "Reload page"),
         ],
       )
     _ =>

@@ -346,6 +346,15 @@ test("serves the web app manifest", async ({ request }) => {
   expect((await request.get("/icon-192.png")).ok()).toBeTruthy();
 });
 
+test("reloads the page when loading fails", async ({ page }) => {
+  const strawboar = await openPage({ page, failFirstLoad: true });
+  await expect(strawboar.getText("Failed to load chores.")).toBeVisible();
+
+  await strawboar.reloadPageAfterFailure();
+
+  await expect(strawboar.getToday()).toBeVisible();
+});
+
 test("rejects changes from another site", async ({ playwright, baseURL }) => {
   const request = await playwright.request.newContext({ baseURL, extraHTTPHeaders: { origin: "https://example.com" } });
   expect((await request.post("/api/chores/import", { data: "{}" })).status()).toBe(403);
