@@ -65,6 +65,13 @@ e2e/                 # Playwright tests
   - One test per user goal. Extend an existing test with a related check instead of adding a near-duplicate one.
 - **Rabbita**: follow `.mooncakes/moonbit-community/rabbita` conventions (`create_state`, `create_resource`, `@http`); avoid escape hatches such as `@cmd.effect` or `@dom`.
 
+## Accepted Trade-offs
+
+Known limitations kept on purpose for a personal app; do not report them as issues unless the situation changes.
+
+- **Today across midnight**: "today" is only refreshed by reloading, so a page left open (e.g. a PWA resumed from the background) keeps the previous day. A reload on `@sub.on_visibility_change` would fix it if needed.
+- **Deploy**: `deploy.yaml` applies migrations before deploying, so the old Worker briefly runs on the new schema; this is fine as long as migrations are additive. Dependabot patch and minor updates (wrangler and vite included) are auto-merged and deployed once CI passes.
+
 ## Coding Style
 
 **Prefer iterator methods over for loops**: Use `map`, `fold`, `filter`, `Array::makei` etc. for collection processing. Use `for` loops only for complex control flow (`continue`/`break`) or while-style loops.
