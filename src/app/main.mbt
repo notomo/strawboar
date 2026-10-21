@@ -142,17 +142,19 @@ enum Msg {
   LabelNameChanged(String)
   LabelColorChanged(@core.LabelColor)
   SubmitLabel
-  LabelSaved(Result[@core.Label, Error])
+  /// Responses carry the id they were sent for: the panel may show another
+  /// label or chore by the time they arrive.
+  LabelSaved(Int32?, Result[@core.Label, Error])
   DeleteLabel
-  LabelDeleted(Error?)
+  LabelDeleted(Int32, Error?)
   OpenTransfer
   TransferTextChanged(String)
   Import
   Imported(Result[@core.ImportResult, Error])
   Submit
-  Saved(Result[@core.Chore, Error])
+  Saved(Int32?, Result[@core.Chore, Error])
   Archive
-  Archived(Error?)
+  Archived(Int32, Error?)
   /// Opens the confirmation of an action of the panel.
   AskConfirm(Confirm)
   ClosePanel
@@ -459,30 +461,29 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
                   None =>
                     @http.post("/api/labels")
                     .with_json(input)
-                    .expect_json(emit.map(result => LabelSaved(result)))
+                    .expect_json(emit.map(result => LabelSaved(None, result)))
                   Some(id) =>
                     @http.put("/api/labels/\{id}")
                     .with_json(input)
-                    .expect_json(emit.map(result => LabelSaved(result)))
+                    .expect_json(
+                      emit.map(result => LabelSaved(Some(id), result)),
+                    )
                 },
               )
           }
         }
         _ => (model, @rabbita.none)
       }
-    LabelSaved(Ok(label)) => {
+    LabelSaved(id, Ok(label)) => {
       let labels = @core.upsert_label(model.labels, label)
       (
-        { ..model, labels, }.edit_label(_ => new_label_form(labels)),
+        { ..model, labels, }.edit_label_of(id, _ => new_label_form(labels)),
         @rabbita.none,
       )
     }
-    LabelSaved(Err(_)) =>
+    LabelSaved(id, Err(_)) =>
       (
-        model.edit_label(form => {
-          ..form,
-          error: "Failed to save. Please try again.",
-        }),
+        model.label_error(id, "Failed to save. Please try again."),
         @rabbita.none,
       )
     DeleteLabel =>
@@ -491,37 +492,30 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
           (
             model,
             @http.delete("/api/labels/\{id}").expect_empty(
-              emit.map(error => LabelDeleted(error)),
+              emit.map(error => LabelDeleted(id, error)),
             ),
           )
         _ => (model, @rabbita.none)
       }
-    LabelDeleted(None) =>
-      match model.panel {
-        Some(Labels({ id: Some(id), .. })) => {
-          let labels = model.labels.filter(l => l.id != id)
-          (
-            {
-              ..model,
-              labels,
-              chores: model.chores.map(chore => {
-                ..chore,
-                labels: chore.labels.filter(l => l != id),
-              }),
-            }
-            .edit_label(_ => new_label_form(labels))
-            .keep_valid_filter(),
-            @rabbita.none,
-          )
-        }
-        _ => (model, @rabbita.none)
-      }
-    LabelDeleted(Some(_)) =>
+    LabelDeleted(id, None) => {
+      let labels = model.labels.filter(l => l.id != id)
       (
-        model.edit_label(form => {
-          ..form,
-          error: "Failed to delete. Please try again.",
-        }),
+        {
+          ..model,
+          labels,
+          chores: model.chores.map(chore => {
+            ..chore,
+            labels: chore.labels.filter(l => l != id),
+          }),
+        }
+        .edit_label_of(Some(id), _ => new_label_form(labels))
+        .keep_valid_filter(),
+        @rabbita.none,
+      )
+    }
+    LabelDeleted(id, Some(_)) =>
+      (
+        model.label_error(Some(id), "Failed to delete. Please try again."),
         @rabbita.none,
       )
     Submit =>
@@ -538,32 +532,23 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
                   None =>
                     @http.post("/api/chores")
                     .with_json(input)
-                    .expect_json(emit.map(result => Saved(result)))
+                    .expect_json(emit.map(result => Saved(None, result)))
                   Some(id) =>
                     @http.put("/api/chores/\{id}")
                     .with_json(input)
-                    .expect_json(emit.map(result => Saved(result)))
+                    .expect_json(emit.map(result => Saved(Some(id), result)))
                 },
               )
           }
         None => (model, @rabbita.none)
       }
-    Saved(Ok(chore)) =>
+    Saved(id, Ok(chore)) =>
+      { ..model, chores: upsert(model.chores, chore), notice: "", }
+      .keep_valid_filter()
+      .close_editor_of(id)
+    Saved(id, Err(_)) =>
       (
-        {
-          ..model,
-          chores: upsert(model.chores, chore),
-          notice: "",
-          panel_open: false,
-        }.keep_valid_filter(),
-        @dialog.close(EDITOR_ID),
-      )
-    Saved(Err(_)) =>
-      (
-        model.edit(editor => {
-          ..editor,
-          error: "Failed to save. Please try again.",
-        }),
+        model.editor_error(id, "Failed to save. Please try again."),
         @rabbita.none,
       )
     Archive =>
@@ -572,28 +557,18 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
           (
             model,
             @http.delete("/api/chores/\{id}").expect_empty(
-              emit.map(error => Archived(error)),
+              emit.map(error => Archived(id, error)),
             ),
           )
         _ => (model, @rabbita.none)
       }
-    Archived(None) => {
-      let id = model.editor().bind(editor => editor.id)
+    Archived(id, None) =>
+      { ..model, chores: model.chores.filter(c => c.id != id), }
+      .keep_valid_filter()
+      .close_editor_of(Some(id))
+    Archived(id, Some(_)) =>
       (
-        {
-          ..model,
-          chores: model.chores.filter(c => Some(c.id) != id),
-          panel_open: false,
-        }.keep_valid_filter(),
-        @dialog.close(EDITOR_ID),
-      )
-    }
-    Archived(Some(_)) =>
-      (
-        model.edit(editor => {
-          ..editor,
-          error: "Failed to archive. Please try again.",
-        }),
+        model.editor_error(Some(id), "Failed to archive. Please try again."),
         @rabbita.none,
       )
     OpenTransfer =>
@@ -676,6 +651,27 @@ fn Model::edit(self : Model, f : (Editor) -> Editor) -> Model {
 }
 
 ///|
+/// Closes the panel if it is open for the chore `id` (`None` for a new one).
+fn Model::close_editor_of(self : Model, id : Int32?) -> (Model, Cmd) {
+  match (self.panel_open, self.editor()) {
+    (true, Some(editor)) if editor.id == id =>
+      ({ ..self, panel_open: false, }, @dialog.close(EDITOR_ID))
+    _ => (self, @rabbita.none)
+  }
+}
+
+///|
+/// Shows the error in the panel if it is open for the chore `id`, or as a
+/// notice otherwise.
+fn Model::editor_error(self : Model, id : Int32?, error : String) -> Model {
+  match (self.panel_open, self.editor()) {
+    (true, Some(editor)) if editor.id == id =>
+      self.edit(editor => { ..editor, error, })
+    _ => { ..self, notice: error, }
+  }
+}
+
+///|
 fn Model::edit_transfer(self : Model, f : (Transfer) -> Transfer) -> Model {
   match self.panel {
     Some(Transfer(transfer)) => { ..self, panel: Some(Transfer(f(transfer))), }
@@ -688,6 +684,27 @@ fn Model::edit_label(self : Model, f : (LabelForm) -> LabelForm) -> Model {
   match self.panel {
     Some(Labels(form)) => { ..self, panel: Some(Labels(f(form))), }
     _ => self
+  }
+}
+
+///|
+/// Edits the label form only if it is for the label `id` (`None` for a new one).
+fn Model::edit_label_of(
+  self : Model,
+  id : Int32?,
+  f : (LabelForm) -> LabelForm,
+) -> Model {
+  self.edit_label(form => if form.id == id { f(form) } else { form })
+}
+
+///|
+/// Shows the error in the labels panel if it is open for the label `id`, or
+/// as a notice otherwise.
+fn Model::label_error(self : Model, id : Int32?, error : String) -> Model {
+  match (self.panel_open, self.panel) {
+    (true, Some(Labels(form))) if form.id == id =>
+      self.edit_label(form => { ..form, error, })
+    _ => { ..self, notice: error, }
   }
 }
 
