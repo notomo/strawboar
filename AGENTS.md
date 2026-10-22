@@ -12,6 +12,8 @@ A personal life-TODO dashboard. A single Cloudflare Worker serves a Rabbita SPA 
 
 ```bash
 npm run dev        # Vite (5173, proxies /api) + wrangler dev (8787, local D1)
+npm run db:seed:local  # Replace the local D1 data with test data (scripts/seed.sql, dates relative to today)
+npm run db:seed:check  # Apply the seed to a fresh local D1 to check it still works (in check_all and CI)
 npm run build      # moon build + vite build
 npm run check      # Type check and format check
 npm run format     # Format MoonBit code
