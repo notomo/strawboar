@@ -4,86 +4,88 @@ fn list_style() -> String {
 }
 
 ///|
-fn chore_section(
-  section : Section,
-  title : String,
-  chores : Array[@core.Chore],
-  model : Model,
-  emit : Emit[Msg],
-  row : (@core.Chore) -> Html,
-) -> Html {
-  collapsible_section(
-    section,
-    "\{title} (\{chores.length()})",
-    model,
-    emit,
-    ul(style=[list_style()], chores.map(row)),
-  )
-}
-
-///|
-/// e.g. `Soon · until 10/20`, so that it is clear which days the section covers.
-fn soon_title(dashboard : @core.Dashboard) -> String {
-  match dashboard.soon_until() {
-    Some(date) => "Soon · until \{short_date(date)}"
-    None => "Soon"
-  }
-}
-
-///|
-/// e.g. `Done · 10/12 – 10/18 (3)`, so that it is clear which days the section covers.
-fn recent_title(count : Int32, today : @core.Date) -> String {
-  let from = today.add_days(1 - @core.RECENT_DAYS)
-  "Done · \{short_date(from)} – \{short_date(today)} (\{count})"
-}
-
-///|
-/// A section whose content is shown by clicking its title.
-fn collapsible_section(
-  section : Section,
-  title : String,
-  model : Model,
-  emit : Emit[Msg],
-  content : Html,
-) -> Html {
-  let id = match section {
+fn tab_id(tab : Tab) -> String {
+  match tab {
     Soon => "soon"
     Later => "later"
     Done => "recent"
   }
-  let open = model.open_sections.contains(section)
-  let on_open_change = emit.map(open => SectionToggled(section, open))
-  @html.section(id~, [
-    @rui.collapsible_root(open~, [
-      // Kept at the top of the dashboard while its section is scrolled.
-      // It is above the backdrop like the header.
-      div(
-        style=[
-          "position:sticky;top:0;z-index:12;background:var(--rui-background)",
-        ],
-        [
-          @rui.collapsible_trigger(
-            open~,
-            controls="\{id}-content",
-            on_open_change~,
-            id="\{id}-trigger",
-            style=["padding:0.375rem 0.5rem;align-items:center"],
-            // A heading is not allowed in a button.
-            span(style=[section_title_style, muted], title),
-          ),
-          raised_backdrop_view(model.panel_open, emit),
-        ],
-      ),
-      @rui.collapsible_content(
-        open~,
-        labelledby="\{id}-trigger",
-        id="\{id}-content",
-        // A gap between the title and the list, hidden with the content.
-        body_style=["padding:0.5rem 0 0"],
-        content,
-      ),
-    ]),
-  ])
+}
+
+///|
+/// The tabs with their counts. They are in the header so that every tab can be
+/// reached however long the list of the selected one is.
+fn tabs_view(model : Model, today : @core.Date, emit : Emit[Msg]) -> Html {
+  let (dashboard, recent) = filtered(model, today)
+  @rui.tabs_list(
+    aria_label="Chores",
+    style=["width:100%"],
+    [
+      (Soon, "Soon", dashboard.soon.length()),
+      (Later, "Later", dashboard.later.length()),
+      (Done, "Done", recent.length()),
+    ].map(entry => {
+      let (tab, name, count) = entry
+      let id = tab_id(tab)
+      @rui.tabs_trigger(
+        value=id,
+        selected=model.tab == tab,
+        controls=id,
+        on_value_change=emit.map(_ => TabSelected(tab)),
+        id="\{id}-tab",
+        style=["padding-block:0.25rem"],
+        "\{name} (\{count})",
+      )
+    }),
+  )
+}
+
+///|
+/// The content of the selected tab, below a caption of the days it covers.
+fn tab_panel(tab : Tab, caption : String?, content : Html) -> Html {
+  let id = tab_id(tab)
+  @rui.tabs_content(
+    value=id,
+    selected=true,
+    labelledby="\{id}-tab",
+    id~,
+    style=["display:flex;flex-direction:column;gap:0.5rem"],
+    [
+      match caption {
+        Some(caption) =>
+          p(
+            id="\{id}-caption",
+            style=["margin:0 0.5rem;font-size:0.8125rem", muted],
+            caption,
+          )
+        None => @html.nothing
+      },
+      content,
+    ],
+  )
+}
+
+///|
+fn chore_panel(
+  tab : Tab,
+  caption : String?,
+  chores : Array[@core.Chore],
+  row : (@core.Chore) -> Html,
+) -> Html {
+  tab_panel(tab, caption, ul(style=[list_style()], chores.map(row)))
+}
+
+///|
+/// e.g. `Until 10/20`, so that it is clear which days Soon covers.
+fn soon_caption(dashboard : @core.Dashboard) -> String? {
+  dashboard.soon_until().map(date => "Until \{short_date(date)}")
+}
+
+///|
+/// e.g. `10/12 – 10/18`, so that it is clear which days Done covers.
+fn recent_caption(today : @core.Date) -> String {
+  let from = today.add_days(1 - @core.RECENT_DAYS)
+  "\{short_date(from)} – \{short_date(today)}"
 }
 
 ///|
@@ -227,21 +229,18 @@ fn dated_row(
 }
 
 ///|
-/// "Done", collapsed by default like the later section.
+/// "Done": all completions of the last days.
 fn recent_view(
   recent : Array[@core.RecentDone],
   model : Model,
   today : @core.Date,
   emit : Emit[Msg],
 ) -> Html {
-  collapsible_section(
+  tab_panel(
     Done,
-    recent_title(recent.length(), today),
-    model,
-    emit,
+    Some(recent_caption(today)),
     ul(
-      // The collapsible content is muted by default.
-      style=[list_style(), "color:var(--rui-foreground)"],
+      style=[list_style()],
       @core.recent_monthly_first(recent, model.chores)
       .iter()
       .map(done => {

@@ -20,8 +20,8 @@ fn view(
       div(style=["flex-shrink:0;padding:0 1rem"], [
         sticky_view(model, menu, emit),
       ]),
-      // Scrolled instead of the page, so that the section titles can stick
-      // below the header whatever its height is.
+      // Scrolled instead of the page, so that the header and the tabs stay
+      // at the top whatever their height is.
       div(
         id="dashboard",
         style=["flex:1;min-height:0;overflow-y:auto;padding:0 1rem"],
@@ -41,7 +41,7 @@ fn view(
 }
 
 ///|
-/// The header and the label filter, kept at the top while scrolling.
+/// The header, the label filter and the tabs, kept at the top while scrolling.
 /// It is above the backdrop like the rows raised while the panel is open,
 /// so that its shadow is not hidden by them, and has its own backdrop instead.
 fn sticky_view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
@@ -52,6 +52,10 @@ fn sticky_view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
     [
       header_view(model, menu, emit),
       label_filter_view(model.labels, model.label_filter, emit),
+      match (model.load, model.today) {
+        (Ready, Some(today)) => tabs_view(model, today, emit)
+        _ => @html.nothing
+      },
       raised_backdrop_view(model.panel_open, emit),
     ],
   )
@@ -95,54 +99,60 @@ fn header_view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
 }
 
 ///|
+/// The dashboard and the completions of the last days, with the label filter applied.
+fn filtered(
+  model : Model,
+  today : @core.Date,
+) -> (@core.Dashboard, Array[@core.RecentDone]) {
+  let chores = match model.label_filter {
+    Some(id) => model.chores.filter(chore => chore.has_label(id))
+    None => model.chores
+  }
+  // Completions of archived chores are hidden while filtering.
+  let recent = match model.label_filter {
+    Some(_) =>
+      model.recent.filter(done => {
+        chores.iter().any(chore => chore.id == done.chore_id)
+      })
+    None => model.recent
+  }
+  (@core.Dashboard::new(chores, today), recent)
+}
+
+///|
 fn content_view(model : Model, emit : Emit[Msg]) -> Html {
   match (model.load, model.today) {
     (Ready, Some(today)) => {
-      let chores = match model.label_filter {
-        Some(id) => model.chores.filter(chore => chore.has_label(id))
-        None => model.chores
-      }
-      // Completions of archived chores are hidden while filtering.
-      let recent = match model.label_filter {
-        Some(_) =>
-          model.recent.filter(done => {
-            chores.iter().any(chore => chore.id == done.chore_id)
-          })
-        None => model.recent
-      }
-      let dashboard = @core.Dashboard::new(chores, today)
+      let (dashboard, recent) = filtered(model, today)
       let state_of = (chore : @core.Chore) => row_state(model, chore.id)
       let labels_of = (chore : @core.Chore) => chore.labels_in(model.labels)
       div(style=["display:flex;flex-direction:column;gap:1.5rem"], [
         notice_view(model.notice),
-        chore_section(
-          Soon,
-          soon_title(dashboard),
-          dashboard.soon,
-          model,
-          emit,
-          chore => {
-            chore_row(
-              chore,
-              labels_of(chore),
-              today,
-              state_of(chore),
-              model.completing.contains(chore.id),
-              emit,
-            )
-          },
-        ),
-        chore_section(Later, "Later", dashboard.later, model, emit, chore => {
-          dated_row(
-            chore.id,
-            chore.title,
-            labels_of(chore),
-            chore.next_due,
-            state_of(chore),
-            emit,
-          )
-        }),
-        recent_view(recent, model, today, emit),
+        match model.tab {
+          Soon =>
+            chore_panel(Soon, soon_caption(dashboard), dashboard.soon, chore => {
+              chore_row(
+                chore,
+                labels_of(chore),
+                today,
+                state_of(chore),
+                model.completing.contains(chore.id),
+                emit,
+              )
+            })
+          Later =>
+            chore_panel(Later, None, dashboard.later, chore => {
+              dated_row(
+                chore.id,
+                chore.title,
+                labels_of(chore),
+                chore.next_due,
+                state_of(chore),
+                emit,
+              )
+            })
+          Done => recent_view(recent, model, today, emit)
+        },
       ])
     }
     (Failed, _) =>
@@ -272,9 +282,6 @@ fn menu_item(
     label,
   )
 }
-
-///|
-let section_title_style = "font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase"
 
 ///|
 /// How a chore row relates to the editor panel.

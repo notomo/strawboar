@@ -68,9 +68,6 @@ test "dates" {
 }
 
 ///|
-test "recent_title" {
-  inspect(
-    recent_title(3, test_date("2026-10-03")),
-    content="Done · 09/27 – 10/03 (3)",
-  )
+test "recent_caption" {
+  inspect(recent_caption(test_date("2026-10-03")), content="09/27 – 10/03")
 }

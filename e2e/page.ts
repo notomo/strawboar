@@ -33,16 +33,18 @@ export async function openPage({ page, failFirstLoad = false }: { page: Page; fa
     getToday: () => page.locator("#today"),
     getText: (text: string) => page.getByText(text),
 
-    getSoonTrigger: () => page.locator("#soon-trigger"),
+    getSoonTab: () => page.locator("#soon-tab"),
+    getSoonCaption: () => page.locator("#soon-caption"),
     getSoonRows: () => page.locator("#soon li"),
     getSoonRow: (title: string) => page.locator("#soon li", { hasText: title }),
-    getLaterTrigger: () => page.locator("#later-trigger"),
+    getLaterTab: () => page.locator("#later-tab"),
     getLaterRow: (title: string) => page.locator("#later li", { hasText: title }),
     getCurrentRow: () => page.locator('li[aria-current="true"]'),
     getDoneButton: (title: string) => page.getByRole("button", { name: `Done: ${title}` }),
 
     getRecent: () => recent,
-    getRecentTrigger: () => page.locator("#recent-trigger"),
+    getRecentTab: () => page.locator("#recent-tab"),
+    getRecentCaption: () => page.locator("#recent-caption"),
     getRecentRow: (title: string) => recent.locator("li", { hasText: title }),
 
     getUndoToast: () => undoToast,
@@ -153,22 +155,20 @@ export async function openPage({ page, failFirstLoad = false }: { page: Page; fa
       await page.locator("#soon li, #later li", { hasText: title }).getByText(title).click();
     },
 
-    // Later is collapsed by default.
-    openLater: async () => {
-      const trigger = strawboarPage.getLaterTrigger();
-      if ((await trigger.getAttribute("aria-expanded")) !== "true") {
-        await trigger.click();
-      }
-      await expect(trigger).toHaveAttribute("aria-expanded", "true");
+    // Soon is selected by default.
+    openSoon: async () => {
+      await strawboarPage.getSoonTab().click();
+      await expect(strawboarPage.getSoonTab()).toHaveAttribute("aria-selected", "true");
     },
 
-    // "Done" is collapsed by default.
+    openLater: async () => {
+      await strawboarPage.getLaterTab().click();
+      await expect(strawboarPage.getLaterTab()).toHaveAttribute("aria-selected", "true");
+    },
+
     openRecent: async () => {
-      const trigger = strawboarPage.getRecentTrigger();
-      if ((await trigger.getAttribute("aria-expanded")) !== "true") {
-        await trigger.click();
-      }
-      await expect(trigger).toHaveAttribute("aria-expanded", "true");
+      await strawboarPage.getRecentTab().click();
+      await expect(strawboarPage.getRecentTab()).toHaveAttribute("aria-selected", "true");
     },
 
     complete: async (title: string) => {

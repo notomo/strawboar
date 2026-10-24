@@ -193,11 +193,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
         @rabbita.none,
       )
     FilterByLabel(label_filter) => ({ ..model, label_filter, }, @rabbita.none)
-    SectionToggled(section, open) => {
-      let others = model.open_sections.filter(s => s != section)
-      let open_sections = if open { [..others, section] } else { others }
-      ({ ..model, open_sections, }, @rabbita.none)
-    }
+    TabSelected(tab) => ({ ..model, tab, }, @rabbita.none)
     OpenLabels =>
       (
         {
@@ -428,7 +424,7 @@ fn app() -> Val[Html] {
           panel: None,
           panel_open: false,
           label_filter: None,
-          open_sections: [Soon],
+          tab: Soon,
           undo: None,
           completing: [],
           confirm: None,

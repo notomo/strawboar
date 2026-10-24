@@ -57,8 +57,8 @@ enum Panel {
 } derive(Eq)
 
 ///|
-/// A dashboard section that can be collapsed.
-enum Section {
+/// A tab of the dashboard.
+enum Tab {
   Soon
   Later
   Done
@@ -92,8 +92,8 @@ struct Model {
   panel_open : Bool
   /// Only chores with this label are shown when set.
   label_filter : Int32?
-  /// Expanded sections. Soon is expanded by default, Later and Done are not.
-  open_sections : Array[Section]
+  /// The selected tab of the dashboard. Soon by default.
+  tab : Tab
   undo : Undo?
   /// Chores whose completion is being sent, so that it is not sent twice.
   completing : Array[Int32]
@@ -126,7 +126,7 @@ enum Msg {
   NextDueChanged(String)
   ToggleLabel(Int32)
   FilterByLabel(Int32?)
-  SectionToggled(Section, Bool)
+  TabSelected(Tab)
   OpenLabels
   EditLabel(Int32)
   NewLabel

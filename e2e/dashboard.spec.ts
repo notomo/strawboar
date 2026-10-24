@@ -48,13 +48,10 @@ test("adds a chore that is due today", async ({ page }, testInfo) => {
 
   await expect(strawboar.getSoonRow(title)).toContainText("weekly · not done yet");
 
-  // Soon is expanded by default and can be collapsed.
-  await expect(strawboar.getSoonTrigger()).toHaveAttribute("aria-expanded", "true");
-  await expect(strawboar.getSoonTrigger()).toHaveText(`Soon · until ${shortDate(0)} (1)`);
-  await strawboar.getSoonTrigger().click();
-  await expect(strawboar.getSoonRow(title)).toBeHidden();
-  await strawboar.getSoonTrigger().click();
-  await expect(strawboar.getSoonRow(title)).toBeVisible();
+  // Soon is selected by default.
+  await expect(strawboar.getSoonTab()).toHaveAttribute("aria-selected", "true");
+  await expect(strawboar.getSoonTab()).toHaveText("Soon (1)");
+  await expect(strawboar.getSoonCaption()).toHaveText(`Until ${shortDate(0)}`);
 });
 
 test("marks a chore as done and undoes it", async ({ page }, testInfo) => {
@@ -66,24 +63,23 @@ test("marks a chore as done and undoes it", async ({ page }, testInfo) => {
 
   await expect(strawboar.getUndoToast()).toContainText(`Done: ${title}`);
   await expect(strawboar.getSoonRow(title)).toHaveCount(0);
-  // Later is collapsed by default.
-  await expect(strawboar.getLaterTrigger()).toHaveAttribute("aria-expanded", "false");
-  await expect(strawboar.getLaterTrigger()).toContainText("Later (1)");
+  await expect(strawboar.getLaterTab()).toHaveText("Later (1)");
   await expect(strawboar.getLaterRow(title)).toBeHidden();
   await strawboar.openLater();
   await expect(strawboar.getLaterRow(title)).toBeVisible();
-  // "Done" is collapsed by default.
-  await expect(strawboar.getRecentTrigger()).toHaveAttribute("aria-expanded", "false");
-  await expect(strawboar.getRecentTrigger()).toContainText(/Done · \d{2}\/\d{2} – \d{2}\/\d{2} \(\d+\)/);
+  // Completions left by other tests are counted too.
+  await expect(strawboar.getRecentTab()).toHaveText(/^Done \(\d+\)$/);
   await expect(strawboar.getRecentRow(title)).toBeHidden();
   await strawboar.openRecent();
   await expect(strawboar.getRecentRow(title)).toBeVisible();
+  await expect(strawboar.getRecentCaption()).toHaveText(`${shortDate(-6)} – ${shortDate(0)}`);
 
   await strawboar.undoFromToast();
 
   await expect(strawboar.getUndoToast()).toBeHidden();
-  await expect(strawboar.getSoonRow(title)).toBeVisible();
   await expect(strawboar.getRecentRow(title)).toHaveCount(0);
+  await strawboar.openSoon();
+  await expect(strawboar.getSoonRow(title)).toBeVisible();
 });
 
 test("opens and closes the panel", async ({ page }, testInfo) => {
@@ -174,6 +170,7 @@ test("filters chores by label", async ({ page }, testInfo) => {
 
   // Completions are filtered too.
   await strawboar.complete(bath);
+  await strawboar.openRecent();
   await strawboar.toggleLabelFilter("weekly");
   await expect(strawboar.getRecentRow(bath)).toHaveCount(1);
   await strawboar.toggleLabelFilter("kitchen");
@@ -236,6 +233,7 @@ test("undoes the latest completion from the panel", async ({ page, request }, te
   expect((await request.delete(`/api/completions/${completionIds[0]}`)).status()).toBe(400);
 
   const strawboar = await openPage({ page });
+  await strawboar.openRecent();
   await expect(strawboar.getRecentRow(title)).toHaveCount(2);
   await strawboar.openRecentChore(title);
   await strawboar.askUndoLastDone();
@@ -255,10 +253,12 @@ test("undoes the latest completion from the panel", async ({ page, request }, te
   await expect(strawboar.getConfirmDialog()).toBeHidden();
   await expect(strawboar.getEditor()).toBeVisible();
   await strawboar.close();
+  await strawboar.openSoon();
   await expect(strawboar.getSoonRow(title)).toBeVisible();
 
   await strawboar.reload();
   await expect(strawboar.getSoonRow(title)).toContainText("not done yet");
+  await strawboar.openRecent();
   await expect(strawboar.getRecentRow(title)).toHaveCount(0);
 });
 
@@ -323,7 +323,7 @@ test("opens import/export at the top of a long list", async ({ page, request }, 
   expect(await strawboar.getDefinitionsScroll()).toEqual({ panel: 0, textarea: 0 });
 });
 
-test("keeps the section title at the top while scrolling", async ({ page, request }, testInfo) => {
+test("keeps the tabs at the top while scrolling", async ({ page, request }, testInfo) => {
   for (let i = 0; i < 20; i++) {
     const response = await request.post("/api/chores", {
       data: { title: uniqueTitle(testInfo, `Chore ${i}`), interval_days: 7, next_due: today(), labels: [] },
@@ -335,8 +335,9 @@ test("keeps the section title at the top while scrolling", async ({ page, reques
 
   await strawboar.scrollToBottom();
   await expect(strawboar.getSoonRows().first()).not.toBeInViewport();
-  await expect(strawboar.getSoonTrigger()).toBeInViewport();
   await expect(strawboar.getToday()).toBeInViewport();
+  // The other tabs can be reached however long Soon is.
+  await strawboar.openLater();
 });
 
 test("serves the web app manifest", async ({ request }) => {
@@ -390,13 +391,14 @@ test("keeps a monthly chore on its day", async ({ page }, testInfo) => {
   await strawboar.addMonthlyChore(title, { firstDue, leadDays: "14" });
   await expect(strawboar.getSoonRow(title)).toContainText("monthly on the");
   await expect(strawboar.getSoonRow(title)).toContainText("not done yet · due in 10 days");
-  await expect(strawboar.getSoonTrigger()).toHaveText(`Soon · until ${shortDate(10)} (1)`);
+  await expect(strawboar.getSoonCaption()).toHaveText(`Until ${shortDate(10)}`);
 
   // Done early, it is due on the same day of the next month.
   await strawboar.complete(title);
   await strawboar.openLater();
   await expect(strawboar.getLaterRow(title)).toContainText(nextMonthShortDate(firstDue));
   await strawboar.undoFromToast();
+  await strawboar.openSoon();
   await expect(strawboar.getSoonRow(title)).toBeVisible();
 
   await strawboar.openChore(title);
@@ -405,6 +407,7 @@ test("keeps a monthly chore on its day", async ({ page }, testInfo) => {
   await strawboar.getLeadDaysInput().fill("0");
   await strawboar.save();
   await expect(strawboar.getEditor()).toBeHidden();
+  await strawboar.openLater();
   await expect(strawboar.getLaterRow(title)).toContainText(shortDate(10));
 });
 
@@ -436,6 +439,7 @@ test("edits and archives a chore", async ({ page }, testInfo) => {
   // Undo so that the completion does not stay in the recent list.
   await strawboar.undoLastDone();
   await strawboar.close();
+  await strawboar.openSoon();
   await expect(strawboar.getSoonRow(renamed)).toBeVisible();
 
   await strawboar.openChore(renamed);
