@@ -38,7 +38,7 @@ fn tabs_view(model : Model, today : @core.Date, emit : Emit[Msg]) -> Html {
         on_value_change=emit.map(_ => TabSelected(tab)),
         id="\{id}-tab",
         style=[
-          "padding-block:0.25rem;padding-inline:0.75rem;justify-content:space-between",
+          "padding-block:0.375rem;padding-inline:1rem;justify-content:space-between",
           if selected {
             "font-weight:600"
           } else {
@@ -47,7 +47,14 @@ fn tabs_view(model : Model, today : @core.Date, emit : Emit[Msg]) -> Html {
         ],
         [
           @html.text("\{name} "),
-          span(style=["font-variant-numeric:tabular-nums", muted], "\{count}"),
+          // Lighter than the list, which is the color of Secondary.
+          @rui.badge(
+            variant=Secondary,
+            style=[
+              "font-variant-numeric:tabular-nums;--rui-badge-bg:var(--rui-input)",
+            ],
+            "\{count}",
+          ),
         ],
       )
     }),
