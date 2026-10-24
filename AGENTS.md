@@ -6,7 +6,7 @@ This file provides guidance to coding agents when working with code in this repo
 
 A personal life-TODO dashboard. A single Cloudflare Worker serves a Rabbita SPA and a JSON API, both written in MoonBit (JS target), backed by Cloudflare D1 and protected by Cloudflare Access.
 
-**This is a public repository.** Never commit secrets, account IDs, personal data or Access settings (team domain, AUD). All content in the repository must be in English.
+**This is a public repository.** Never commit secrets, account IDs, personal data or Access settings (team domain, AUD).
 
 ## Development Commands
 
