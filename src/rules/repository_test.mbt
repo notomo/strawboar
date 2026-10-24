@@ -42,3 +42,18 @@ test "e2e specs use the page object for locators" {
     reason="Keep locators and UI actions in the page object of e2e/page.ts",
   )
 }
+
+///|
+test "the repository is written in English" {
+  @rules.assert_none(
+    @rules.read_text_files().filter_map(file => {
+      let (path, text) = file
+      if @rules.has_japanese(text) {
+        Some(path)
+      } else {
+        None
+      }
+    }),
+    reason="This is a public repository, so everything in it (UI text included) is in English",
+  )
+}

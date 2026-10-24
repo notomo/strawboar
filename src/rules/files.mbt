@@ -40,3 +40,14 @@ pub fn read_packages() -> Map[String, Array[String]] raise @fs.IOError {
 pub fn read_ffi_packages() -> Set[String] raise @fs.IOError {
   files_containing("src", suffix=".mbt", ffi).map(package_of) |> Set::from_array
 }
+
+///|
+/// Text files of this repository, except the ones generated or installed.
+pub fn read_text_files() -> Array[(String, String)] raise @fs.IOError {
+  let root = @fs.read_dir(".").filter(name => !@fs.is_dir(name))
+  ["src", "e2e", "db", ".github", ".githooks"]
+  .map(walk)
+  .fold(init=root, (paths, more) => paths + more)
+  .filter(path => !path.has_suffix(".png"))
+  .map(path => (path, @fs.read_file_to_string(path)))
+}

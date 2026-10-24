@@ -76,3 +76,13 @@ test "assert_none fails with the reason and the violations" {
   }
   assert_true(message.has_suffix("Rule:\na\nb"), msg=message)
 }
+
+///|
+test "has_japanese" {
+  assert_false(has_japanese("✓ Done · 10/12 – 10/18 ⋮ ›"))
+  // Kanji, hiragana and an ideographic comma, escaped to keep this file in English.
+  assert_true(has_japanese("Done: \u{6383}\u{9664}"))
+  assert_true(has_japanese("\u{305D}"))
+  assert_true(has_japanese("Done\u{3001}"))
+  assert_true(has_japanese("\u{FF11}"))
+}

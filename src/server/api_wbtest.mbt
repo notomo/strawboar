@@ -16,5 +16,6 @@ test "parse_id" {
   inspect(parse(""), content="not found")
   inspect(parse("-1"), content="not found")
   inspect(parse("1a"), content="not found")
-  inspect(parse("１"), content="not found")
+  // A full-width digit.
+  inspect(parse("\u{FF11}"), content="not found")
 }

@@ -77,6 +77,21 @@ pub fn dependency_violations(
 }
 
 ///|
+/// Whether `text` has Japanese characters: CJK symbols, kana, kanji or full-width forms.
+pub fn has_japanese(text : String) -> Bool {
+  text
+  .iter()
+  .any(c => {
+    match c {
+      '\u{3000}'..<='\u{30FF}'
+      | '\u{3400}'..<='\u{9FFF}'
+      | '\u{FF00}'..<='\u{FFEF}' => true
+      _ => false
+    }
+  })
+}
+
+///|
 /// Fails with every violation and the reason of the rule.
 pub fn assert_none(violations : Array[String], reason~ : String) -> Unit raise {
   match violations {
