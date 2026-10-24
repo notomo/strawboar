@@ -30,18 +30,12 @@ npm run test:e2e   # Playwright (desktop, mobile, tablet/WebKit) against a Worke
 ```
 src/
 ├── core/            # Shared domain logic and API types (pure, used by app and server)
-├── app/             # Rabbita frontend (rui components): model.mbt (Model, Msg), main.mbt (update), *_view.mbt per area
-│   ├── index.html   # Vite root, loads this package as /main.js
-│   ├── public/      # Served as is (icons, manifest)
-│   └── icon/        # icon.svg is the app icon source; run `node src/app/icon/generate.mjs` to update the icons in public/
+├── app/             # Rabbita frontend (rui components)
 ├── server/          # Worker fetch handler and API routes (exports `fetch`)
-│   └── worker.js    # Thin Worker entry that lazily imports this package's output
 └── lib/             # Generic packages with no knowledge of this app
     ├── web/         # JS FFI for Web standard APIs (Fetch API, WebCrypto, base64, time)
     └── cloudflare/  # Cloudflare specific: Worker env bindings, D1, Cloudflare Access JWT verification
-db/
-├── migrations/      # D1 SQL migrations
-└── seed.sql         # Test data for the local D1
+db/                  # D1 migrations and the seed for the local D1
 e2e/                 # Playwright tests
 ```
 
@@ -51,7 +45,7 @@ e2e/                 # Playwright tests
 - All raw JS FFI → `src/lib/` (`web` for Web standard APIs, `cloudflare` for Cloudflare specific ones).
 - `src/lib/` must not depend on `core`, `app` or `server`, and holds no app specific policy (e.g. cache headers are set by `server`).
 - `src/app/` must not depend on `lib/cloudflare` or `server`.
-- Files other than MoonBit (entries, static files, icon source) live in the directory of the package they belong to.
+- Files other than MoonBit live in the directory of the package they belong to: `src/app` is also the Vite root (`index.html` loads it as `/main.js`, `public/` with icons generated from `icon/`), and `src/server/worker.js` is the Worker entry.
 - Add a new file under `db/migrations/` for schema changes; never edit applied migrations.
 
 ## Important Notes
