@@ -18,8 +18,8 @@
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
     "deploy": "wrangler deploy",
     "e2e:server": "rm -rf .wrangler/e2e && wrangler d1 migrations apply DB --local --persist-to .wrangler/e2e && wrangler dev --port 8788 --persist-to .wrangler/e2e",
-    "db:seed:local": "npm run db:migrate:local && wrangler d1 execute DB --local --file scripts/seed.sql",
-    "db:seed:check": "rm -rf .wrangler/seed-check && wrangler d1 migrations apply DB --local --persist-to .wrangler/seed-check && wrangler d1 execute DB --local --persist-to .wrangler/seed-check --file scripts/seed.sql"
+    "db:seed:local": "npm run db:migrate:local && wrangler d1 execute DB --local --file db/seed.sql",
+    "db:seed:check": "rm -rf .wrangler/seed-check && wrangler d1 migrations apply DB --local --persist-to .wrangler/seed-check && wrangler d1 execute DB --local --persist-to .wrangler/seed-check --file db/seed.sql"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

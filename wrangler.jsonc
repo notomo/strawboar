@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "strawboar",
-  "main": "worker/index.js",
+  "main": "src/server/worker.js",
   "compatibility_date": "2026-09-01",
   "minify": true,
   "build": {
@@ -18,7 +18,7 @@
       "binding": "DB",
       "database_name": "strawboar",
       "database_id": "a571afe0-a00d-4237-b107-a285f19264ac",
-      "migrations_dir": "migrations"
+      "migrations_dir": "db/migrations"
     }
   ],
   // ACCESS_TEAM_DOMAIN, ACCESS_AUD and ALLOWED_EMAILS (comma separated) are set as Worker secrets (`wrangler secret put`).

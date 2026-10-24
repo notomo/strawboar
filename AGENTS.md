@@ -12,7 +12,7 @@ A personal life-TODO dashboard. A single Cloudflare Worker serves a Rabbita SPA 
 
 ```bash
 npm run dev        # Vite (5173, proxies /api) + wrangler dev (8787, local D1)
-npm run db:seed:local  # Replace the local D1 data with test data (scripts/seed.sql, dates relative to today)
+npm run db:seed:local  # Replace the local D1 data with test data (db/seed.sql, dates relative to today)
 npm run db:seed:check  # Apply the seed to a fresh local D1 to check it still works (in check_all and CI)
 npm run build      # moon build + vite build
 npm run check      # Type check and format check
@@ -31,13 +31,17 @@ npm run test:e2e   # Playwright (desktop, mobile, tablet/WebKit) against a Worke
 src/
 ├── core/            # Shared domain logic and API types (pure, used by app and server)
 ├── app/             # Rabbita frontend (rui components): model.mbt (Model, Msg), main.mbt (update), *_view.mbt per area
+│   ├── index.html   # Vite root, loads this package as /main.js
+│   ├── public/      # Served as is (icons, manifest)
+│   └── icon/        # icon.svg is the app icon source; run `node src/app/icon/generate.mjs` to update the icons in public/
 ├── server/          # Worker fetch handler and API routes (exports `fetch`)
+│   └── worker.js    # Thin Worker entry that lazily imports this package's output
 └── lib/             # Generic packages with no knowledge of this app
     ├── web/         # JS FFI for Web standard APIs (Fetch API, WebCrypto, base64, time)
     └── cloudflare/  # Cloudflare specific: Worker env bindings, D1, Cloudflare Access JWT verification
-worker/index.js      # Thin Worker entry that lazily imports src/server output
-migrations/          # D1 SQL migrations
-assets/icon.svg      # App icon source; run `node scripts/generate-icons.mjs` to update the icons in public/
+db/
+├── migrations/      # D1 SQL migrations
+└── seed.sql         # Test data for the local D1
 e2e/                 # Playwright tests
 ```
 
@@ -47,11 +51,12 @@ e2e/                 # Playwright tests
 - All raw JS FFI → `src/lib/` (`web` for Web standard APIs, `cloudflare` for Cloudflare specific ones).
 - `src/lib/` must not depend on `core`, `app` or `server`, and holds no app specific policy (e.g. cache headers are set by `server`).
 - `src/app/` must not depend on `lib/cloudflare` or `server`.
-- Add a new file under `migrations/` for schema changes; never edit applied migrations.
+- Files other than MoonBit (entries, static files, icon source) live in the directory of the package they belong to.
+- Add a new file under `db/migrations/` for schema changes; never edit applied migrations.
 
 ## Important Notes
 
-- **Global scope in Workers**: MoonBit JS output generates a random hash seed at module load, which Workers disallow in global scope. `worker/index.js` therefore imports the MoonBit module lazily inside the handler. Keep it that way.
+- **Global scope in Workers**: MoonBit JS output generates a random hash seed at module load, which Workers disallow in global scope. `src/server/worker.js` therefore imports the MoonBit module lazily inside the handler. Keep it that way.
 - **Authentication**: every `/api/*` request must pass `authenticate` in `src/server`: the Access JWT, and its email must be in the `ALLOWED_EMAILS` secret (comma separated; nobody is allowed when it is unset). The local bypass (`DEV_AUTH_BYPASS_EMAIL` in `.dev.vars`) only applies to localhost.
 - **Dates**: chores use local dates (`YYYY-MM-DD`, Asia/Tokyo), not timestamps. "Today" is decided by the Worker and returned from `GET /api/chores`.
 - **Chore scheduling**: urgency, ordering, done and edit rules live in `src/core/chore.mbt`, and the two kinds of `Repeat` in `src/core/repeat.mbt`. An `AfterDone` chore is due `interval_days` after its last completion (also recalculated when the interval is edited) and is "Soon" in the last 20% of the interval. A `Monthly` chore (e.g. rent) is due on a fixed day of the month: done late or early, it moves to the next occurrence after its current due date, editing moves it to the new day within the month it is due (an `AfterDone` chore that becomes monthly moves to the next occurrence instead if that day is earlier than it was due), and it is "Soon" from `lead_days` before. `next_due` is only chosen by the user when creating a chore (a monthly chore takes its day from it). There is no postpone. Overdue chores are just in "Soon"; never show how late they are. In each section (Soon, Later) monthly chores come first, and Soon is then ordered by elapsed fraction of the interval so overdue chores come first; the Soon title shows the latest due date it covers. Every section is shown even when empty, can be collapsed and shows its count; Soon is expanded by default and Later is collapsed. "Done" lists all completions of the last 7 days (its title shows the date range, and the label filter applies to it too), monthly chores first, and is collapsed by default too.
