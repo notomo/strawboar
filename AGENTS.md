@@ -37,7 +37,7 @@ src/
     └── cloudflare/  # Cloudflare specific: Worker env bindings, D1, Cloudflare Access JWT verification
 worker/index.js      # Thin Worker entry that lazily imports src/server output
 migrations/          # D1 SQL migrations
-assets/icon.svg      # App icon source; run `node scripts/generate-icons.mjs` to update public/*.png
+assets/icon.svg      # App icon source; run `node scripts/generate-icons.mjs` to update the icons in public/
 e2e/                 # Playwright tests
 ```
 

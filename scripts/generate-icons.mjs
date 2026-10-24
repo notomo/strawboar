@@ -1,7 +1,7 @@
-// Renders assets/icon.svg to the PNG icons in public/.
+// Renders assets/icon.svg to the icons in public/ (PNG icons and a favicon with rounded corners).
 // Usage: node scripts/generate-icons.mjs
 import { chromium } from "@playwright/test";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 
 const svg = await readFile(new URL("../assets/icon.svg", import.meta.url), "utf8");
 const icons = [
@@ -20,3 +20,8 @@ for (const [name, size] of icons) {
   await page.close();
 }
 await browser.close();
+
+// A favicon is shown as is, so round the full-bleed background.
+if (!svg.includes("<rect ")) throw new Error("no <rect> to round in assets/icon.svg");
+const favicon = svg.replace(/\s*<!--.*?-->/gs, "").replace("<rect ", '<rect rx="128" ');
+await writeFile(new URL("../public/favicon.svg", import.meta.url), favicon);
