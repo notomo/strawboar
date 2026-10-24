@@ -50,7 +50,7 @@ test("adds a chore that is due today", async ({ page }, testInfo) => {
 
   // Soon is selected by default.
   await expect(strawboar.getSoonTab()).toHaveAttribute("aria-selected", "true");
-  await expect(strawboar.getSoonTab()).toHaveText("Soon (1)");
+  await expect(strawboar.getSoonTab()).toHaveText("Soon 1");
   await expect(strawboar.getSoonCaption()).toHaveText(`Until ${shortDate(0)}`);
 });
 
@@ -63,12 +63,12 @@ test("marks a chore as done and undoes it", async ({ page }, testInfo) => {
 
   await expect(strawboar.getUndoToast()).toContainText(`Done: ${title}`);
   await expect(strawboar.getSoonRow(title)).toHaveCount(0);
-  await expect(strawboar.getLaterTab()).toHaveText("Later (1)");
+  await expect(strawboar.getLaterTab()).toHaveText("Later 1");
   await expect(strawboar.getLaterRow(title)).toBeHidden();
   await strawboar.openLater();
   await expect(strawboar.getLaterRow(title)).toBeVisible();
   // Completions left by other tests are counted too.
-  await expect(strawboar.getRecentTab()).toHaveText(/^Done \(\d+\)$/);
+  await expect(strawboar.getRecentTab()).toHaveText(/^Done \d+$/);
   await expect(strawboar.getRecentRow(title)).toBeHidden();
   await strawboar.openRecent();
   await expect(strawboar.getRecentRow(title)).toBeVisible();

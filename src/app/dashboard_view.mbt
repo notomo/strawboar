@@ -19,7 +19,10 @@ fn tabs_view(model : Model, today : @core.Date, emit : Emit[Msg]) -> Html {
   let (dashboard, recent) = filtered(model, today)
   @rui.tabs_list(
     aria_label="Chores",
-    style=["width:100%"],
+    // The active tab is outlined like the row open in the editor.
+    style=[
+      "width:100%;--rui-tabs-active-bg:var(--rui-accent);--rui-tabs-active-border:var(--rui-primary);--rui-tabs-active-shadow:0 0 0 1px var(--rui-primary)",
+    ],
     [
       (Soon, "Soon", dashboard.soon.length()),
       (Later, "Later", dashboard.later.length()),
@@ -27,14 +30,25 @@ fn tabs_view(model : Model, today : @core.Date, emit : Emit[Msg]) -> Html {
     ].map(entry => {
       let (tab, name, count) = entry
       let id = tab_id(tab)
+      let selected = model.tab == tab
       @rui.tabs_trigger(
         value=id,
-        selected=model.tab == tab,
+        selected~,
         controls=id,
         on_value_change=emit.map(_ => TabSelected(tab)),
         id="\{id}-tab",
-        style=["padding-block:0.25rem"],
-        "\{name} (\{count})",
+        style=[
+          "padding-block:0.25rem;padding-inline:0.75rem;justify-content:space-between",
+          if selected {
+            "font-weight:600"
+          } else {
+            ""
+          },
+        ],
+        [
+          @html.text("\{name} "),
+          span(style=["font-variant-numeric:tabular-nums", muted], "\{count}"),
+        ],
       )
     }),
   )
