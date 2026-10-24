@@ -32,9 +32,10 @@ src/
 ├── core/            # Shared domain logic and API types (pure, used by app and server)
 ├── app/             # Rabbita frontend (rui components)
 ├── server/          # Worker fetch handler and API routes (exports `fetch`)
-└── lib/             # Generic packages with no knowledge of this app
-    ├── web/         # JS FFI for Web standard APIs (Fetch API, WebCrypto, base64, time)
-    └── cloudflare/  # Cloudflare specific: Worker env bindings, D1, Cloudflare Access JWT verification
+├── lib/             # Generic packages with no knowledge of this app
+│   ├── web/         # JS FFI for Web standard APIs (Fetch API, WebCrypto, base64, time)
+│   └── cloudflare/  # Cloudflare specific: Worker env bindings, D1, Cloudflare Access JWT verification
+└── rules/           # Tests of the rules below that can be checked from the files (dependencies, FFI, ...)
 db/                  # D1 migrations and the seed for the local D1
 e2e/                 # Playwright tests
 ```
@@ -43,8 +44,7 @@ e2e/                 # Playwright tests
 
 - Domain logic and types shared between frontend and API → `src/core/` (no JS FFI).
 - All raw JS FFI → `src/lib/` (`web` for Web standard APIs, `cloudflare` for Cloudflare specific ones).
-- `src/lib/` must not depend on `core`, `app` or `server`, and holds no app specific policy (e.g. cache headers are set by `server`).
-- `src/app/` must not depend on `lib/cloudflare` or `server`.
+- `src/lib/` holds no app specific policy (e.g. cache headers are set by `server`).
 - Files other than MoonBit live in the directory of the package they belong to: `src/app` is also the Vite root (`index.html` loads it as `/main.js`, `public/` with icons generated from `icon/`), and `src/server/worker.js` is the Worker entry.
 - Add a new file under `db/migrations/` for schema changes; never edit applied migrations.
 
@@ -60,7 +60,7 @@ e2e/                 # Playwright tests
 - **Import / Export**: labels and chore definitions are exchanged as JSON text (`Definitions`: labels and chores, chores refer to labels by name) in a text area. Import matches labels by name and chores by title (titles of active chores are unique, also by an index), updates or adds them and never deletes or archives; labels are saved before chores. Rules live in `src/core/transfer.mbt`.
 - **API**: routes are in `src/server/api.mbt`, D1 queries in `src/server/repository.mbt`.
 - **UI**: use `rui` components (dark theme) and inline `style` for layout. One chore per row; clickable areas must look clickable. Editing happens in a non-modal panel (`rui.sheet`) overlaid on the right, not a modal. Less frequent actions (Import / Export, Labels) live in the ⋮ menu (`rui.dropdown_menu`, created once in `app` because it is stateful) next to the add button. The chore panel has its own ⋮ menu (Undo last done, Archive) right of Save; created once too, its items do not depend on the chore. Actions that are hard to undo (archiving a chore, undoing a completion, deleting a label) ask for confirmation in a `rui.alert_dialog` first, which a click outside of it cancels. The header and the label filter stay at the top, and the dashboard below them scrolls by itself (`#dashboard`) so that each section title sticks at its top. Dates are shown as `MM/dd`, except today at the top (`yyyy-MM-dd (ddd)`). The dashboard must fit in the first view without scrolling on both desktop and mobile (checked in E2E). All UI text is in English.
-- **E2E**: keep all locators and UI actions in the page object returned by `openPage` in `e2e/page.ts`; specs must not call `page.locator`/`getBy*` directly.
+- **E2E**: keep all locators and UI actions in the page object returned by `openPage` in `e2e/page.ts`.
   - E2E covers what needs the browser, the Worker and D1 together: the main user flows (each through the UI and kept after reload), layout and scrolling, differences between devices, how panels and dialogs open and close, and what the Worker serves.
   - Rules that live in `src/core` (dates, urgency, ordering, validation, import matching) are covered by its unit tests. E2E checks one representative case of each, e.g. one error message per form.
   - One test per user goal. Extend an existing test with a related check instead of adding a near-duplicate one.
