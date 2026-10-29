@@ -20,7 +20,7 @@ fn labels_content(
         style=[
           "list-style:none;margin:0 0 0.75rem;padding:0;display:flex;flex-wrap:wrap;gap:0.5rem",
         ],
-        labels.map(label => {
+        keyed(labels, label => "label-\{label.id}", label => {
           let current = form.id == Some(label.id)
           // The label being edited has a ring like the selected color below,
           // so that it is not mistaken for a toggle.

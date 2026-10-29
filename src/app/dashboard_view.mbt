@@ -93,7 +93,11 @@ fn chore_panel(
   chores : Array[@core.Chore],
   row : (@core.Chore) -> Html,
 ) -> Html {
-  tab_panel(tab, caption, ul(style=[list_style()], chores.map(row)))
+  tab_panel(
+    tab,
+    caption,
+    ul(style=[list_style()], keyed(chores, chore => "chore-\{chore.id}", row)),
+  )
 }
 
 ///|
@@ -262,38 +266,40 @@ fn recent_view(
     Some(recent_caption(today)),
     ul(
       style=[list_style()],
-      @core.recent_monthly_first(recent, model.chores)
-      .iter()
-      .map(done => {
-        match model.chores.iter().find_first(c => c.id == done.chore_id) {
-          Some(chore) =>
-            dated_row(
-              chore.id,
-              done.title,
-              chore.labels_in(model.labels),
-              done.done_on,
-              row_state(model, chore.id),
-              emit,
-            )
-          // An archived chore cannot be opened.
-          None =>
-            li(style=[card_style()], [
-              div(
-                style=[
-                  "flex:1;min-width:0;display:flex;align-items:baseline;justify-content:space-between;gap:0.75rem;padding:0.625rem 0.75rem",
-                ],
-                [
-                  title_text(done.title, []),
-                  span(
-                    style=["font-size:0.8125rem;flex-shrink:0", muted],
-                    short_date(done.done_on),
-                  ),
-                ],
-              ),
-            ])
-        }
-      })
-      .collect(),
+      // A chore can be done more than once in these days, so the key is the completion.
+      keyed(
+        @core.recent_monthly_first(recent, model.chores),
+        done => "completion-\{done.completion_id}",
+        done => {
+          match model.chores.iter().find_first(c => c.id == done.chore_id) {
+            Some(chore) =>
+              dated_row(
+                chore.id,
+                done.title,
+                chore.labels_in(model.labels),
+                done.done_on,
+                row_state(model, chore.id),
+                emit,
+              )
+            // An archived chore cannot be opened.
+            None =>
+              li(style=[card_style()], [
+                div(
+                  style=[
+                    "flex:1;min-width:0;display:flex;align-items:baseline;justify-content:space-between;gap:0.75rem;padding:0.625rem 0.75rem",
+                  ],
+                  [
+                    title_text(done.title, []),
+                    span(
+                      style=["font-size:0.8125rem;flex-shrink:0", muted],
+                      short_date(done.done_on),
+                    ),
+                  ],
+                ),
+              ])
+          }
+        },
+      ),
     ),
   )
 }

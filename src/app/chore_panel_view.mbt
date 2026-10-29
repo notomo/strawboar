@@ -221,7 +221,7 @@ fn label_picker(
           .role("group")
           .aria_labelledby("chore-labels-label"),
         style=["display:flex;flex-wrap:wrap;gap:0.5rem"],
-        labels.map(label => {
+        keyed(labels, label => "label-\{label.id}", label => {
           label_toggle(
             label,
             selected.contains(label.id),

@@ -5,6 +5,20 @@ using @html {div, h1, h2, li, p, span, ul}
 let muted = "color:var(--rui-muted-foreground)"
 
 ///|
+/// Children keyed by an id, so that an element is reused only for the same item.
+/// Matched by position instead, an element would be reused for another item when
+/// the list changes, and the transitions of rui would fade it from the old one.
+/// A key includes the kind of the id, e.g. `chore-1`, because the same list
+/// element can show other kinds of items, like the list of each tab.
+fn[T] keyed(
+  items : Array[T],
+  key : (T) -> String,
+  view : (T) -> Html,
+) -> Map[String, Html] {
+  Map::from_array(items.map(item => (key(item), view(item))))
+}
+
+///|
 fn view(
   model : Model,
   menu : Html,
@@ -198,7 +212,7 @@ fn label_filter_view(
     id="label-filter",
     attrs=@html.Attrs::build().role("group").aria_label("Filter by label"),
     style=["display:flex;gap:0.5rem;overflow-x:auto;min-width:0"],
-    labels.map(label => {
+    keyed(labels, label => "label-\{label.id}", label => {
       let pressed = label_filter == Some(label.id)
       // Clicking the active label clears the filter.
       label_toggle(

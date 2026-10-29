@@ -28,12 +28,10 @@ fn label_chip_style(color : @core.LabelColor, on~ : Bool = true) -> String {
 }
 
 ///|
-/// Without the transition of rui, a badge reused for another label on a tab
-/// switch would fade from the color of the previous one.
 fn label_badge(label : @core.Label) -> Html {
   @rui.badge(
     variant=Outline,
-    style=["font-weight:400;transition:none", label_chip_style(label.color)],
+    style=["font-weight:400", label_chip_style(label.color)],
     label.name,
   )
 }
@@ -66,6 +64,6 @@ fn labels_view(labels : Array[@core.Label]) -> Html {
   }
   span(
     style=["display:flex;gap:0.25rem;flex-shrink:0"],
-    labels.map(label_badge),
+    keyed(labels, label => "label-\{label.id}", label_badge),
   )
 }
