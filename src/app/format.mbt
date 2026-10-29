@@ -58,13 +58,3 @@ fn short_date(date : @core.Date) -> String {
 fn long_date(date : @core.Date) -> String {
   "\{date} (\{date.weekday().label()})"
 }
-
-///|
-/// The status following the interval in a soon chore row.
-fn chore_status(chore : @core.Chore, today : @core.Date) -> String {
-  let due = match chore.days_left(today) {
-    left if left > 0 => " · due in \{plural(left, "day")}"
-    _ => ""
-  }
-  "\{last_done_text(chore.last_done, today)}\{due}"
-}

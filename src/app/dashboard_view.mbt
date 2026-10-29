@@ -207,7 +207,7 @@ fn chore_row(
           style=["font-weight:600;color:var(--rui-foreground)"],
           interval_text(chore.repeat),
         ),
-        @html.text(" · \{chore_status(chore, today)}"),
+        @html.text(" · \{last_done_text(chore.last_done, today)}"),
       ]),
     ]),
     @rui.button(

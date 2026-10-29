@@ -6,36 +6,17 @@ fn test_date(s : String) -> @core.Date {
 }
 
 ///|
-test "chore_status" {
+test "last_done_text" {
   let today = test_date("2026-09-24")
-  let chore : @core.Chore = {
-    id: 1,
-    title: "Bath",
-    description: "",
-    repeat: AfterDone(7),
-    next_due: test_date("2026-09-22"),
-    last_done: Some(test_date("2026-09-15")),
-    labels: [],
-  }
-  inspect(chore_status(chore, today), content="done 9 days ago")
+  inspect(last_done_text(None, today), content="not done yet")
+  inspect(last_done_text(Some(today), today), content="done today")
   inspect(
-    chore_status(
-      {
-        ..chore,
-        repeat: AfterDone(10),
-        next_due: test_date("2026-09-25"),
-        last_done: None,
-      },
-      today,
-    ),
-    content="not done yet · due in 1 day",
+    last_done_text(Some(test_date("2026-09-23")), today),
+    content="done yesterday",
   )
   inspect(
-    chore_status(
-      { ..chore, repeat: AfterDone(1), last_done: Some(today), },
-      today,
-    ),
-    content="done today",
+    last_done_text(Some(test_date("2026-09-15")), today),
+    content="done 9 days ago",
   )
 }
 
