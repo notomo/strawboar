@@ -211,15 +211,33 @@ fn label_filter_view(
   div(
     id="label-filter",
     attrs=@html.Attrs::build().role("group").aria_label("Filter by label"),
-    style=["display:flex;gap:0.5rem;overflow-x:auto;min-width:0"],
+    // Padded so that the ring of the active label is not cut off by the scroll,
+    // with a negative margin to keep the labels aligned with the header.
+    style=[
+      "display:flex;gap:0.75rem;overflow-x:auto;min-width:0;padding:4px;margin:-4px",
+    ],
     keyed(labels, label => "label-\{label.id}", label => {
       let pressed = label_filter == Some(label.id)
+      // Shown like the badges on the rows, with the ring of the label being
+      // edited in the labels panel on the active one.
       // Clicking the active label clears the filter.
-      label_toggle(
-        label,
-        pressed,
-        FilterByLabel(if pressed { None } else { Some(label.id) }),
-        emit,
+      @rui.button(
+        size=Sm,
+        variant=Outline,
+        on_click=emit(
+          FilterByLabel(if pressed { None } else { Some(label.id) }),
+        ),
+        attrs=@html.Attrs::build().aria_pressed(pressed.to_string()),
+        style=[
+          "flex-shrink:0;font-weight:400",
+          label_chip_style(label.color),
+          if pressed {
+            selected_ring_style(label.color)
+          } else {
+            ""
+          },
+        ],
+        label.name,
       )
     }),
   )

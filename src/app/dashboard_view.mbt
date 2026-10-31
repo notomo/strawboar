@@ -21,7 +21,9 @@ fn tabs_view(model : Model, today : @core.Date, emit : Emit[Msg]) -> Html {
     aria_label="Chores",
     // The active tab is outlined like the row open in the editor.
     style=[
-      "width:100%;--rui-tabs-active-bg:var(--rui-accent);--rui-tabs-active-border:var(--rui-primary);--rui-tabs-active-shadow:0 0 0 1px var(--rui-primary)",
+      // Each tab is a bordered box on the page background instead of sitting on
+      // a muted strip, whose color is the same as the active tab.
+      "width:100%;gap:0.375rem;background:transparent;--rui-tabs-active-bg:var(--rui-accent);--rui-tabs-active-border:var(--rui-primary);--rui-tabs-active-shadow:0 0 0 1px var(--rui-primary)",
     ],
     [
       (Soon, "Soon", dashboard.soon.length()),
@@ -42,7 +44,7 @@ fn tabs_view(model : Model, today : @core.Date, emit : Emit[Msg]) -> Html {
           if selected {
             "font-weight:600"
           } else {
-            ""
+            "--rui-tabs-border:var(--rui-input);--rui-tabs-bg:var(--rui-outline-background)"
           },
         ],
         [

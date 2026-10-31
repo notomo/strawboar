@@ -28,6 +28,14 @@ fn label_chip_style(color : @core.LabelColor, on~ : Bool = true) -> String {
 }
 
 ///|
+/// A ring around a selected label or color, used where a label is picked
+/// rather than toggled on and off.
+fn selected_ring_style(color : @core.LabelColor) -> String {
+  let color = color_value(color)
+  "box-shadow:0 0 0 2px var(--rui-background),0 0 0 4px \{color}"
+}
+
+///|
 fn label_badge(label : @core.Label) -> Html {
   @rui.badge(
     variant=Outline,
@@ -37,7 +45,7 @@ fn label_badge(label : @core.Label) -> Html {
 }
 
 ///|
-/// A label that can be turned on and off, used by the label filter and the chore panel.
+/// A label that can be turned on and off, used by the chore panel.
 fn label_toggle(
   label : @core.Label,
   pressed : Bool,

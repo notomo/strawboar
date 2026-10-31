@@ -36,7 +36,7 @@ fn labels_content(
                 "font-weight:400",
                 label_chip_style(label.color),
                 if current {
-                  "box-shadow:0 0 0 2px var(--rui-background),0 0 0 4px \{color_value(label.color)}"
+                  selected_ring_style(label.color)
                 } else {
                   ""
                 },
@@ -92,7 +92,7 @@ fn labels_content(
                 style=[
                   "border-radius:9999px;background:\{color_value(color)}",
                   if pressed {
-                    "box-shadow:0 0 0 2px var(--rui-background),0 0 0 4px \{color_value(color)}"
+                    selected_ring_style(color)
                   } else {
                     ""
                   },
