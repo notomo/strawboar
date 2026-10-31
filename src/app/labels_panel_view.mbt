@@ -22,13 +22,19 @@ fn labels_content(
         ],
         keyed(labels, label => "label-\{label.id}", label => {
           let current = form.id == Some(label.id)
-          // The label being edited has a ring like the selected color below,
-          // so that it is not mistaken for a toggle.
+          // The label being edited has a ring like the selected color below.
+          // Clicking it again goes back to a new label, like the label filter.
           li([
             @rui.button(
               size=Sm,
               variant=Outline,
-              on_click=emit(EditLabel(label.id)),
+              on_click=emit(
+                if current {
+                  NewLabel
+                } else {
+                  EditLabel(label.id)
+                },
+              ),
               attrs=@html.Attrs::build()
                 .aria_label("Edit label: \{label.name}")
                 .aria_current(current.to_string()),

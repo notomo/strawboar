@@ -200,6 +200,12 @@ test("manages labels with colors", async ({ page }, testInfo) => {
   await strawboar.selectLabel("bath");
   await expect(strawboar.getLabelNameInput()).toHaveValue("bath");
   await expect(strawboar.getLabelColorButton("blue")).toHaveAttribute("aria-pressed", "true");
+  // Clicking the label being edited goes back to a new label.
+  await strawboar.selectLabel("bath");
+  await expect(strawboar.getLabelListButton("bath")).toHaveAttribute("aria-current", "false");
+  await expect(strawboar.getLabelNameInput()).toHaveValue("");
+  await expect(strawboar.getAddLabelButton()).toBeVisible();
+  await strawboar.selectLabel("bath");
   await strawboar.getLabelNameInput().fill("bathroom");
   await strawboar.getLabelColorButton("pink").click();
   await strawboar.save();
