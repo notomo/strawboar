@@ -5,6 +5,24 @@ using @html {div, h1, h2, li, p, span, ul}
 let muted = "color:var(--rui-muted-foreground)"
 
 ///|
+/// Numbers, e.g. dates, days and counts, stand out from the words around them.
+let number_style = "font-weight:600;font-variant-numeric:tabular-nums;color:var(--rui-foreground)"
+
+///|
+/// A text with its numbers emphasized, so that they are not buried in the words.
+fn with_numbers(text : String) -> Array[Html] {
+  number_words(text).mapi((i, entry) => {
+    let (word, number) = entry
+    let word = if i == 0 { word } else { " \{word}" }
+    if number {
+      span(style=["white-space:nowrap", number_style], word)
+    } else {
+      @html.text(word)
+    }
+  })
+}
+
+///|
 /// Children keyed by an id, so that an element is reused only for the same item.
 /// Matched by position instead, an element would be reused for another item when
 /// the list changes, and the transitions of rui would fade it from the old one.

@@ -46,7 +46,8 @@ test("adds a chore that is due today", async ({ page }, testInfo) => {
 
   await strawboar.addChore(title, "7");
 
-  await expect(strawboar.getSoonRow(title)).toContainText("weekly · not done yet");
+  await expect(strawboar.getSoonRow(title)).toContainText("weekly");
+  await expect(strawboar.getSoonRow(title)).toContainText("not done yet");
 
   // Soon is selected by default.
   await expect(strawboar.getSoonTab()).toHaveAttribute("aria-selected", "true");

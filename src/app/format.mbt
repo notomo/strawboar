@@ -58,3 +58,13 @@ fn short_date(date : @core.Date) -> String {
 fn long_date(date : @core.Date) -> String {
   "\{date} (\{date.weekday().label()})"
 }
+
+///|
+/// Splits a text into words, marking the ones with a digit, e.g. `14`, `5th` or
+/// `10/03`, so that they can be emphasized.
+fn number_words(text : String) -> Array[(String, Bool)] {
+  text
+  .split(" ")
+  .map(word => (word.to_string(), word.iter().any(c => c is ('0'..<='9'))))
+  .collect()
+}

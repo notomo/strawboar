@@ -53,7 +53,7 @@ fn tabs_view(model : Model, today : @core.Date, emit : Emit[Msg]) -> Html {
           @rui.badge(
             variant=Secondary,
             style=[
-              "font-variant-numeric:tabular-nums;--rui-badge-bg:var(--rui-input)",
+              "font-size:0.875rem;font-weight:600;font-variant-numeric:tabular-nums;--rui-badge-bg:var(--rui-input)",
             ],
             "\{count}",
           ),
@@ -78,8 +78,8 @@ fn tab_panel(tab : Tab, caption : String?, content : Html) -> Html {
         Some(caption) =>
           p(
             id="\{id}-caption",
-            style=["margin:0 0.5rem;font-size:0.8125rem", muted],
-            caption,
+            style=["margin:0 0.5rem;font-size:0.875rem", muted],
+            with_numbers(caption),
           )
         None => @html.nothing
       },
@@ -208,13 +208,25 @@ fn chore_row(
   card(state, [
     edit_area(chore.id, state, emit, [
       title_text(chore.title, labels),
-      span(style=["font-size:0.8125rem", muted], [
-        span(
-          style=["font-weight:600;color:var(--rui-foreground)"],
-          interval_text(chore.repeat),
-        ),
-        @html.text(" · \{last_done_text(chore.last_done, today)}"),
-      ]),
+      div(
+        style=[
+          "display:flex;flex-wrap:wrap;align-items:center;column-gap:0.5rem;row-gap:0.25rem;font-size:0.875rem",
+        ],
+        [
+          // A tag of its own, so that it is not read as one run of words with
+          // the last done.
+          span(
+            style=[
+              "padding:0.0625rem 0.5rem;border-radius:0.375rem;background:var(--rui-input);font-weight:500;color:var(--rui-foreground)",
+            ],
+            with_numbers(interval_text(chore.repeat)),
+          ),
+          span(
+            style=[muted],
+            with_numbers(last_done_text(chore.last_done, today)),
+          ),
+        ],
+      ),
     ]),
     @rui.button(
       variant=Outline,
@@ -243,16 +255,19 @@ fn dated_row(
         style=[
           "display:flex;align-items:baseline;justify-content:space-between;gap:0.75rem",
         ],
-        [
-          title_text(title, labels),
-          span(
-            style=["font-size:0.8125rem;flex-shrink:0", muted],
-            short_date(date),
-          ),
-        ],
+        [title_text(title, labels), date_text(date)],
       ),
     ]),
   ])
+}
+
+///|
+/// The date on the right of a row, as prominent as the title.
+fn date_text(date : @core.Date) -> Html {
+  span(
+    style=["font-size:0.9375rem;flex-shrink:0", number_style],
+    short_date(date),
+  )
 }
 
 ///|
@@ -290,13 +305,7 @@ fn recent_view(
                   style=[
                     "flex:1;min-width:0;display:flex;align-items:baseline;justify-content:space-between;gap:0.75rem;padding:0.625rem 0.75rem",
                   ],
-                  [
-                    title_text(done.title, []),
-                    span(
-                      style=["font-size:0.8125rem;flex-shrink:0", muted],
-                      short_date(done.done_on),
-                    ),
-                  ],
+                  [title_text(done.title, []), date_text(done.done_on)],
                 ),
               ])
           }

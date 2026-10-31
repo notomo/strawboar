@@ -52,3 +52,24 @@ test "dates" {
 test "recent_caption" {
   inspect(recent_caption(test_date("2026-10-03")), content="09/27 – 10/03")
 }
+
+///|
+test "number_words" {
+  assert_eq(number_words("done 9 days ago"), [
+    ("done", false),
+    ("9", true),
+    ("days", false),
+    ("ago", false),
+  ])
+  assert_eq(number_words("monthly on the 5th"), [
+    ("monthly", false),
+    ("on", false),
+    ("the", false),
+    ("5th", true),
+  ])
+  assert_eq(number_words("09/27 – 10/03"), [
+    ("09/27", true),
+    ("–", false),
+    ("10/03", true),
+  ])
+}
