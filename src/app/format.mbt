@@ -1,21 +1,13 @@
 ///|
-fn plural(count : Int32, unit : String) -> String {
-  if count == 1 {
-    "1 \{unit}"
-  } else {
-    "\{count} \{unit}s"
-  }
-}
-
-///|
+/// Short, e.g. `14d` or `monthly 5th`, because every row shows one.
+/// The panel has the full settings.
 fn interval_text(repeat : @core.Repeat) -> String {
   match repeat {
     AfterDone(1) => "daily"
     AfterDone(7) => "weekly"
-    AfterDone(days) => "every \{plural(days, "day")}"
-    Monthly({ months: 1, day, .. }) => "monthly on the \{ordinal(day)}"
-    Monthly({ months, day, .. }) =>
-      "every \{months} months on the \{ordinal(day)}"
+    AfterDone(days) => "\{days}d"
+    Monthly({ months: 1, day, .. }) => "monthly \{ordinal(day)}"
+    Monthly({ months, day, .. }) => "\{months}mo \{ordinal(day)}"
   }
 }
 
@@ -33,14 +25,15 @@ fn ordinal(n : Int32) -> String {
 }
 
 ///|
+/// Short like `interval_text`, e.g. `21d ago`.
 fn last_done_text(last_done : @core.Date?, today : @core.Date) -> String {
   match last_done {
-    None => "not done yet"
+    None => "never"
     Some(date) =>
       match date.days_until(today) {
-        0 => "done today"
-        1 => "done yesterday"
-        days => "done \{plural(days, "day")} ago"
+        0 => "today"
+        1 => "yesterday"
+        days => "\{days}d ago"
       }
   }
 }
@@ -65,6 +58,6 @@ fn long_date(date : @core.Date) -> String {
 fn number_words(text : String) -> Array[(String, Bool)] {
   text
   .split(" ")
-  .map(word => (word.to_string(), word.iter().any(c => c is ('0'..<='9'))))
+  .map(word => (word.to_owned(), word.iter().any(c => c is ('0'..<='9'))))
   .collect()
 }

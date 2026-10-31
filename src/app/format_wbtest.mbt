@@ -8,15 +8,15 @@ fn test_date(s : String) -> @core.Date {
 ///|
 test "last_done_text" {
   let today = test_date("2026-09-24")
-  inspect(last_done_text(None, today), content="not done yet")
-  inspect(last_done_text(Some(today), today), content="done today")
+  inspect(last_done_text(None, today), content="never")
+  inspect(last_done_text(Some(today), today), content="today")
   inspect(
     last_done_text(Some(test_date("2026-09-23")), today),
-    content="done yesterday",
+    content="yesterday",
   )
   inspect(
     last_done_text(Some(test_date("2026-09-15")), today),
-    content="done 9 days ago",
+    content="9d ago",
   )
 }
 
@@ -24,14 +24,14 @@ test "last_done_text" {
 test "interval_text" {
   inspect(interval_text(AfterDone(1)), content="daily")
   inspect(interval_text(AfterDone(7)), content="weekly")
-  inspect(interval_text(AfterDone(10)), content="every 10 days")
+  inspect(interval_text(AfterDone(10)), content="10d")
   inspect(
     interval_text(Monthly({ months: 1, day: 28, lead_days: 7, })),
-    content="monthly on the 28th",
+    content="monthly 28th",
   )
   inspect(
     interval_text(Monthly({ months: 3, day: 1, lead_days: 7, })),
-    content="every 3 months on the 1st",
+    content="3mo 1st",
   )
 }
 
@@ -55,12 +55,7 @@ test "recent_caption" {
 
 ///|
 test "number_words" {
-  assert_eq(number_words("done 9 days ago"), [
-    ("done", false),
-    ("9", true),
-    ("days", false),
-    ("ago", false),
-  ])
+  assert_eq(number_words("9d ago"), [("9d", true), ("ago", false)])
   assert_eq(number_words("monthly on the 5th"), [
     ("monthly", false),
     ("on", false),

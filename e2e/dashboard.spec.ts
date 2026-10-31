@@ -47,7 +47,7 @@ test("adds a chore that is due today", async ({ page }, testInfo) => {
   await strawboar.addChore(title, "7");
 
   await expect(strawboar.getSoonRow(title)).toContainText("weekly");
-  await expect(strawboar.getSoonRow(title)).toContainText("not done yet");
+  await expect(strawboar.getSoonRow(title)).toContainText("never");
 
   // Soon is selected by default.
   await expect(strawboar.getSoonTab()).toHaveAttribute("aria-selected", "true");
@@ -258,7 +258,7 @@ test("undoes the latest completion from the panel", async ({ page, request }, te
   await expect(strawboar.getSoonRow(title)).toBeVisible();
 
   await strawboar.reload();
-  await expect(strawboar.getSoonRow(title)).toContainText("not done yet");
+  await expect(strawboar.getSoonRow(title)).toContainText("never");
   await strawboar.openRecent();
   await expect(strawboar.getRecentRow(title)).toHaveCount(0);
 });
@@ -390,8 +390,8 @@ test("keeps a monthly chore on its day", async ({ page }, testInfo) => {
   const strawboar = await openPage({ page });
 
   await strawboar.addMonthlyChore(title, { firstDue, leadDays: "14" });
-  await expect(strawboar.getSoonRow(title)).toContainText("monthly on the");
-  await expect(strawboar.getSoonRow(title)).toContainText("not done yet");
+  await expect(strawboar.getSoonRow(title)).toContainText("monthly ");
+  await expect(strawboar.getSoonRow(title)).toContainText("never");
   await expect(strawboar.getSoonCaption()).toHaveText(`Until ${shortDate(10)}`);
 
   // Done early, it is due on the same day of the next month.
