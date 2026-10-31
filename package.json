@@ -26,6 +26,6 @@
     "@rabbita/vite": "^0.2.0",
     "concurrently": "^10.0.6",
     "vite": "^7.3.6",
-    "wrangler": "^4.152.0"
+    "wrangler": "^4.156.0"
   }
 }
