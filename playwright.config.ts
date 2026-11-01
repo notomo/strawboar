@@ -34,7 +34,7 @@ export default defineConfig({
 
   webServer: {
     // Serves the built assets and the Worker with a fresh local D1 (`.dev.vars` is required).
-    command: "npm run build && npm run e2e:server",
+    command: "node --run build && node --run e2e:server",
     url: `${baseURL}/api/chores`,
     reuseExistingServer: false,
     timeout: 180_000,

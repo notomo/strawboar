@@ -20,7 +20,7 @@ export default defineConfig({
   ],
   server: {
     proxy: {
-      // `npm run dev:worker`
+      // `node --run dev:worker`
       "/api": "http://localhost:8787",
     },
   },

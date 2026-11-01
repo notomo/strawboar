@@ -47,6 +47,6 @@ jobs:
           core-version: 0.10.15+943464bfa
       - run: moon update
 
-      - run: npm run build
-      - run: npm run db:migrate:remote
-      - run: npm run deploy
+      - run: node --run build
+      - run: node --run db:migrate:remote
+      - run: node --run deploy

@@ -31,8 +31,8 @@ jobs:
           core-version: 0.10.15+943464bfa
       - run: moon update
 
-      - run: npm run check
-      - run: npm run test
-      - run: npm run db:seed:check
+      - run: node --run check
+      - run: node --run test
+      - run: node --run db:seed:check
       - run: cp .dev.vars.example .dev.vars
-      - run: npm run test:e2e
+      - run: node --run test:e2e

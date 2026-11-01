@@ -11,19 +11,19 @@ A personal life-TODO dashboard. A single Cloudflare Worker serves a Rabbita SPA 
 ## Development Commands
 
 ```bash
-npm run dev        # Vite (5173, proxies /api) + wrangler dev (8787, local D1)
-npm run db:seed:local  # Replace the local D1 data with test data (db/seed.sql, dates relative to today)
-npm run db:seed:check  # Apply the seed to a fresh local D1 to check it still works (in check_all and CI)
-npm run build      # moon build + vite build
-npm run check      # Type check and format check
-npm run format     # Format MoonBit code
-npm run test       # MoonBit tests (js target)
-npm run test:e2e   # Playwright (desktop, mobile, tablet/WebKit) against a Worker on 8788 with a fresh local D1 (requires .dev.vars)
+node --run dev            # Vite (5173, proxies /api) + wrangler dev (8787, local D1)
+node --run db:seed:local  # Replace the local D1 data with test data (db/seed.sql, dates relative to today)
+node --run db:seed:check  # Apply the seed to a fresh local D1 to check it still works (in check_all and CI)
+node --run build          # moon build + vite build
+node --run check          # Type check and format check
+node --run format         # Format MoonBit code
+node --run test           # MoonBit tests (js target)
+node --run test:e2e       # Playwright (desktop, mobile, tablet/WebKit) against a Worker on 8788 with a fresh local D1 (requires .dev.vars)
 ```
 
 ## Quality Checks
 
-**IMPORTANT**: Before completing any task, run `npm run check_all` to ensure all checks pass.
+**IMPORTANT**: Before completing any task, run `node --run check_all` to ensure all checks pass.
 
 ## Package Structure
 

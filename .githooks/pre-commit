@@ -1,4 +1,4 @@
 #!/bin/sh
 set -e
-npm run check
-npm run test
+node --run check
+node --run test

@@ -1,4 +1,4 @@
--- Test data for the local D1 (`npm run db:seed:local`). It deletes everything first.
+-- Test data for the local D1 (`node --run db:seed:local`). It deletes everything first.
 -- Dates are relative to today in Asia/Tokyo so that every section has some chores.
 DELETE FROM completions;
 DELETE FROM chores;
