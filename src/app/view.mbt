@@ -123,7 +123,13 @@ fn header_view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
         model.today.map(long_date).unwrap_or(""),
       ),
       div(style=["display:flex;gap:0.25rem;margin-left:auto"], [
-        @rui.button(size=Lg, on_click=emit(OpenNew), "+ Add"),
+        // A new chore is due today by default, which is known once the chores are loaded.
+        @rui.button(
+          size=Lg,
+          disabled=model.today is None,
+          on_click=emit(OpenNew),
+          "+ Add",
+        ),
         menu,
       ]),
     ],
