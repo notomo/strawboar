@@ -142,8 +142,12 @@ export async function openPage({ page, failFirstLoad = false }: { page: Page; fa
       await expect(strawboarPage.getLabelListButton(name)).toBeVisible();
     },
 
+    // Waits for the form to switch so that typing right after it is not overwritten by the re-render.
     selectLabel: async (name: string) => {
-      await strawboarPage.getLabelListButton(name).click();
+      const button = strawboarPage.getLabelListButton(name);
+      const current = await button.getAttribute("aria-current");
+      await button.click();
+      await expect(button).toHaveAttribute("aria-current", current === "true" ? "false" : "true");
     },
 
     deleteLabel: async () => {
