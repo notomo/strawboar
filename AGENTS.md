@@ -18,7 +18,7 @@ node --run build          # moon build + vite build
 node --run check          # Type check and format check
 node --run format         # Format MoonBit code
 node --run test           # MoonBit tests (js target)
-node --run test:e2e       # Playwright (desktop, mobile, tablet/WebKit) against a Worker on 8788 with a fresh local D1 (requires .dev.vars)
+node --run test:e2e       # Playwright (desktop, mobile, tablet/WebKit) in parallel, each against its own Worker (8788-8790) with a fresh local D1 (requires .dev.vars)
 ```
 
 ## Quality Checks

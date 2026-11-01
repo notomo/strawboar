@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "setup": "git config --local include.path ../.gitconfig",
-    "check_all": "node --run format && node --run check && node --run test && node --run db:seed:check && node --run test:e2e",
+    "check_all": "node --run format && node --run check && node --run test && concurrently -g -n seed,e2e \"node --run db:seed:check\" \"node --run test:e2e\"",
     "check": "moon check && moon fmt --check",
     "format": "moon fmt",
     "test": "moon test --target js",
@@ -17,7 +17,7 @@
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
     "deploy": "wrangler deploy",
-    "e2e:server": "rm -rf .wrangler/e2e && wrangler d1 migrations apply DB --local --persist-to .wrangler/e2e && wrangler dev --port 8788 --persist-to .wrangler/e2e",
+    "e2e:prepare": "node --run build && rm -rf .wrangler/e2e && wrangler d1 migrations apply DB --local --persist-to .wrangler/e2e/template",
     "db:seed:local": "node --run db:migrate:local && wrangler d1 execute DB --local --file db/seed.sql",
     "db:seed:check": "rm -rf .wrangler/seed-check && wrangler d1 migrations apply DB --local --persist-to .wrangler/seed-check && wrangler d1 execute DB --local --persist-to .wrangler/seed-check --file db/seed.sql"
   },
