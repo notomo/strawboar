@@ -9,23 +9,23 @@
     "format": "moon fmt",
     "test": "moon test --target js",
     "test:e2e": "playwright test",
-    "build": "moon build --target js --release && vite build",
-    "start": "concurrently -k -n vite,worker \"vite --open\" \"node --run dev:worker\"",
-    "dev": "concurrently -k -n vite,worker \"vite\" \"node --run dev:worker\"",
-    "dev:worker": "node --run db:migrate:local && wrangler dev --port 8787",
-    "preview": "node --run build && node --run dev:worker",
-    "db:migrate:local": "wrangler d1 migrations apply DB --local",
-    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
-    "deploy": "wrangler deploy",
-    "e2e:prepare": "node --run build && rm -rf .wrangler/e2e && wrangler d1 migrations apply DB --local --persist-to .wrangler/e2e/template",
-    "db:seed:local": "node --run db:migrate:local && wrangler d1 execute DB --local --file db/seed.sql",
-    "db:seed:check": "rm -rf .wrangler/seed-check && wrangler d1 migrations apply DB --local --persist-to .wrangler/seed-check && wrangler d1 execute DB --local --persist-to .wrangler/seed-check --file db/seed.sql"
+    "build": "cf build",
+    "start": "node --run db:migrate:local && vite --open",
+    "dev": "node --run db:migrate:local && vite",
+    "preview": "node --run build && node --run db:migrate:local && vite preview",
+    "db:migrate:local": "node db/d1.ts migrations apply --local",
+    "db:migrate:remote": "node db/d1.ts migrations apply",
+    "deploy": "cf deploy",
+    "e2e:prepare": "node --run build -- --mode e2e && rm -rf .cloudflare/e2e && node db/d1.ts migrations apply --local --persist-to .cloudflare/e2e/template",
+    "db:seed:local": "node --run db:migrate:local && node db/d1.ts raw --local --sql @db/seed.sql",
+    "db:seed:check": "rm -rf .cloudflare/seed-check && node db/d1.ts migrations apply --local --persist-to .cloudflare/seed-check && node db/d1.ts raw --local --persist-to .cloudflare/seed-check --sql @db/seed.sql"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "2.0.0-beta.v.4",
     "@playwright/test": "^1.64.1",
     "@rabbita/vite": "^0.2.0",
+    "cf": "1.0.0-beta.21",
     "concurrently": "^10.0.6",
-    "vite": "^7.3.6",
-    "wrangler": "^4.156.0"
+    "vite": "^7.3.6"
   }
 }

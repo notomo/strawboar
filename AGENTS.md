@@ -4,21 +4,21 @@ This file provides guidance to coding agents when working with code in this repo
 
 ## Project Overview
 
-A personal life-TODO dashboard. A single Cloudflare Worker serves a Rabbita SPA and a JSON API, both written in MoonBit (JS target), backed by Cloudflare D1 and protected by Cloudflare Access.
+A personal life-TODO dashboard. A single Cloudflare Worker serves a Rabbita SPA and a JSON API, both written in MoonBit (JS target), backed by Cloudflare D1 and protected by Cloudflare Access. It is built and run with the `cf` CLI and `@cloudflare/vite-plugin` (configured in `cloudflare.config.ts`), not Wrangler.
 
 **This is a public repository.** Never commit secrets, account IDs, personal data or Access settings (team domain, AUD).
 
 ## Development Commands
 
 ```bash
-node --run dev            # Vite (5173, proxies /api) + wrangler dev (8787, local D1)
+node --run dev            # Vite with the Worker and a local D1 (5173)
 node --run db:seed:local  # Replace the local D1 data with test data (db/seed.sql, dates relative to today)
 node --run db:seed:check  # Apply the seed to a fresh local D1 to check it still works (in check_all and CI)
-node --run build          # moon build + vite build
+node --run build          # cf build (vite build, which runs moon build for the Worker)
 node --run check          # Type check and format check
 node --run format         # Format MoonBit code
 node --run test           # MoonBit tests (js target)
-node --run test:e2e       # Playwright (desktop, mobile, tablet/WebKit) in parallel, each against its own Worker (8788-8790) with a fresh local D1 (requires .dev.vars)
+node --run test:e2e       # Playwright (desktop, mobile, tablet/WebKit) in parallel, each against its own vite preview (8788-8790) with a fresh local D1 (requires .dev.vars)
 ```
 
 ## Quality Checks
@@ -36,14 +36,14 @@ src/
 │   ├── web/         # JS FFI for Web standard APIs (Fetch API, WebCrypto, base64, time)
 │   └── cloudflare/  # Cloudflare specific: Worker env bindings, D1, Cloudflare Access JWT verification
 └── rules/           # Tests of the rules below that can be checked from the files (dependencies, FFI, ...)
-db/                  # D1 migrations and the seed for the local D1
+db/                  # D1 migrations, the seed for the local D1 and `d1.ts` (runs `cf d1` for the DB binding)
 e2e/                 # Playwright tests
 ```
 
 ## Package Rules
 
 - `src/lib/` holds no app specific policy (e.g. cache headers are set by `server`).
-- Files other than MoonBit live in the directory of the package they belong to: `src/app` is also the Vite root (`index.html` loads it as `/main.js`, `public/` with icons generated from `icon/`), and `src/server/worker.js` is the Worker entry.
+- Files other than MoonBit live in the directory of the package they belong to: `src/app` has `public/` (icons generated from `icon/`), and `src/server/worker.js` is the Worker entry. The exception is `index.html`, which loads the app as `/main.js`: it is in the Vite root, the repository root, as `@cloudflare/vite-plugin` reads `cloudflare.config.ts` and writes the build output there.
 - Add a new file under `db/migrations/` for schema changes; never edit applied migrations.
 
 ## Important Notes
@@ -62,7 +62,7 @@ e2e/                 # Playwright tests
 Known limitations kept on purpose for a personal app; do not report them as issues unless the situation changes.
 
 - **Today across midnight**: "today" is only refreshed by reloading, so a page left open (e.g. a PWA resumed from the background) keeps the previous day. A reload on `@sub.on_visibility_change` would fix it if needed.
-- **Deploy**: `deploy.yaml` applies migrations before deploying, so the old Worker briefly runs on the new schema; this is fine as long as migrations are additive. Dependabot patch and minor updates (wrangler and vite included) are auto-merged and deployed once CI passes.
+- **Deploy**: `deploy.yaml` applies migrations before deploying, so the old Worker briefly runs on the new schema; this is fine as long as migrations are additive. Dependabot patch and minor updates (cf, `@cloudflare/vite-plugin` and vite included) are auto-merged and deployed once CI passes.
 
 ## Coding Style
 

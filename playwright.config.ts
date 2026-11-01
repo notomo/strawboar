@@ -11,7 +11,7 @@ const projects = [
   { name: "tablet", port: 8790, use: devices["iPad Pro 11 landscape"] },
 ];
 
-const e2eDir = ".wrangler/e2e";
+const e2eDir = ".cloudflare/e2e";
 const baseURL = (port: number) => `http://localhost:${port}`;
 
 export default defineConfig({
@@ -32,11 +32,12 @@ export default defineConfig({
 
   // Web servers start one by one, so the first one builds the assets and copies a migrated local D1 for all.
   webServer: projects.map(({ name, port }, i) => ({
-    // Serves the built assets and the Worker with a fresh local D1 (`.dev.vars` is required).
+    // Previews the build (in the e2e mode, so `.dev.vars` is required) with a fresh local D1.
     command: [
       ...(i === 0 ? ["node --run e2e:prepare", ...projects.map((p) => `cp -r ${e2eDir}/template ${e2eDir}/${p.name}`)] : []),
-      `npx wrangler dev --port ${port} --persist-to ${e2eDir}/${name}`,
+      `npx vite preview --port ${port} --strictPort`,
     ].join(" && "),
+    env: { STRAWBOAR_STATE_DIR: `${e2eDir}/${name}` },
     url: `${baseURL(port)}/api/chores`,
     reuseExistingServer: false,
     timeout: 180_000,

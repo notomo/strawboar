@@ -20,6 +20,7 @@ concurrency:
 
 env:
   NODE_VERSION: '24'
+  CF_SEND_TELEMETRY: 'false'
 
 jobs:
   deploy:
@@ -49,4 +50,4 @@ jobs:
 
       - run: node --run build
       - run: node --run db:migrate:remote
-      - run: node --run deploy
+      - run: npx cf deploy --prebuilt

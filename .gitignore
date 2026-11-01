@@ -3,6 +3,7 @@ dist
 target
 _build
 .mooncakes
+.cloudflare
 .wrangler
 .dev.vars
 playwright-report/

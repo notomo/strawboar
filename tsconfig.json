@@ -7,5 +7,5 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["*.ts", "e2e/**/*.ts"]
+  "include": ["*.ts", "db/*.ts", "e2e/**/*.ts"]
 }

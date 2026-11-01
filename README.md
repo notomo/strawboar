@@ -17,7 +17,7 @@ npm ci
 npx playwright install --with-deps chromium webkit # for E2E
 node --run setup               # enable git hooks
 cp .dev.vars.example .dev.vars # local auth bypass for localhost
-node --run dev                 # Vite (5173) + Worker with local D1 (8787)
+node --run dev                 # Vite with the Worker and a local D1 (5173)
 node --run check_all           # format, check, test, build and E2E
 ```
 
@@ -30,6 +30,6 @@ The Worker requires the secrets `ACCESS_TEAM_DOMAIN` (e.g. `example.cloudflareac
 and `ACCESS_AUD` (the Access application audience tag):
 
 ```bash
-npx wrangler secret put ACCESS_TEAM_DOMAIN
-npx wrangler secret put ACCESS_AUD
+npx cf workers secrets update ACCESS_TEAM_DOMAIN --worker strawboar --type secret_text --text <value>
+npx cf workers secrets update ACCESS_AUD --worker strawboar --type secret_text --text <value>
 ```

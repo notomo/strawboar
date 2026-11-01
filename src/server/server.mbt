@@ -32,7 +32,7 @@ async fn authenticate(
   request : @web.Request,
   env : @cloudflare.Env,
 ) -> @cloudflare.AccessIdentity raise @cloudflare.AccessError {
-  // Only for `wrangler dev`: `.dev.vars` is never deployed.
+  // Only for local builds (see `cloudflare.config.ts`): `.dev.vars` is never deployed.
   let bypass_email = env.string_var("DEV_AUTH_BYPASS_EMAIL")
   if bypass_email != "" && is_local(request.hostname()) {
     return { email: bypass_email, }

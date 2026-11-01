@@ -1,3 +1,7 @@
-# Copy to .dev.vars for local development (`wrangler dev`).
+# Copy to .dev.vars for local development (`node --run dev`) and E2E.
 # Skips Cloudflare Access verification for localhost requests only.
 DEV_AUTH_BYPASS_EMAIL=dev@example.com
+# Worker secrets that are not used locally.
+ACCESS_TEAM_DOMAIN=
+ACCESS_AUD=
+ALLOWED_EMAILS=

@@ -1,5 +1,5 @@
 ///|
-/// Bindings and variables configured in `wrangler.jsonc`.
+/// Bindings and variables configured in `cloudflare.config.ts`.
 #external
 pub type Env
 
