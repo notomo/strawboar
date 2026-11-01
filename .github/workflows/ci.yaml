@@ -16,16 +16,16 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7.0.1
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
       - run: npm ci
       - run: npx playwright install --with-deps chromium webkit
 
-      - uses: hustcer/setup-moonbit@87e2bdf5cf20d3b6f5c5f266a8a513f503bb5b76 # v1.25
+      - uses: hustcer/setup-moonbit@v1.25
         with:
           # The toolchain used locally (moonc in `moon version --all`).
           version: 0.10.15+943464bfa
