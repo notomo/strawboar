@@ -64,7 +64,8 @@ fn tabs_view(model : Model, today : @core.Date, emit : Emit[Msg]) -> Html {
 }
 
 ///|
-/// The content of the selected tab, below a caption of the days it covers.
+/// The content of the selected tab, below a caption of the days it covers if
+/// it has one.
 fn tab_panel(tab : Tab, caption : String?, content : Html) -> Html {
   let id = tab_id(tab)
   @rui.tabs_content(
@@ -91,21 +92,14 @@ fn tab_panel(tab : Tab, caption : String?, content : Html) -> Html {
 ///|
 fn chore_panel(
   tab : Tab,
-  caption : String?,
   chores : Array[@core.Chore],
   row : (@core.Chore) -> Html,
 ) -> Html {
   tab_panel(
     tab,
-    caption,
+    None,
     ul(style=[list_style()], keyed(chores, chore => "chore-\{chore.id}", row)),
   )
-}
-
-///|
-/// e.g. `Until 10/20`, so that it is clear which days Soon covers.
-fn soon_caption(dashboard : @core.Dashboard) -> String? {
-  dashboard.soon_until().map(date => "Until \{short_date(date)}")
 }
 
 ///|

@@ -163,12 +163,6 @@ pub fn Dashboard::new(chores : Array[Chore], today : Date) -> Dashboard {
 }
 
 ///|
-/// The latest due date among the soon chores.
-pub fn Dashboard::soon_until(self : Dashboard) -> Date? {
-  self.soon.iter().map(chore => chore.next_due).maximum()
-}
-
-///|
 pub impl ToJson for Chore with fn to_json(self) {
   let (repeat_key, repeat_value) = self.repeat.json_field()
   let json : Map[String, Json] = {

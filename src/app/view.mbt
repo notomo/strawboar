@@ -168,7 +168,7 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
         notice_view(model.notice),
         match model.tab {
           Soon =>
-            chore_panel(Soon, soon_caption(dashboard), dashboard.soon, chore => {
+            chore_panel(Soon, dashboard.soon, chore => {
               chore_row(
                 chore,
                 labels_of(chore),
@@ -179,7 +179,7 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
               )
             })
           Later =>
-            chore_panel(Later, None, dashboard.later, chore => {
+            chore_panel(Later, dashboard.later, chore => {
               dated_row(
                 chore.id,
                 chore.title,

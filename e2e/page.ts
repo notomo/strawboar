@@ -34,7 +34,6 @@ export async function openPage({ page, failFirstLoad = false }: { page: Page; fa
     getText: (text: string) => page.getByText(text),
 
     getSoonTab: () => page.locator("#soon-tab"),
-    getSoonCaption: () => page.locator("#soon-caption"),
     getSoonRows: () => page.locator("#soon li"),
     getSoonRow: (title: string) => page.locator("#soon li", { hasText: title }),
     getLaterTab: () => page.locator("#later-tab"),

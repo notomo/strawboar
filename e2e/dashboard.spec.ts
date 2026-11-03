@@ -52,7 +52,6 @@ test("adds a chore that is due today", async ({ page }, testInfo) => {
   // Soon is selected by default.
   await expect(strawboar.getSoonTab()).toHaveAttribute("aria-selected", "true");
   await expect(strawboar.getSoonTab()).toHaveText("Soon 1");
-  await expect(strawboar.getSoonCaption()).toHaveText(`Until ${shortDate(0)}`);
 });
 
 test("marks a chore as done and undoes it", async ({ page }, testInfo) => {
@@ -398,7 +397,6 @@ test("keeps a monthly chore on its day", async ({ page }, testInfo) => {
   await strawboar.addMonthlyChore(title, { firstDue, leadDays: "14" });
   await expect(strawboar.getSoonRow(title)).toContainText("monthly ");
   await expect(strawboar.getSoonRow(title)).toContainText("never");
-  await expect(strawboar.getSoonCaption()).toHaveText(`Until ${shortDate(10)}`);
 
   // Done early, it is due on the same day of the next month.
   await strawboar.complete(title);

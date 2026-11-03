@@ -511,12 +511,4 @@ test "dashboard puts monthly chores first in each section" {
     "rent due", "rent soon", "weekly due", "weekly soon",
   ])
   assert_eq(titles(dashboard.later), ["rent later", "weekly later"])
-  assert_eq(dashboard.soon_until().map(d => d.to_string()), Some("2026-10-13"))
-}
-
-///|
-test "dashboard has no soon range without soon chores" {
-  let chores = [chore(next_due="2026-10-30")]
-  let dashboard = @core.Dashboard::new(chores, date("2026-10-11"))
-  assert_true(dashboard.soon_until() is None)
 }
