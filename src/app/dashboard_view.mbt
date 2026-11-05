@@ -73,7 +73,9 @@ fn tab_panel(tab : Tab, caption : String?, content : Html) -> Html {
     selected=true,
     labelledby="\{id}-tab",
     id~,
-    style=["display:flex;flex-direction:column;gap:0.5rem"],
+    // rui makes the panel focusable. Without `outline:none`, the whole list gets
+    // a focus ring on iPad, where closing the editor gives the focus back to it.
+    style=["display:flex;flex-direction:column;gap:0.5rem;outline:none"],
     [
       match caption {
         Some(caption) =>

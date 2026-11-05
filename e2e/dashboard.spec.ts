@@ -106,6 +106,10 @@ test("opens and closes the panel", async ({ page }, testInfo) => {
   await strawboar.tapOutsideEditor({ hasTouch: !!testInfo.project.use.hasTouch });
   await expect(strawboar.getEditor()).toBeHidden();
   await expect(strawboar.getEditorBackdrop()).toHaveCount(0);
+  // On iPad, closing the panel gives the focus back to the list, which must not be outlined.
+  await strawboar.getSoonPanel().focus();
+  await expect(strawboar.getSoonPanel()).toBeFocused();
+  await expect(strawboar.getSoonPanel()).toHaveCSS("outline-style", "none");
 
   // Nothing is left over the dashboard.
   await strawboar.openChore(first);
