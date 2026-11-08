@@ -1,5 +1,6 @@
 ///|
 /// A chore due on a fixed day of the month, e.g. paying the rent.
+#derive(Eq, ToJson, FromJson)
 pub(all) struct Monthly {
   /// Due every `months` months.
   months : Int32
@@ -7,7 +8,7 @@ pub(all) struct Monthly {
   day : Int32
   /// The chore is `Soon` from this many days before it is due.
   lead_days : Int32
-} derive(Eq, ToJson, FromJson)
+}
 
 ///|
 pub extend Monthly with Eq::{equal, not_equal}
@@ -20,12 +21,13 @@ pub extend Monthly with @json.FromJson::{from_json}
 
 ///|
 /// How a chore recurs.
+#derive(Eq)
 pub(all) enum Repeat {
   /// Due this many days after it was done.
   AfterDone(Int32)
   /// Due on a fixed day, whenever it was done.
   Monthly(Monthly)
-} derive(Eq)
+}
 
 ///|
 pub extend Repeat with Eq::{equal, not_equal}

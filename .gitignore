@@ -8,3 +8,4 @@ _build
 .dev.vars
 playwright-report/
 test-results/
+pkg.generated.mbti

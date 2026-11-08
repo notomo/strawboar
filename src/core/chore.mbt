@@ -1,5 +1,6 @@
 ///|
 /// A recurring chore. See `Repeat` for when it is due again.
+#derive(Eq)
 pub(all) struct Chore {
   id : Int32
   title : String
@@ -10,17 +11,18 @@ pub(all) struct Chore {
   last_done : Date?
   /// Label ids.
   labels : Array[Int32]
-} derive(Eq)
+}
 
 ///|
 pub extend Chore with Eq::{equal, not_equal}
 
 ///|
 /// How pressing a chore is. Overdue chores are simply `Soon`; they never pile up.
+#derive(Eq)
 pub(all) enum Urgency {
   Soon
   Later
-} derive(Eq)
+}
 
 ///|
 pub extend Urgency with Eq::{equal, not_equal}

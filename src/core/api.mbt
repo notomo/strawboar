@@ -1,5 +1,6 @@
 ///|
 /// Response of `GET /api/chores`.
+#derive(Eq, ToJson, FromJson)
 pub(all) struct ChoreList {
   today : Date
   /// Sorted by name.
@@ -7,18 +8,19 @@ pub(all) struct ChoreList {
   chores : Array[Chore]
   /// Completions of the last `RECENT_DAYS` days, newest first.
   recent : Array[RecentDone]
-} derive(Eq, ToJson, FromJson)
+}
 
 ///|
 pub const RECENT_DAYS : Int32 = 7
 
 ///|
+#derive(Eq, ToJson, FromJson)
 pub(all) struct RecentDone {
   completion_id : Int32
   chore_id : Int32
   title : String
   done_on : Date
-} derive(Eq, ToJson, FromJson)
+}
 
 ///|
 /// Only the latest completion of a chore can be undone, because undoing restores
@@ -67,10 +69,11 @@ pub extend ChoreList with @json.FromJson::{from_json}
 
 ///|
 /// Response of `POST /api/chores/:id/complete`.
+#derive(ToJson, FromJson)
 pub(all) struct Completed {
   chore : Chore
   completion_id : Int32
-} derive(ToJson, FromJson)
+}
 
 ///|
 pub extend Completed with ToJson::{to_json}

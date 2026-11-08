@@ -1,8 +1,9 @@
 ///|
 /// A calendar date without time or time zone.
+#derive(Eq, Compare)
 pub struct Date {
   priv days : Int32 // days since 1970-01-01
-} derive(Eq, Compare)
+}
 
 ///|
 pub extend Date with Eq::{equal, not_equal}

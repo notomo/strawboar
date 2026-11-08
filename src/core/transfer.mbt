@@ -71,10 +71,11 @@ fn ChoreDefinition::validate(
 
 ///|
 /// Labels and chores exchanged as JSON text.
+#derive(ToJson)
 pub(all) struct Definitions {
   labels : Array[LabelInput]
   chores : Array[ChoreDefinition]
-} derive(ToJson)
+}
 
 ///|
 pub extend Definitions with ToJson::{to_json}
@@ -248,10 +249,11 @@ pub fn ImportPlan::chore_changes(
 
 ///|
 /// Response of `POST /api/chores/import`.
+#derive(Eq, ToJson, FromJson)
 pub(all) struct ImportResult {
   created : Int32
   updated : Int32
-} derive(Eq, ToJson, FromJson)
+}
 
 ///|
 pub extend ImportResult with Eq::{equal, not_equal}

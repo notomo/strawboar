@@ -1,20 +1,23 @@
 ///|
+#derive(Eq)
 enum Load {
   Loading
   Ready
   Failed
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 enum RepeatKind {
   AfterDone
   Monthly
-} derive(Eq)
+}
 
 ///|
 /// Form state of the editor panel. `id` is `None` for a new chore.
 /// It is kept after the panel closes: a close event can arrive after
 /// another chore was opened, and clearing it then would empty the panel.
+#derive(Eq)
 struct Editor {
   id : Int32?
   title : String
@@ -29,56 +32,63 @@ struct Editor {
   /// Selected label ids.
   labels : Array[Int32]
   error : String
-} derive(Eq)
+}
 
 ///|
 /// Form state of the import/export panel.
+#derive(Eq)
 struct Transfer {
   /// Chore definitions as JSON, prefilled with the current ones.
   text : String
   error : String
-} derive(Eq)
+}
 
 ///|
 /// Form state of the labels panel. `id` is `None` for a new label.
+#derive(Eq)
 struct LabelForm {
   id : Int32?
   name : String
   color : @core.LabelColor
   error : String
-} derive(Eq)
+}
 
 ///|
 /// Content of the side panel.
+#derive(Eq)
 enum Panel {
   ChoreEditor(Editor)
   Transfer(Transfer)
   Labels(LabelForm)
-} derive(Eq)
+}
 
 ///|
 /// A tab of the dashboard.
+#derive(Eq)
 enum Tab {
   Soon
   Later
   Done
-} derive(Eq)
+}
 
 ///|
 /// An action of the panel that asks for confirmation first.
+#derive(Eq)
 enum Confirm {
   ConfirmArchive
   ConfirmUndo
   ConfirmDeleteLabel
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 struct Undo {
   completion_id : Int32
   title : String
-} derive(Eq)
+}
 
 ///|
+#derive(Eq)
 struct Model {
   load : Load
   today : @core.Date?
@@ -100,7 +110,7 @@ struct Model {
   /// The action shown in the confirmation dialog.
   confirm : Confirm?
   notice : String
-} derive(Eq)
+}
 
 ///|
 enum Msg {

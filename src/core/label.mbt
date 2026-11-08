@@ -2,6 +2,7 @@
 /// Colors a label can have. The palette is fixed so that every label stays
 /// readable on the dark theme. There is no gray, as it would look like the
 /// neutral UI.
+#derive(Eq)
 pub(all) enum LabelColor {
   Red
   Orange
@@ -11,7 +12,7 @@ pub(all) enum LabelColor {
   Blue
   Purple
   Pink
-} derive(Eq)
+}
 
 ///|
 pub extend LabelColor with Eq::{equal, not_equal}
@@ -68,11 +69,12 @@ pub extend LabelColor with @json.FromJson::{from_json}
 
 ///|
 /// A label created beforehand and shared by chores.
+#derive(Eq, ToJson, FromJson)
 pub(all) struct Label {
   id : Int32
   name : String
   color : LabelColor
-} derive(Eq, ToJson, FromJson)
+}
 
 ///|
 pub extend Label with Eq::{equal, not_equal}
@@ -85,10 +87,11 @@ pub extend Label with @json.FromJson::{from_json}
 
 ///|
 /// Fields a user can edit on a label.
+#derive(Eq, ToJson, FromJson)
 pub(all) struct LabelInput {
   name : String
   color : LabelColor
-} derive(Eq, ToJson, FromJson)
+}
 
 ///|
 pub extend LabelInput with Eq::{equal, not_equal}
