@@ -3,7 +3,7 @@ import { defineConfig, type Plugin } from "vite";
 import rabbita from "@rabbita/vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
 
-// The Worker environment, named after the Worker in cloudflare.config.ts.
+// The Vite environment of the Worker, which moonbitServer reloads on changes.
 const workerEnvironment = "strawboar";
 
 export default defineConfig({
@@ -13,6 +13,8 @@ export default defineConfig({
     rabbita({ mainPkgDir: "src/app" }),
     moonbitServer(),
     cloudflare({
+      // Named explicitly, as the plugin otherwise names it `ssr`.
+      viteEnvironment: { name: workerEnvironment },
       // Each E2E project has its own local D1.
       persistState: { path: process.env.STRAWBOAR_STATE_DIR ?? ".cloudflare/state" },
     }),
