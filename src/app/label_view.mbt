@@ -14,22 +14,17 @@ fn color_value(color : @core.LabelColor) -> String {
 }
 
 ///|
-/// The look of a label, shared by every place that shows one.
-/// It is tinted by its color when on, and only has a faint border of it when off,
-/// so that a toggled-on label looks the same as the badge on the rows.
-fn label_chip_style(color : @core.LabelColor, on~ : Bool = true) -> String {
+/// The look of a label, shared by every place that shows one,
+/// so that a label looks the same as the badge on the rows.
+fn label_chip_style(color : @core.LabelColor) -> String {
   let color = color_value(color)
   // Hex alpha suffixes: 0x26 = 15%, 0x66 = 40%.
-  if on {
-    "color:\{color};background:\{color}26;border-color:\{color}66"
-  } else {
-    "border-color:\{color}66"
-  }
+  "color:\{color};background:\{color}26;border-color:\{color}66"
 }
 
 ///|
-/// A ring around a selected label or color, used where a label is picked
-/// rather than toggled on and off.
+/// A ring around a selected label or color, used by every place where
+/// labels are picked or toggled.
 fn selected_ring_style(color : @core.LabelColor) -> String {
   let color = color_value(color)
   "box-shadow:0 0 0 2px var(--ui-background),0 0 0 4px \{color}"
@@ -46,6 +41,7 @@ fn label_badge(label : @core.Label) -> Html {
 
 ///|
 /// A label that can be turned on and off, used by the chore panel.
+/// A label that is on has the ring, like the active one of the label filter.
 fn label_toggle(
   label : @core.Label,
   pressed : Bool,
@@ -58,7 +54,12 @@ fn label_toggle(
     attrs=@html.Attrs::build().aria_pressed(pressed.to_string()),
     style=[
       "flex-shrink:0;font-weight:400",
-      label_chip_style(label.color, on=pressed),
+      label_chip_style(label.color),
+      if pressed {
+        selected_ring_style(label.color)
+      } else {
+        ""
+      },
     ],
     label.name,
   )

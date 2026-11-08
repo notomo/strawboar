@@ -221,7 +221,11 @@ fn label_picker(
         attrs=@html.Attrs::build()
           .role("group")
           .aria_labelledby("chore-labels-label"),
-        style=["display:flex;flex-wrap:wrap;gap:0.5rem"],
+        // Padded so that the ring of a label that is on is not cut off,
+        // with a negative margin to keep the labels aligned with the field.
+        style=[
+          "display:flex;flex-wrap:wrap;gap:0.75rem;padding:4px;margin:-4px",
+        ],
         keyed(labels, label => "label-\{label.id}", label => {
           label_toggle(label, selected.contains(label.id), () => {
             store.update(model => {
