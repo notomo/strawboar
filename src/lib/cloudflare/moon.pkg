@@ -1,7 +1,11 @@
 import {
   "internal/strawboar/lib/web",
-  "moonbitlang/async/js_async",
+  "moonbitlang/core/async/js_async",
   "moonbitlang/core/json",
 }
 
 supported_targets = "js"
+
+options(
+  "allow-experimental-packages": [ "moonbitlang/core/async/js_async" ],
+)
