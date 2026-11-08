@@ -24,11 +24,17 @@ fn[A] call(
 }
 
 ///|
+/// Runs `f` after the view is rendered, e.g. to open a dialog it renders.
+fn run(f : () -> Unit) -> Cmd {
+  @cmd.custom_cmd(kind=@cmd.after_render, _ => f())
+}
+
+///|
 /// Shows or closes the panel when `panel_open` changes.
 fn sync_panel(before : Model, after : Model) -> Cmd {
   match (before.panel_open, after.panel_open) {
-    (false, true) => @dialog.show(EDITOR_ID, modal=false)
-    (true, false) => @dialog.close(EDITOR_ID)
+    (false, true) => run(() => @ui.show_dialog(EDITOR_ID, modal=false))
+    (true, false) => run(() => @ui.close_dialog(EDITOR_ID))
     _ => @rabbita.none
   }
 }
@@ -43,7 +49,7 @@ fn update(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
 /// The next model and the requests to send for `msg`.
 fn transition(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
   match msg {
-    ReloadPage => (model, @nav.reload())
+    ReloadPage => (model, run(@web.reload))
     Reload =>
       (
         { ..model, load: Loading, },
@@ -63,10 +69,9 @@ fn transition(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
     Completed(id, Ok(completed)) =>
       (
         model.completed(id, completed),
-        @rabbita.delay(
-          emit(DismissUndo(completed.completion_id)),
-          UNDO_DURATION_MS,
-        ),
+        call(emit, () => @web.sleep(UNDO_DURATION_MS), _ => {
+          DismissUndo(completed.completion_id)
+        }),
       )
     Completed(id, Err(_)) => (model.completion_failed(id), @rabbita.none)
     UndoCompletion(completion_id) =>
@@ -197,7 +202,10 @@ fn transition(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
         @rabbita.none,
       )
     AskConfirm(confirm) =>
-      ({ ..model, confirm: Some(confirm), }, @dialog.show(CONFIRM_ID))
+      (
+        { ..model, confirm: Some(confirm), },
+        run(() => @ui.show_dialog(CONFIRM_ID, modal=true)),
+      )
     ClosePanel | PanelClosed => ({ ..model, panel_open: false, }, @rabbita.none)
   }
 }

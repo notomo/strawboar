@@ -1,8 +1,8 @@
-// Native dialogs, opened and closed with `@rabbita/dialog`.
+// Native dialogs, opened with `show_dialog` and closed with `close_dialog`.
 
 ///|
 /// A panel on the right edge of the viewport with a close button.
-/// Open it with `@dialog.show(id, modal=false)` to keep the page usable.
+/// Open it with `show_dialog(id, modal=false)` to keep the page usable.
 pub fn sheet(
   id~ : String,
   closedby~ : String,
@@ -89,4 +89,30 @@ pub fn dialog_cancel(text : String) -> @html.Html {
     attrs=@html.Attrs::build().formnovalidate(true).autofocus(true),
     text,
   )
+}
+
+///|
+fn dialog_by_id(id : String) -> @dom.HTMLDialogElement? {
+  @dom.document()
+  .get_element_by_id(id)
+  .to_option()
+  .bind(element => element.to_html_element())
+  .bind(element => element.to_html_dialog_element())
+}
+
+///|
+/// Opens the dialog `id`. A dialog that is not modal leaves the page usable.
+pub fn show_dialog(id : String, modal~ : Bool) -> Unit {
+  match (dialog_by_id(id), modal) {
+    (Some(dialog), true) => dialog.show_modal()
+    (Some(dialog), false) => dialog.show()
+    (None, _) => ()
+  }
+}
+
+///|
+pub fn close_dialog(id : String) -> Unit {
+  if dialog_by_id(id) is Some(dialog) {
+    dialog.close()
+  }
 }
