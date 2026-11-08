@@ -15,7 +15,7 @@ fn transfer_content(transfer : Transfer, store : Store) -> Array[Html] {
       ),
     ]),
     @html.form(
-      on_submit=store.import_definitions(),
+      on_submit=() => store.import_definitions(),
       style=[
         "display:flex;flex-direction:column;gap:1.25rem;padding-bottom:1rem;flex:1",
       ],

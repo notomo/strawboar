@@ -45,7 +45,7 @@ pub fn[C : @html.IsChildren] button(
   disabled~ : Bool = false,
   type_~ : String = "button",
   id? : String,
-  on_click? : @cmd.Cmd,
+  on_click? : () -> Unit,
   attrs? : @html.Attrs,
   style~ : Array[String] = [],
   children : C,
@@ -132,7 +132,7 @@ pub fn input(
   max? : Int32,
   inputmode? : String,
   placeholder? : String,
-  on_input~ : @cmd.Emit[String],
+  on_input~ : (String) -> Unit,
 ) -> @html.Html {
   @html.input(
     class="ui-input",
@@ -157,7 +157,7 @@ pub fn textarea(
   placeholder? : String,
   wrap? : String,
   style~ : Array[String] = [],
-  on_input~ : @cmd.Emit[String],
+  on_input~ : (String) -> Unit,
 ) -> @html.Html {
   @html.textarea(
     class="ui-input",
@@ -169,6 +169,5 @@ pub fn textarea(
     wrap?,
     style~,
     on_input~,
-    "",
   )
 }

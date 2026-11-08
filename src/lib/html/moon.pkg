@@ -1,0 +1,5 @@
+import {
+  "internal/strawboar/lib/dom",
+}
+
+supported_targets = "js"

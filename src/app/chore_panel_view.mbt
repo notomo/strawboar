@@ -10,7 +10,7 @@ fn editor_content(
       @ui.dialog_title(id="panel-title", if is_new { "New" } else { "Edit" }),
     ]),
     @html.form(
-      on_submit=store.submit_chore(),
+      on_submit=() => store.submit_chore(),
       style=[
         "display:flex;flex-direction:column;gap:1.25rem;padding-bottom:1rem;flex:1",
       ],
@@ -171,9 +171,11 @@ fn repeat_tabs(
               id="chore-repeat-\{value(kind)}",
               selected=selected == kind,
               controls="chore-repeat-\{value(kind)}-panel",
-              on_select=store.update(model => {
-                model.edit(editor => { ..editor, repeat: kind, })
-              }),
+              on_select=() => {
+                store.update(model => {
+                  model.edit(editor => { ..editor, repeat: kind, })
+                })
+              },
               text,
             )
           }),
@@ -221,13 +223,11 @@ fn label_picker(
           .aria_labelledby("chore-labels-label"),
         style=["display:flex;flex-wrap:wrap;gap:0.5rem"],
         keyed(labels, label => "label-\{label.id}", label => {
-          label_toggle(
-            label,
-            selected.contains(label.id),
+          label_toggle(label, selected.contains(label.id), () => {
             store.update(model => {
               model.edit(editor => editor.toggle_label(label.id))
-            }),
-          )
+            })
+          })
         }),
       )
     },

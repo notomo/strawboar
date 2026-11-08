@@ -1,11 +1,9 @@
 import {
   "internal/strawboar/core",
+  "internal/strawboar/lib/html",
   "internal/strawboar/lib/ui",
   "internal/strawboar/lib/web",
-  "moonbit-community/rabbita",
-  "moonbit-community/rabbita/html",
   "moonbitlang/core/json",
-  "moonbit-community/rabbita/cmd",
 }
 
 supported_targets = "js"

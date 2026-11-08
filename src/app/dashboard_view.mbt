@@ -37,7 +37,7 @@ fn tabs_view(model : Model, today : @core.Date, store : Store) -> Html {
         id="\{id}-tab",
         selected~,
         controls=id,
-        on_select=store.update(model => { ..model, tab, }),
+        on_select=() => store.update(model => { ..model, tab, }),
         style=[
           "padding-block:0.375rem;padding-inline:1rem;justify-content:space-between",
           if selected {
@@ -153,7 +153,7 @@ fn edit_area(
 ) -> Html {
   @ui.button(
     variant=Ghost,
-    on_click=store.update(model => model.open_chore(chore_id)),
+    on_click=() => store.update(model => model.open_chore(chore_id)),
     style=[
       "flex:1;min-width:0;height:auto;justify-content:space-between;gap:0.75rem;padding:0.625rem 0.75rem;text-align:left;white-space:normal;font-weight:inherit",
       match state {
@@ -225,7 +225,7 @@ fn chore_row(
     @ui.button(
       variant=Outline,
       disabled=completing,
-      on_click=store.complete(chore.id),
+      on_click=() => store.complete(chore.id),
       attrs=@html.Attrs::build().aria_label("Done: \{chore.title}"),
       style=["flex-shrink:0;margin-right:0.25rem"],
       "✓ Done",

@@ -15,34 +15,22 @@ fn content_id(id : String) -> String {
 }
 
 ///|
-fn element_by_id(id : String) -> @dom.HTMLElement? {
-  @dom.document()
-  .get_element_by_id(id)
-  .to_option()
-  .bind(element => element.to_html_element())
-}
-
-///|
-fn menu_items(menu : @dom.HTMLElement) -> Array[@dom.HTMLElement] {
-  menu
-  .query_selector_all("[role=\"menuitem\"]")
-  .iter()
-  .filter_map(item => item.to_html_element())
-  .to_array()
+fn menu_items(menu : @dom.Node) -> Array[@dom.Node] {
+  menu.query_all("[role=\"menuitem\"]")
 }
 
 ///|
 /// Whether the menu was open when the pointer went down on its button.
 /// The popover is closed by then as the button is outside of it, so the
 /// click must not open it again.
-fn was_open(trigger : @dom.HTMLElement) -> Bool {
-  trigger.get_attribute("data-was-open") == Some("true")
+fn was_open(trigger : @dom.Node) -> Bool {
+  trigger.attribute("data-was-open") == Some("true")
 }
 
 ///|
 fn toggle(id : String) -> Unit {
-  guard element_by_id(id) is Some(trigger) &&
-    element_by_id(content_id(id)) is Some(menu) else {
+  guard @dom.element_by_id(id) is Some(trigger) &&
+    @dom.element_by_id(content_id(id)) is Some(menu) else {
     return
   }
   if was_open(trigger) {
@@ -62,19 +50,15 @@ fn toggle(id : String) -> Unit {
 
 ///|
 fn hide(id : String) -> Unit {
-  if element_by_id(content_id(id)) is Some(menu) &&
+  if @dom.element_by_id(content_id(id)) is Some(menu) &&
     menu.matches(":popover-open") {
     menu.hide_popover()
   }
 }
 
 ///|
-fn move_between_items(event : @dom.KeyboardEvent) -> @cmd.Cmd {
-  guard event.target().to_element() is Some(target) &&
-    target.closest("[role=\"menu\"]") is Some(menu) &&
-    menu.to_html_element() is Some(menu) else {
-    return @cmd.none
-  }
+fn move_between_items(event : @dom.Event) -> Unit {
+  guard event.target().closest("[role=\"menu\"]") is Some(menu) else { return }
   let items = menu_items(menu)
   let last = items.length() - 1
   let current = items.search_by(item => item.matches(":focus"))
@@ -89,7 +73,6 @@ fn move_between_items(event : @dom.KeyboardEvent) -> @cmd.Cmd {
     event.prevent_default()
     items[next].focus()
   }
-  @cmd.none
 }
 
 ///|
@@ -111,20 +94,19 @@ pub fn[C : @html.IsChildren] menu(
       id~,
       variant~,
       size~,
-      on_click=@cmd.custom_cmd(_ => toggle(id)),
+      on_click=() => toggle(id),
       attrs=@html.Attrs::build()
         .aria_label(label)
         .aria_haspopup("menu")
         .aria_controls(content_id(id))
         .on_pointerdown(_ => {
-          if element_by_id(id) is Some(trigger) &&
-            element_by_id(content_id(id)) is Some(menu) {
+          if @dom.element_by_id(id) is Some(trigger) &&
+            @dom.element_by_id(content_id(id)) is Some(menu) {
             trigger.set_attribute(
               "data-was-open",
               menu.matches(":popover-open").to_string(),
             )
           }
-          @cmd.none
         }),
       style=["anchor-name:\{anchor}", ..trigger_style],
       trigger,
@@ -133,7 +115,7 @@ pub fn[C : @html.IsChildren] menu(
       class="ui-menu",
       id=content_id(id),
       // A click on an item closes the menu after the item handles it.
-      on_click=@cmd.custom_cmd(_ => hide(id)),
+      on_click=() => hide(id),
       attrs=@html.Attrs::build()
         .popover("auto")
         .role("menu")
@@ -152,7 +134,7 @@ pub fn[C : @html.IsChildren] menu(
 }
 
 ///|
-pub fn menu_item(on_select~ : @cmd.Cmd, text : String) -> @html.Html {
+pub fn menu_item(on_select~ : () -> Unit, text : String) -> @html.Html {
   @html.button(
     class="ui-menu-item",
     type_="button",

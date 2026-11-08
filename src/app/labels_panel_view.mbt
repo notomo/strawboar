@@ -28,13 +28,15 @@ fn labels_content(
             @ui.button(
               size=Sm,
               variant=Outline,
-              on_click=store.update(model => {
-                if current {
-                  model.new_label()
-                } else {
-                  model.select_label(label.id)
-                }
-              }),
+              on_click=() => {
+                store.update(model => {
+                  if current {
+                    model.new_label()
+                  } else {
+                    model.select_label(label.id)
+                  }
+                })
+              },
               attrs=@html.Attrs::build()
                 .aria_label("Edit label: \{label.name}")
                 .aria_current(current.to_string()),
@@ -55,7 +57,7 @@ fn labels_content(
     },
     @html.form(
       id="label-form",
-      on_submit=store.submit_label(),
+      on_submit=() => store.submit_label(),
       style=[
         "display:flex;flex-direction:column;gap:1.25rem;padding-bottom:1rem;flex:1",
       ],
@@ -93,9 +95,11 @@ fn labels_content(
               @ui.button(
                 size=IconSm,
                 variant=Outline,
-                on_click=store.update(model => {
-                  model.edit_label(form => { ..form, color, })
-                }),
+                on_click=() => {
+                  store.update(model => {
+                    model.edit_label(form => { ..form, color, })
+                  })
+                },
                 attrs=@html.Attrs::build()
                   .aria_label(color.name())
                   .aria_pressed(pressed.to_string()),
@@ -143,7 +147,7 @@ fn labels_content(
               @ui.button(
                 type_="button",
                 variant=Ghost,
-                on_click=store.ask_confirm(ConfirmDeleteLabel),
+                on_click=() => store.ask_confirm(ConfirmDeleteLabel),
                 "Delete",
               )
             },
@@ -154,7 +158,7 @@ fn labels_content(
                 @ui.button(
                   type_="button",
                   variant=Outline,
-                  on_click=store.update(model => model.new_label()),
+                  on_click=() => store.update(model => model.new_label()),
                   "Cancel",
                 )
               },

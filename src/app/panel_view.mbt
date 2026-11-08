@@ -20,7 +20,7 @@ fn backdrop_view(panel_open : Bool, store : Store) -> Html {
     style=[
       "position:fixed;inset:0;z-index:10;background:rgb(0 0 0 / 0.4);cursor:pointer",
     ],
-    on_click=store.update(model => { ..model, panel_open: false, }),
+    on_click=() => store.update(model => { ..model, panel_open: false, }),
     "",
   )
 }
@@ -35,7 +35,7 @@ fn panel_view(
   @ui.sheet(
     id=EDITOR_ID,
     closedby="closerequest",
-    on_close=store.input((model, _) => { ..model, panel_open: false, }),
+    on_close=() => store.update(model => { ..model, panel_open: false, }),
     attrs=@html.Attrs::build().aria_labelledby("panel-title"),
     style=[
       "position:fixed;z-index:20;width:min(\{panel_width},100vw);max-width:100vw;box-shadow:-8px 0 24px rgb(0 0 0 / 0.4)",
@@ -56,7 +56,7 @@ fn number_field(
   min~ : Int32,
   max~ : Int32,
   value : String,
-  on_input : Emit[String],
+  on_input : (String) -> Unit,
 ) -> Html {
   field_view(
     id,

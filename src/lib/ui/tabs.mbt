@@ -15,7 +15,7 @@ pub fn tabs_list(
 }
 
 ///|
-fn move_between_tabs(event : @dom.KeyboardEvent) -> @cmd.Cmd {
+fn move_between_tabs(event : @dom.Event) -> Unit {
   let step = match event.key() {
     "ArrowRight" | "ArrowDown" => Some(1)
     "ArrowLeft" | "ArrowUp" => Some(-1)
@@ -24,23 +24,17 @@ fn move_between_tabs(event : @dom.KeyboardEvent) -> @cmd.Cmd {
     _ => None
   }
   guard step is Some(step) &&
-    event.target().to_element() is Some(target) &&
-    target.closest("[role=\"tablist\"]") is Some(list) else {
-    return @cmd.none
+    event.target().closest("[role=\"tablist\"]") is Some(list) else {
+    return
   }
-  let tabs = list
-    .query_selector_all("[role=\"tab\"]")
-    .iter()
-    .filter_map(tab => tab.to_html_element())
-    .to_array()
+  let tabs = list.query_all("[role=\"tab\"]")
   guard tabs.search_by(tab => tab.matches(":focus")) is Some(current) else {
-    return @cmd.none
+    return
   }
   event.prevent_default()
   let next = (current + step).clamp(min=0, max=tabs.length() - 1)
   tabs[next].focus()
   tabs[next].click()
-  @cmd.none
 }
 
 ///|
@@ -48,7 +42,7 @@ pub fn[C : @html.IsChildren] tab(
   id~ : String,
   selected~ : Bool,
   controls~ : String,
-  on_select~ : @cmd.Cmd,
+  on_select~ : () -> Unit,
   style~ : Array[String] = [],
   children : C,
 ) -> @html.Html {

@@ -1,7 +1,6 @@
 import {
-  "moonbit-community/rabbita/cmd",
-  "moonbit-community/rabbita/dom",
-  "moonbit-community/rabbita/html",
+  "internal/strawboar/lib/dom",
+  "internal/strawboar/lib/html",
 }
 
 supported_targets = "js"

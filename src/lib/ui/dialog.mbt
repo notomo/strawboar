@@ -6,7 +6,7 @@
 pub fn sheet(
   id~ : String,
   closedby~ : String,
-  on_close? : @cmd.Emit[String],
+  on_close? : () -> Unit,
   attrs? : @html.Attrs,
   style~ : Array[String] = [],
   children : Array[@html.Html],
@@ -92,28 +92,22 @@ pub fn dialog_cancel(text : String) -> @html.Html {
 }
 
 ///|
-fn dialog_by_id(id : String) -> @dom.HTMLDialogElement? {
-  @dom.document()
-  .get_element_by_id(id)
-  .to_option()
-  .bind(element => element.to_html_element())
-  .bind(element => element.to_html_dialog_element())
+fn dialog_by_id(id : String) -> @dom.Node? {
+  @dom.element_by_id(id)
 }
 
 ///|
 /// Opens the dialog `id`. A dialog that is not modal leaves the page usable.
 pub fn show_dialog(id : String, modal~ : Bool) -> Unit {
-  match (dialog_by_id(id), modal) {
-    (Some(dialog), true) => dialog.show_modal()
-    (Some(dialog), false) => dialog.show()
-    (None, _) => ()
+  if dialog_by_id(id) is Some(dialog) {
+    dialog.show_dialog(modal)
   }
 }
 
 ///|
 pub fn close_dialog(id : String) -> Unit {
   if dialog_by_id(id) is Some(dialog) {
-    dialog.close()
+    dialog.close_dialog()
   }
 }
 
@@ -121,8 +115,8 @@ pub fn close_dialog(id : String) -> Unit {
 /// Opens or closes the dialog `id` so that it is open only if `open`.
 pub fn sync_dialog(id : String, open~ : Bool, modal~ : Bool) -> Unit {
   match (dialog_by_id(id), open) {
-    (Some(dialog), true) if !dialog.open() => show_dialog(id, modal~)
-    (Some(dialog), false) if dialog.open() => dialog.close()
+    (Some(dialog), true) if !dialog.is_open() => dialog.show_dialog(modal)
+    (Some(dialog), false) if dialog.is_open() => dialog.close_dialog()
     _ => ()
   }
 }

@@ -96,7 +96,7 @@ fn raised_backdrop_view(panel_open : Bool, store : Store) -> Html {
     style=[
       "position:absolute;inset:0;background:rgb(0 0 0 / 0.4);cursor:pointer",
     ],
-    on_click=store.update(model => { ..model, panel_open: false, }),
+    on_click=() => store.update(model => { ..model, panel_open: false, }),
     "",
   )
 }
@@ -119,7 +119,7 @@ fn header_view(model : Model, store : Store) -> Html {
         @ui.button(
           size=Lg,
           disabled=model.today is None,
-          on_click=store.update(model => model.open_new()),
+          on_click=() => store.update(model => model.open_new()),
           "+ Add",
         ),
         menu_view(store),
@@ -195,7 +195,11 @@ fn content_view(model : Model, store : Store) -> Html {
             style=["margin:0"],
             "Failed to load chores. Reloading the page also signs in again if the session has expired.",
           ),
-          @ui.button(variant=Outline, on_click=run(@web.reload), "Reload page"),
+          @ui.button(
+            variant=Outline,
+            on_click=() => @web.reload(),
+            "Reload page",
+          ),
         ],
       )
     _ =>
@@ -240,14 +244,16 @@ fn label_filter_view(
       @ui.button(
         size=Sm,
         variant=Outline,
-        on_click=store.update(model => {
-          ..model,
-          label_filter: if pressed {
-            None
-          } else {
-            Some(label.id)
-          },
-        }),
+        on_click=() => {
+          store.update(model => {
+            ..model,
+            label_filter: if pressed {
+              None
+            } else {
+              Some(label.id)
+            },
+          })
+        },
         attrs=@html.Attrs::build().aria_pressed(pressed.to_string()),
         style=[
           "flex-shrink:0;font-weight:400",
@@ -276,11 +282,11 @@ fn menu_view(store : Store) -> Html {
     "⋮",
     [
       @ui.menu_item(
-        on_select=store.update(model => model.open_transfer()),
+        on_select=() => store.update(model => model.open_transfer()),
         "Import / Export",
       ),
       @ui.menu_item(
-        on_select=store.update(model => model.open_labels()),
+        on_select=() => store.update(model => model.open_labels()),
         "Labels",
       ),
     ],
@@ -296,8 +302,14 @@ fn chore_menu_view(store : Store) -> Html {
     trigger_style=["font-size:1.25rem"],
     "⋮",
     [
-      @ui.menu_item(on_select=store.ask_confirm(ConfirmUndo), "Undo last done"),
-      @ui.menu_item(on_select=store.ask_confirm(ConfirmArchive), "Archive"),
+      @ui.menu_item(
+        on_select=() => store.ask_confirm(ConfirmUndo),
+        "Undo last done",
+      ),
+      @ui.menu_item(
+        on_select=() => store.ask_confirm(ConfirmArchive),
+        "Archive",
+      ),
     ],
   )
 }
@@ -329,7 +341,7 @@ fn undo_view(undo : Undo?, store : Store) -> Html {
           title="Done: \{undo.title}",
           action=@ui.button(
             size=Sm,
-            on_click=store.undo_completion(undo.completion_id),
+            on_click=() => store.undo_completion(undo.completion_id),
             "Undo",
           ),
           style=[
@@ -350,13 +362,13 @@ fn confirm_view(model : Model, store : Store) -> Html {
       (
         "Delete label?",
         "\"\{name}\" is removed from every chore.",
-        Some(("Delete", store.delete_label())),
+        Some(("Delete", () => store.delete_label())),
       )
     (Some(ConfirmArchive), Some(ChoreEditor({ id: Some(_), title, .. }))) =>
       (
         "Archive chore?",
         "\"\{title}\" is hidden from the dashboard.",
-        Some(("Archive", store.archive())),
+        Some(("Archive", () => store.archive())),
       )
     (Some(ConfirmUndo), Some(ChoreEditor({ id: Some(_), title, .. }))) =>
       match model.latest_done() {
@@ -364,7 +376,7 @@ fn confirm_view(model : Model, store : Store) -> Html {
           (
             "Undo last done?",
             "\"\{title}\" done on \{short_date(done.done_on)} is undone.",
-            Some(("Undo", store.undo_completion(done.completion_id))),
+            Some(("Undo", () => store.undo_completion(done.completion_id))),
           )
         None =>
           (

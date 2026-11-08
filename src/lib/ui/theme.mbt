@@ -1,4 +1,4 @@
-// A small set of dark-themed components on top of the HTML of Rabbita.
+// A small set of dark-themed components on top of lib/html.
 // Each component renders native elements with a class of ui.css, which
 // index.html loads, so that hover, focus and open states live in CSS. Inline
 // `style` passed to a component is applied last and overrides its class.
