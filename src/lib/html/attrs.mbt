@@ -16,7 +16,10 @@ pub fn Attrs::copy(self : Attrs) -> Attrs {
 }
 
 ///|
-pub fn Attrs::attr(self : Attrs, name : String, value : String) -> Attrs {
+/// Not public: an attribute name from outside could be an event handler
+/// (`onclick`) or a URL (`href`) taking user data. Add a helper with a fixed
+/// name instead, like the ones below.
+fn Attrs::attr(self : Attrs, name : String, value : String) -> Attrs {
   self.attrs.push((name, value))
   self
 }
@@ -32,7 +35,8 @@ fn Attrs::flag(self : Attrs, name : String, value : Bool) -> Attrs {
 }
 
 ///|
-pub fn Attrs::on(
+/// Not public, like `attr`: handlers are added with helpers of fixed names.
+fn Attrs::on(
   self : Attrs,
   name : String,
   handler : (@dom.Event) -> Unit,

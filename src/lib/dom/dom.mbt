@@ -124,8 +124,9 @@ pub extern "js" fn Node::set_handler(
   handler : (Event) -> Unit,
 ) -> Unit =
   #| (node, name, handler) => {
-  #|   const handlers = (node.__handlers ??= {});
-  #|   if (!(name in handlers)) {
+  #|   // Without a prototype, names like `constructor` or `__proto__` are plain keys.
+  #|   const handlers = (node.__handlers ??= Object.create(null));
+  #|   if (!Object.hasOwn(handlers, name)) {
   #|     node.addEventListener(name, (event) => handlers[name]?.(event));
   #|   }
   #|   handlers[name] = handler;

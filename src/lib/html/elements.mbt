@@ -1,5 +1,5 @@
 // Elements with the attributes and events this app uses, as optional
-// arguments. `attrs` adds any other attributes and handlers.
+// arguments. `attrs` adds the others, by the helpers of `Attrs` with fixed names.
 
 ///|
 /// The attributes shared by every element, applied after `attrs`.
