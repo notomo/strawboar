@@ -6,9 +6,9 @@ fn labels_content(
 ) -> Array[Html] {
   let is_new = form.id is None
   [
-    @rui.sheet_header([
-      @rui.sheet_title(id="panel-title", "Labels"),
-      @rui.sheet_description(
+    @ui.dialog_header([
+      @ui.dialog_title(id="panel-title", "Labels"),
+      @ui.dialog_description(
         "Labels are shared by chores. Pick a label to edit it.",
       ),
     ]),
@@ -25,7 +25,7 @@ fn labels_content(
           // The label being edited has a ring like the selected color below.
           // Clicking it again goes back to a new label, like the label filter.
           li([
-            @rui.button(
+            @ui.button(
               size=Sm,
               variant=Outline,
               on_click=emit(
@@ -71,7 +71,7 @@ fn labels_content(
         field_view(
           "label-name",
           "Name",
-          @rui.input(
+          @ui.input(
             id="label-name",
             value=form.name,
             maxlength=@core.MAX_LABEL_LENGTH,
@@ -79,8 +79,8 @@ fn labels_content(
             on_input=emit.map(value => LabelNameChanged(value)),
           ),
         ),
-        @rui.field([
-          @rui.field_label(id="label-color-label", "Color"),
+        @ui.field([
+          @ui.field_label(id="label-color-label", "Color"),
           div(
             attrs=@html.Attrs::build()
               .role("group")
@@ -88,7 +88,7 @@ fn labels_content(
             style=["display:flex;flex-wrap:wrap;gap:0.5rem"],
             @core.label_colors.map(color => {
               let pressed = form.color == color
-              @rui.button(
+              @ui.button(
                 size=IconSm,
                 variant=Outline,
                 on_click=emit(LabelColorChanged(color)),
@@ -126,7 +126,7 @@ fn labels_content(
         if form.error == "" {
           @html.nothing
         } else {
-          @rui.field_error(id="label-form-error", form.error)
+          @ui.field_error(id="label-form-error", form.error)
         },
         div(
           style=[
@@ -136,7 +136,7 @@ fn labels_content(
             if is_new {
               span("")
             } else {
-              @rui.button(
+              @ui.button(
                 type_="button",
                 variant=Ghost,
                 on_click=emit(AskConfirm(ConfirmDeleteLabel)),
@@ -147,14 +147,14 @@ fn labels_content(
               if is_new {
                 @html.nothing
               } else {
-                @rui.button(
+                @ui.button(
                   type_="button",
                   variant=Outline,
                   on_click=emit(NewLabel),
                   "Cancel",
                 )
               },
-              @rui.button(
+              @ui.button(
                 type_="submit",
                 if is_new {
                   "Add label"

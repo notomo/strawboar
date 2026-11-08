@@ -435,9 +435,7 @@ fn app() -> Val[Html] {
     },
     update~,
   )
-  model.view3(menu_view(emit), chore_menu_view(emit), (model, menu, chore_menu) => {
-    view(model, menu, chore_menu, emit)
-  })
+  model.view(model => view(model, emit))
 }
 
 ///|

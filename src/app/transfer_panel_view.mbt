@@ -1,16 +1,16 @@
 ///|
 fn transfer_content(transfer : Transfer, emit : Emit[Msg]) -> Array[Html] {
   [
-    @rui.sheet_header([
+    @ui.dialog_header([
       // Focusing the text area would put the caret at the end and scroll it
       // to the bottom, so the title takes the initial focus instead.
-      @rui.sheet_title(
+      @ui.dialog_title(
         id="panel-title",
         attrs=@html.Attrs::build().autofocus(true).tabindex(-1),
         style=["outline:none"],
         "Import / Export",
       ),
-      @rui.sheet_description(
+      @ui.dialog_description(
         "Copy the labels and chores below to export them. To import, edit or paste them and press Import: labels with the same name and chores with the same title are updated, and others are added.",
       ),
     ]),
@@ -23,7 +23,7 @@ fn transfer_content(transfer : Transfer, emit : Emit[Msg]) -> Array[Html] {
         field_view(
           "chore-definitions",
           "Labels and chores (JSON)",
-          @rui.textarea(
+          @ui.textarea(
             id="chore-definitions",
             value=transfer.text,
             wrap="off",
@@ -38,10 +38,10 @@ fn transfer_content(transfer : Transfer, emit : Emit[Msg]) -> Array[Html] {
         if transfer.error == "" {
           @html.nothing
         } else {
-          @rui.field_error(id="transfer-error", transfer.error)
+          @ui.field_error(id="transfer-error", transfer.error)
         },
         div(style=["display:flex;justify-content:flex-end;margin-top:auto"], [
-          @rui.button(type_="submit", "Import"),
+          @ui.button(type_="submit", "Import"),
         ]),
       ],
     ),

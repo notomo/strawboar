@@ -2,13 +2,12 @@
 fn editor_content(
   editor : Editor,
   labels : Array[@core.Label],
-  chore_menu : Html,
   emit : Emit[Msg],
 ) -> Array[Html] {
   let is_new = editor.id is None
   [
-    @rui.sheet_header([
-      @rui.sheet_title(id="panel-title", if is_new { "New" } else { "Edit" }),
+    @ui.dialog_header([
+      @ui.dialog_title(id="panel-title", if is_new { "New" } else { "Edit" }),
     ]),
     @html.form(
       on_submit=emit(Submit),
@@ -19,7 +18,7 @@ fn editor_content(
         field_view(
           "chore-title",
           "Title",
-          @rui.input(
+          @ui.input(
             id="chore-title",
             value=editor.title,
             maxlength=@core.MAX_TITLE_LENGTH,
@@ -29,7 +28,7 @@ fn editor_content(
         field_view(
           "chore-description",
           "Description",
-          @rui.textarea(
+          @ui.textarea(
             id="chore-description",
             value=editor.description,
             maxlength=@core.MAX_DESCRIPTION_LENGTH,
@@ -102,7 +101,7 @@ fn editor_content(
           field_view(
             "chore-next-due",
             "First due",
-            @rui.input(
+            @ui.input(
               id="chore-next-due",
               input_type=Date,
               value=editor.next_due,
@@ -115,18 +114,18 @@ fn editor_content(
         if editor.error == "" {
           @html.nothing
         } else {
-          @rui.field_error(id="chore-editor-error", editor.error)
+          @ui.field_error(id="chore-editor-error", editor.error)
         },
         div(
           style=[
             "display:flex;justify-content:flex-end;gap:0.5rem;margin-top:auto",
           ],
           [
-            @rui.button(type_="submit", "Save"),
+            @ui.button(type_="submit", "Save"),
             if is_new {
               @html.nothing
             } else {
-              chore_menu
+              chore_menu_view(emit)
             },
           ],
         ),
@@ -149,42 +148,31 @@ fn repeat_tabs(
       Monthly => "monthly"
     }
   }
-  let on_value_change = emit.map(value => {
-    RepeatChanged(
-      match value {
-        "monthly" => Monthly
-        _ => AfterDone
-      },
-    )
-  })
-  @rui.field([
-    @rui.field_label(id="chore-repeat-label", "Repeat"),
-    @rui.tabs_root(
-      value=value(selected),
-      style=["gap:1rem"],
+  @ui.field([
+    @ui.field_label(id="chore-repeat-label", "Repeat"),
+    div(
+      style=["display:flex;flex-direction:column;gap:1rem"],
       [
-        @rui.tabs_list(
+        @ui.tabs_list(
           attrs=@html.Attrs::build().aria_labelledby("chore-repeat-label"),
           style=["width:100%"],
           kinds.map(kind => {
             let (kind, text, _) = kind
-            @rui.tabs_trigger(
+            @ui.tab(
               id="chore-repeat-\{value(kind)}",
-              value=value(kind),
               selected=selected == kind,
               controls="chore-repeat-\{value(kind)}-panel",
-              on_value_change~,
+              on_select=emit(RepeatChanged(kind)),
               text,
             )
           }),
         ),
         ..kinds.map(kind => {
           let (kind, _, fields) = kind
-          @rui.tabs_content(
+          @ui.tab_panel(
             id="chore-repeat-\{value(kind)}-panel",
-            value=value(kind),
-            selected=selected == kind,
             labelledby="chore-repeat-\{value(kind)}",
+            selected=selected == kind,
             // Only the fields of the selected kind are rendered.
             if selected == kind {
               div(
@@ -208,8 +196,8 @@ fn label_picker(
   labels : Array[@core.Label],
   emit : Emit[Msg],
 ) -> Html {
-  @rui.field([
-    @rui.field_label(id="chore-labels-label", "Labels"),
+  @ui.field([
+    @ui.field_label(id="chore-labels-label", "Labels"),
     if labels.is_empty() {
       span(
         style=["font-size:0.875rem", muted],

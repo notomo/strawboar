@@ -54,7 +54,7 @@ export async function openPage({ page, failFirstLoad = false }: { page: Page; fa
     getLabelFilterButtons: () => labelFilter.getByRole("button"),
     getLabelFilterButton: (name: string) => labelFilter.getByRole("button", { name }),
     getRowLabels: (title: string) =>
-      page.locator("#soon li, #later li", { hasText: title }).locator('[data-slot="badge"]'),
+      page.locator("#soon li, #later li", { hasText: title }).locator(".ui-badge"),
 
     getAddButton: () => page.getByRole("button", { name: "+ Add" }),
     getEditor: () => editor,

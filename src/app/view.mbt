@@ -2,11 +2,11 @@
 using @html {div, h1, h2, li, p, span, ul}
 
 ///|
-let muted = "color:var(--rui-muted-foreground)"
+let muted = "color:var(--ui-muted-foreground)"
 
 ///|
 /// Numbers, e.g. dates, days and counts, stand out from the words around them.
-let number_style = "font-weight:600;font-variant-numeric:tabular-nums;color:var(--rui-foreground)"
+let number_style = "font-weight:600;font-variant-numeric:tabular-nums;color:var(--ui-foreground)"
 
 ///|
 /// A text with its numbers emphasized, so that they are not buried in the words.
@@ -25,7 +25,7 @@ fn with_numbers(text : String) -> Array[Html] {
 ///|
 /// Children keyed by an id, so that an element is reused only for the same item.
 /// Matched by position instead, an element would be reused for another item when
-/// the list changes, and the transitions of rui would fade it from the old one.
+/// the list changes, and the transitions of the buttons would fade it from the old one.
 /// A key includes the kind of the id, e.g. `chore-1`, because the same list
 /// element can show other kinds of items, like the list of each tab.
 fn[T] keyed(
@@ -37,21 +37,13 @@ fn[T] keyed(
 }
 
 ///|
-fn view(
-  model : Model,
-  menu : Html,
-  chore_menu : Html,
-  emit : Emit[Msg],
-) -> Html {
-  @rui.theme(
-    mode=Dark,
+fn view(model : Model, emit : Emit[Msg]) -> Html {
+  @ui.theme(
     style=[
-      "height:100dvh;display:flex;flex-direction:column;background:var(--rui-background);color:var(--rui-foreground)",
+      "height:100dvh;display:flex;flex-direction:column;background:var(--ui-background);color:var(--ui-foreground)",
     ],
     [
-      div(style=["flex-shrink:0;padding:0 1rem"], [
-        sticky_view(model, menu, emit),
-      ]),
+      div(style=["flex-shrink:0;padding:0 1rem"], [sticky_view(model, emit)]),
       // Scrolled instead of the page, so that the header and the tabs stay
       // at the top whatever their height is.
       div(
@@ -65,7 +57,7 @@ fn view(
         ),
       ),
       backdrop_view(model.panel_open, emit),
-      panel_view(model.panel, model.labels, chore_menu, emit),
+      panel_view(model.panel, model.labels, emit),
       confirm_view(model, emit),
       undo_view(model.undo, emit),
     ],
@@ -76,13 +68,13 @@ fn view(
 /// The header, the label filter and the tabs, kept at the top while scrolling.
 /// It is above the backdrop like the rows raised while the panel is open,
 /// so that its shadow is not hidden by them, and has its own backdrop instead.
-fn sticky_view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
+fn sticky_view(model : Model, emit : Emit[Msg]) -> Html {
   div(
     style=[
-      "box-sizing:border-box;max-width:40rem;margin:0 auto;position:relative;z-index:12;display:flex;flex-direction:column;gap:0.75rem;padding:1.25rem 0 0.75rem;border-bottom:1px solid var(--rui-input);box-shadow:0 8px 12px -8px rgb(0 0 0 / 0.8);background:var(--rui-background)",
+      "box-sizing:border-box;max-width:40rem;margin:0 auto;position:relative;z-index:12;display:flex;flex-direction:column;gap:0.75rem;padding:1.25rem 0 0.75rem;border-bottom:1px solid var(--ui-input);box-shadow:0 8px 12px -8px rgb(0 0 0 / 0.8);background:var(--ui-background)",
     ],
     [
-      header_view(model, menu, emit),
+      header_view(model, emit),
       label_filter_view(model.labels, model.label_filter, emit),
       match (model.load, model.today) {
         (Ready, Some(today)) => tabs_view(model, today, emit)
@@ -110,7 +102,7 @@ fn raised_backdrop_view(panel_open : Bool, emit : Emit[Msg]) -> Html {
 }
 
 ///|
-fn header_view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
+fn header_view(model : Model, emit : Emit[Msg]) -> Html {
   div(
     style=[
       "display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.5rem",
@@ -124,13 +116,13 @@ fn header_view(model : Model, menu : Html, emit : Emit[Msg]) -> Html {
       ),
       div(style=["display:flex;gap:0.25rem;margin-left:auto"], [
         // A new chore is due today by default, which is known once the chores are loaded.
-        @rui.button(
+        @ui.button(
           size=Lg,
           disabled=model.today is None,
           on_click=emit(OpenNew),
           "+ Add",
         ),
-        menu,
+        menu_view(emit),
       ]),
     ],
   )
@@ -203,12 +195,12 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
             style=["margin:0"],
             "Failed to load chores. Reloading the page also signs in again if the session has expired.",
           ),
-          @rui.button(variant=Outline, on_click=emit(ReloadPage), "Reload page"),
+          @ui.button(variant=Outline, on_click=emit(ReloadPage), "Reload page"),
         ],
       )
     _ =>
       div(style=["display:flex;justify-content:center;padding:4rem 0"], [
-        @rui.spinner(label="Loading", style=["width:2rem;height:2rem", muted]),
+        @ui.spinner(label="Loading", style=["width:2rem;height:2rem", muted]),
       ])
   }
 }
@@ -218,7 +210,7 @@ fn notice_view(notice : String) -> Html {
   if notice == "" {
     @html.nothing
   } else {
-    p(id="notice", style=["margin:0;color:var(--rui-destructive)"], notice)
+    p(id="notice", style=["margin:0;color:var(--ui-destructive)"], notice)
   }
 }
 
@@ -245,7 +237,7 @@ fn label_filter_view(
       // Shown like the badges on the rows, with the ring of the label being
       // edited in the labels panel on the active one.
       // Clicking the active label clears the filter.
-      @rui.button(
+      @ui.button(
         size=Sm,
         variant=Outline,
         on_click=emit(
@@ -269,73 +261,33 @@ fn label_filter_view(
 
 ///|
 /// The menu next to the add button, for actions used less often.
-/// It is stateful, so it is created once and passed to `view`.
-fn menu_view(emit : Emit[Msg]) -> Val[Html] {
-  @rui.dropdown_menu(id="app-menu", menu => {
-    span([
-      @rui.dropdown_menu_trigger(
-        menu,
-        variant=Ghost,
-        size=IconLg,
-        aria_label="Menu",
-        // Wider than the icon size so that it is easy to tap.
-        style=["width:3rem;font-size:1.25rem"],
-        "⋮",
-      ),
-      @rui.dropdown_menu_content(
-        menu,
-        align=End,
-        aria_label="Menu",
-        // Fit the items instead of the default minimum width.
-        style=["--rui-menu-min-width:0"],
-        [
-          menu_item(menu, emit(OpenTransfer), "Import / Export"),
-          menu_item(menu, emit(OpenLabels), "Labels"),
-        ],
-      ),
-    ])
-  })
+fn menu_view(emit : Emit[Msg]) -> Html {
+  @ui.menu(
+    id="app-menu",
+    label="Menu",
+    size=IconLg,
+    // Wider than the icon size so that it is easy to tap.
+    trigger_style=["width:3rem;font-size:1.25rem"],
+    "⋮",
+    [
+      @ui.menu_item(on_select=emit(OpenTransfer), "Import / Export"),
+      @ui.menu_item(on_select=emit(OpenLabels), "Labels"),
+    ],
+  )
 }
 
 ///|
-/// The menu next to the save button of the chore panel. It is created once
-/// like the app menu, so its items do not depend on the chore.
-fn chore_menu_view(emit : Emit[Msg]) -> Val[Html] {
-  @rui.dropdown_menu(id="chore-menu", menu => {
-    span([
-      @rui.dropdown_menu_trigger(
-        menu,
-        variant=Ghost,
-        size=Icon,
-        aria_label="Chore actions",
-        style=["font-size:1.25rem"],
-        "⋮",
-      ),
-      @rui.dropdown_menu_content(
-        menu,
-        align=End,
-        aria_label="Chore actions",
-        style=["--rui-menu-min-width:0"],
-        [
-          menu_item(menu, emit(AskConfirm(ConfirmUndo)), "Undo last done"),
-          menu_item(menu, emit(AskConfirm(ConfirmArchive)), "Archive"),
-        ],
-      ),
-    ])
-  })
-}
-
-///|
-fn menu_item(
-  menu : @rui.DropdownMenuScope,
-  on_select : Cmd,
-  label : String,
-) -> Html {
-  @rui.dropdown_menu_item(
-    menu,
-    on_select~,
-    style=["padding:0.5rem 0.75rem"],
-    label,
+/// The menu next to the save button of the chore panel.
+fn chore_menu_view(emit : Emit[Msg]) -> Html {
+  @ui.menu(
+    id="chore-menu",
+    label="Chore actions",
+    trigger_style=["font-size:1.25rem"],
+    "⋮",
+    [
+      @ui.menu_item(on_select=emit(AskConfirm(ConfirmUndo)), "Undo last done"),
+      @ui.menu_item(on_select=emit(AskConfirm(ConfirmArchive)), "Archive"),
+    ],
   )
 }
 
@@ -361,20 +313,16 @@ fn undo_view(undo : Undo?, emit : Emit[Msg]) -> Html {
         ],
         // The default toast shares the page background, so raise it with a
         // lighter surface, a visible border and a filled action.
-        @rui.toast(
-          open=true,
+        @ui.toast(
           id="undo-toast",
+          title="Done: \{undo.title}",
+          action=@ui.button(
+            size=Sm,
+            on_click=emit(UndoCompletion(undo.completion_id)),
+            "Undo",
+          ),
           style=[
-            "align-items:center;background:var(--rui-secondary);border-color:var(--rui-ring);box-shadow:0 8px 24px rgb(0 0 0 / 0.6)",
-          ],
-          [
-            @rui.toast_title("Done: \{undo.title}"),
-            @rui.button(
-              size=Sm,
-              slot="toast-action",
-              on_click=emit(UndoCompletion(undo.completion_id)),
-              "Undo",
-            ),
+            "background:var(--ui-secondary);border-color:var(--ui-ring);box-shadow:0 8px 24px rgb(0 0 0 / 0.6)",
           ],
         ),
       )
@@ -416,7 +364,7 @@ fn confirm_view(model : Model, emit : Emit[Msg]) -> Html {
       }
     _ => ("", "", None)
   }
-  @rui.alert_dialog(
+  @ui.alert_dialog(
     id=CONFIRM_ID,
     closedby="any",
     attrs=@html.Attrs::build()
@@ -424,24 +372,24 @@ fn confirm_view(model : Model, emit : Emit[Msg]) -> Html {
       .aria_describedby("confirm-description"),
     style=["position:fixed;z-index:30"],
     @html.form(method_="dialog", [
-      @rui.alert_dialog_header([
-        @rui.alert_dialog_title(id="confirm-title", title),
-        @rui.alert_dialog_description(id="confirm-description", description),
+      @ui.dialog_header([
+        @ui.dialog_title(id="confirm-title", title),
+        @ui.dialog_description(id="confirm-description", description),
       ]),
-      @rui.alert_dialog_footer(
+      @ui.dialog_footer(
         match action {
           Some((text, msg)) =>
             [
-              @rui.alert_dialog_cancel("Cancel"),
+              @ui.dialog_cancel("Cancel"),
               // Submitting the form closes the dialog. Closing it otherwise does nothing.
-              @rui.button(
+              @ui.button(
                 type_="submit",
                 variant=Destructive,
                 on_click=emit(msg),
                 text,
               ),
             ]
-          None => [@rui.alert_dialog_cancel("OK")]
+          None => [@ui.dialog_cancel("OK")]
         },
       ),
     ]),

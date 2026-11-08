@@ -17,13 +17,13 @@ fn tab_id(tab : Tab) -> String {
 /// reached however long the list of the selected one is.
 fn tabs_view(model : Model, today : @core.Date, emit : Emit[Msg]) -> Html {
   let (dashboard, recent) = filtered(model, today)
-  @rui.tabs_list(
+  @ui.tabs_list(
     aria_label="Chores",
     // The active tab is outlined like the row open in the editor.
     style=[
       // Each tab is a bordered box on the page background instead of sitting on
       // a muted strip, whose color is the same as the active tab.
-      "width:100%;gap:0.375rem;background:transparent;--rui-tabs-active-bg:var(--rui-accent);--rui-tabs-active-border:var(--rui-primary);--rui-tabs-active-shadow:0 0 0 1px var(--rui-primary)",
+      "width:100%;gap:0.375rem;background:transparent;--ui-tab-active-bg:var(--ui-accent);--ui-tab-active-border:var(--ui-primary);--ui-tab-active-shadow:0 0 0 1px var(--ui-primary)",
     ],
     [
       (Soon, "Soon", dashboard.soon.length()),
@@ -33,27 +33,26 @@ fn tabs_view(model : Model, today : @core.Date, emit : Emit[Msg]) -> Html {
       let (tab, name, count) = entry
       let id = tab_id(tab)
       let selected = model.tab == tab
-      @rui.tabs_trigger(
-        value=id,
+      @ui.tab(
+        id="\{id}-tab",
         selected~,
         controls=id,
-        on_value_change=emit.map(_ => TabSelected(tab)),
-        id="\{id}-tab",
+        on_select=emit(TabSelected(tab)),
         style=[
           "padding-block:0.375rem;padding-inline:1rem;justify-content:space-between",
           if selected {
             "font-weight:600"
           } else {
-            "--rui-tabs-border:var(--rui-input);--rui-tabs-bg:var(--rui-outline-background)"
+            "--ui-tab-border:var(--ui-input);--ui-tab-bg:var(--ui-outline-background)"
           },
         ],
         [
           @html.text("\{name} "),
           // Lighter than the list, which is the color of Secondary.
-          @rui.badge(
+          @ui.badge(
             variant=Secondary,
             style=[
-              "font-size:0.875rem;font-weight:600;font-variant-numeric:tabular-nums;--rui-badge-bg:var(--rui-input)",
+              "font-size:0.875rem;font-weight:600;font-variant-numeric:tabular-nums;background:var(--ui-input)",
             ],
             "\{count}",
           ),
@@ -68,12 +67,11 @@ fn tabs_view(model : Model, today : @core.Date, emit : Emit[Msg]) -> Html {
 /// it has one.
 fn tab_panel(tab : Tab, caption : String?, content : Html) -> Html {
   let id = tab_id(tab)
-  @rui.tabs_content(
-    value=id,
-    selected=true,
-    labelledby="\{id}-tab",
+  @ui.tab_panel(
     id~,
-    // rui makes the panel focusable. Without `outline:none`, the whole list gets
+    labelledby="\{id}-tab",
+    selected=true,
+    // The panel is focusable. Without `outline:none`, the whole list gets
     // a focus ring on iPad, where closing the editor gives the focus back to it.
     style=["display:flex;flex-direction:column;gap:0.5rem;outline:none"],
     [
@@ -113,7 +111,7 @@ fn recent_caption(today : @core.Date) -> String {
 
 ///|
 fn card_style() -> String {
-  "display:flex;align-items:center;gap:0.5rem;padding:0.375rem;border:1px solid var(--rui-border);border-radius:var(--rui-radius);background:var(--rui-card)"
+  "display:flex;align-items:center;gap:0.5rem;padding:0.375rem;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:var(--ui-card)"
 }
 
 ///|
@@ -134,7 +132,7 @@ fn card(state : RowState, content : Array[Html]) -> Html {
       attrs=@html.Attrs::build().aria_current("true"),
       style=[
         card_style(),
-        "position:relative;z-index:11;pointer-events:none;border-color:var(--rui-primary);box-shadow:0 0 0 1px var(--rui-primary);background:var(--rui-accent)",
+        "position:relative;z-index:11;pointer-events:none;border-color:var(--ui-primary);box-shadow:0 0 0 1px var(--ui-primary);background:var(--ui-accent)",
       ],
       content,
     )
@@ -153,7 +151,7 @@ fn edit_area(
   emit : Emit[Msg],
   content : Array[Html],
 ) -> Html {
-  @rui.button(
+  @ui.button(
     variant=Ghost,
     on_click=emit(OpenEdit(chore_id)),
     style=[
@@ -213,7 +211,7 @@ fn chore_row(
           // the last done.
           span(
             style=[
-              "padding:0.0625rem 0.5rem;border-radius:0.375rem;background:var(--rui-input);font-weight:500;color:var(--rui-foreground)",
+              "padding:0.0625rem 0.5rem;border-radius:0.375rem;background:var(--ui-input);font-weight:500;color:var(--ui-foreground)",
             ],
             with_numbers(interval_text(chore.repeat)),
           ),
@@ -224,7 +222,7 @@ fn chore_row(
         ],
       ),
     ]),
-    @rui.button(
+    @ui.button(
       variant=Outline,
       disabled=completing,
       on_click=emit(Complete(chore.id)),

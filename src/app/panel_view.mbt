@@ -1,10 +1,10 @@
 ///|
-/// Width of the editor panel (rui sheet).
+/// Width of the editor panel.
 let panel_width = "24rem"
 
 ///|
 fn field_view(id : String, label : String, input : Html) -> Html {
-  @rui.field([@rui.field_label(for_=id, label), input])
+  @ui.field([@ui.field_label(for_=id, label), input])
 }
 
 ///|
@@ -30,12 +30,10 @@ fn backdrop_view(panel_open : Bool, emit : Emit[Msg]) -> Html {
 fn panel_view(
   panel : Panel?,
   labels : Array[@core.Label],
-  chore_menu : Html,
   emit : Emit[Msg],
 ) -> Html {
-  @rui.sheet(
+  @ui.sheet(
     id=EDITOR_ID,
-    side=SheetRight,
     closedby="closerequest",
     on_close=emit.map(_ => PanelClosed),
     attrs=@html.Attrs::build().aria_labelledby("panel-title"),
@@ -44,8 +42,7 @@ fn panel_view(
     ],
     match panel {
       None => []
-      Some(ChoreEditor(editor)) =>
-        editor_content(editor, labels, chore_menu, emit)
+      Some(ChoreEditor(editor)) => editor_content(editor, labels, emit)
       Some(Transfer(transfer)) => transfer_content(transfer, emit)
       Some(Labels(form)) => labels_content(form, labels, emit)
     },
@@ -64,7 +61,7 @@ fn number_field(
   field_view(
     id,
     label,
-    @rui.input(
+    @ui.input(
       id~,
       input_type=Number,
       inputmode="numeric",

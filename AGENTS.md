@@ -30,10 +30,11 @@ node --run test:e2e       # Playwright (desktop, mobile, tablet/WebKit) in paral
 ```
 src/
 ├── core/            # Shared domain logic and API types (pure, used by app and server)
-├── app/             # Rabbita frontend (rui components)
+├── app/             # Rabbita frontend (components of lib/ui)
 ├── server/          # Worker fetch handler and API routes (exports `fetch`)
 ├── lib/             # Generic packages with no knowledge of this app
 │   ├── web/         # JS FFI for Web standard APIs (Fetch API, WebCrypto, base64, time)
+│   ├── ui/          # Dark-themed UI components on Rabbita (buttons, tabs, sheet, dialog, menu, toast)
 │   └── cloudflare/  # Cloudflare specific: Worker env bindings, D1, Cloudflare Access JWT verification
 └── rules/           # Tests of the rules below that can be checked from the files (dependencies, FFI, ...)
 db/                  # D1 migrations, the seed for the local D1 and `d1.ts` (runs `cf d1` for the DB binding)
@@ -51,7 +52,7 @@ e2e/                 # Playwright tests
 - **Authentication**: every `/api/*` request must pass `authenticate` in `src/server`. The local bypass only applies to localhost.
 - **Dates**: chores use local dates (`YYYY-MM-DD`), not timestamps. "Today" is decided by the Worker and returned from `GET /api/chores`.
 - **Domain rules** (scheduling, undo, labels, import) live in `src/core` with their unit tests; the app and the server use them instead of having their own.
-- **UI**: use `rui` components (dark theme) and inline `style` for layout. One chore per row; clickable areas must look clickable. Editing happens in a non-modal panel (`rui.sheet`) overlaid on the right, not a modal. Less frequent actions go to a ⋮ menu instead of buttons. Actions that are hard to undo (archiving a chore, undoing a completion, deleting a label) ask for confirmation in a `rui.alert_dialog` first, which a click outside of it cancels. The dashboard must fit in the first view without scrolling on both desktop and mobile (checked in E2E).
+- **UI**: use the components of `src/lib/ui` (dark theme) and inline `style` for layout. A component missing there is added to `src/lib/ui` with native elements (`<dialog>`, popover) rather than built in the app. One chore per row; clickable areas must look clickable. Editing happens in a non-modal panel (`@ui.sheet`) overlaid on the right, not a modal. Less frequent actions go to a ⋮ menu instead of buttons. Actions that are hard to undo (archiving a chore, undoing a completion, deleting a label) ask for confirmation in a `@ui.alert_dialog` first, which a click outside of it cancels. The dashboard must fit in the first view without scrolling on both desktop and mobile (checked in E2E).
 - **E2E**:
   - E2E covers what needs the browser, the Worker and D1 together: the main user flows (each through the UI and kept after reload), layout and scrolling, differences between devices, how panels and dialogs open and close, and what the Worker serves.
   - Rules that live in `src/core` (dates, urgency, ordering, validation, import matching) are covered by its unit tests. E2E checks one representative case of each, e.g. one error message per form.

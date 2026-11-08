@@ -32,12 +32,12 @@ fn label_chip_style(color : @core.LabelColor, on~ : Bool = true) -> String {
 /// rather than toggled on and off.
 fn selected_ring_style(color : @core.LabelColor) -> String {
   let color = color_value(color)
-  "box-shadow:0 0 0 2px var(--rui-background),0 0 0 4px \{color}"
+  "box-shadow:0 0 0 2px var(--ui-background),0 0 0 4px \{color}"
 }
 
 ///|
 fn label_badge(label : @core.Label) -> Html {
-  @rui.badge(
+  @ui.badge(
     variant=Outline,
     style=["font-weight:400", label_chip_style(label.color)],
     label.name,
@@ -52,7 +52,7 @@ fn label_toggle(
   on_click : Msg,
   emit : Emit[Msg],
 ) -> Html {
-  @rui.button(
+  @ui.button(
     size=Sm,
     variant=Outline,
     on_click=emit(on_click),
