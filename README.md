@@ -1,12 +1,13 @@
 # strawboar
 
-A personal dashboard for life TODOs, built with [MoonBit](https://www.moonbitlang.com/),
-[Rabbita](https://github.com/moonbit-community/rabbita) and Cloudflare Workers.
+A personal dashboard for life TODOs, built with [MoonBit](https://www.moonbitlang.com/)
+and Cloudflare Workers.
 
 ## Architecture
 
 - A single Cloudflare Worker serves the SPA (Workers Static Assets) and `/api/*`.
 - Both the frontend and the API are written in MoonBit (JS target).
+- The frontend renders with its own small virtual DOM (`src/lib/html`), without a UI framework.
 - Data is stored in Cloudflare D1.
 - Access is restricted by Cloudflare Access; the Worker also verifies the Access JWT.
 

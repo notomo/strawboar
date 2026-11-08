@@ -60,8 +60,13 @@ test "dependency_violations" {
     ["core -> lib/web", "core -> lib/text", "core -> app"],
   )
   assert_eq(
-    violations({ "app": ["server", "lib/cloudflare"], "lib/web": ["core"] }),
-    ["app -> server", "app -> lib/cloudflare", "lib/web -> core"],
+    violations({
+      "app": ["server", "lib/cloudflare", "lib/dom"],
+      "lib/web": ["core"],
+    }),
+    [
+      "app -> server", "app -> lib/cloudflare", "app -> lib/dom", "lib/web -> core",
+    ],
   )
 }
 

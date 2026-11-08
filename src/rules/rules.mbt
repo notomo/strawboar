@@ -48,6 +48,10 @@ fn dependency_rule(pkg : String, dep : String, dep_uses_ffi~ : Bool) -> String? 
       )
     "app" if dep == "server" || dep == "lib/cloudflare" =>
       Some("app runs in the browser, not on the Worker")
+    "app" if dep == "lib/dom" =>
+      Some(
+        "app renders with lib/html and lib/ui, which keep the DOM in sync with the model",
+      )
     _ if pkg.has_prefix("lib/") && !dep.has_prefix("lib/") =>
       Some("lib holds generic packages with no knowledge of this app")
     _ => None

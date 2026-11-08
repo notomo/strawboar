@@ -22,27 +22,6 @@ test "raw JS FFI lives only in lib" {
 }
 
 ///|
-test "app runs its effects only from the store" {
-  let violations = ["@cmd.", "@dom."].map(needle => {
-    @rules.files_containing("src/app", suffix=".mbt", needle)
-  })
-  @rules.assert_none(
-    violations
-    .fold(init=[], (all, more) => all + more)
-    .filter(path => path != "src/app/store.mbt"),
-    reason="Effects run from the actions of src/app/store.mbt (with lib/ui and lib/web), so that the commands of Rabbita stay in one file",
-  )
-}
-
-///|
-test "app calls the API through its async functions" {
-  @rules.assert_none(
-    @rules.files_containing("src/app", suffix=".mbt", "@http."),
-    reason="Requests go through the async functions of src/app/api.mbt (on lib/web) instead of the @http of Rabbita",
-  )
-}
-
-///|
 test "e2e specs use the page object for locators" {
   let violations = [".locator(", ".getBy"].map(needle => {
     @rules.files_containing("e2e", suffix=".spec.ts", needle)
