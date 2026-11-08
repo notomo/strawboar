@@ -147,7 +147,7 @@ enum Msg {
   /// label or chore by the time they arrive.
   LabelSaved(Int32?, Result[@core.Label, Error])
   DeleteLabel
-  LabelDeleted(Int32, Error?)
+  LabelDeleted(Int32, Result[Unit, Error])
   OpenTransfer
   TransferTextChanged(String)
   Import
@@ -155,7 +155,7 @@ enum Msg {
   Submit
   Saved(Int32?, Result[@core.Chore, Error])
   Archive
-  Archived(Int32, Error?)
+  Archived(Int32, Result[Unit, Error])
   /// Opens the confirmation of an action of the panel.
   AskConfirm(Confirm)
   ClosePanel

@@ -28,7 +28,15 @@ test "app avoids the escape hatches of Rabbita" {
   })
   @rules.assert_none(
     violations.fold(init=[], (all, more) => all + more),
-    reason="Follow the conventions of Rabbita (create_state, create_resource, @http) instead of @cmd.effect or @dom",
+    reason="Keep the effects in update (Rabbita's state, the async functions of api.mbt) instead of @cmd.effect or @dom",
+  )
+}
+
+///|
+test "app calls the API through its async functions" {
+  @rules.assert_none(
+    @rules.files_containing("src/app", suffix=".mbt", "@http."),
+    reason="Requests go through the async functions of src/app/api.mbt (on lib/web) instead of the @http of Rabbita",
   )
 }
 

@@ -11,6 +11,19 @@ const CONFIRM_ID = "confirm-dialog"
 const UNDO_DURATION_MS = 8000
 
 ///|
+/// Runs `f` and gives its result to `msg`. It runs on the event loop of
+/// MoonBit's async, which `lib/web` waits for promises on, not on Rabbita's.
+fn[A] call(
+  emit : Emit[Msg],
+  f : async () -> A,
+  msg : (Result[A, Error]) -> Msg,
+) -> Cmd {
+  @cmd.custom_cmd(scheduler => {
+    @web.spawn(f, result => scheduler.add(emit(msg(result))))
+  })
+}
+
+///|
 /// Shows or closes the panel when `panel_open` changes.
 fn sync_panel(before : Model, after : Model) -> Cmd {
   match (before.panel_open, after.panel_open) {
@@ -34,7 +47,7 @@ fn transition(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
     Reload =>
       (
         { ..model, load: Loading, },
-        @http.get("/api/chores").expect_json(emit.map(result => Loaded(result))),
+        call(emit, fetch_chores, result => Loaded(result)),
       )
     Loaded(Ok(list)) => (model.loaded(list), @rabbita.none)
     Loaded(Err(_)) => ({ ..model, load: Failed, }, @rabbita.none)
@@ -43,9 +56,7 @@ fn transition(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
         Some(next) =>
           (
             next,
-            @http.post("/api/chores/\{id}/complete")
-            .with_text("")
-            .expect_json(emit.map(result => Completed(id, result))),
+            call(emit, () => complete_chore(id), result => Completed(id, result)),
           )
         None => (model, @rabbita.none)
       }
@@ -61,9 +72,9 @@ fn transition(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
     UndoCompletion(completion_id) =>
       (
         model.start_undo(completion_id),
-        @http.delete("/api/completions/\{completion_id}").expect_json(
-          emit.map(result => Undone(result)),
-        ),
+        call(emit, () => undo_completion(completion_id), result => {
+          Undone(result)
+        }),
       )
     Undone(Ok(chore)) => (model.undone(chore), @rabbita.none)
     // The completion was removed from `recent` optimistically, so reload it.
@@ -100,19 +111,12 @@ fn transition(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
       (model.edit_label(form => { ..form, color, }), @rabbita.none)
     SubmitLabel =>
       match model.submit_label() {
-        (next, Some((None, input))) =>
+        (next, Some((id, input))) =>
           (
             next,
-            @http.post("/api/labels")
-            .with_json(input)
-            .expect_json(emit.map(result => LabelSaved(None, result))),
-          )
-        (next, Some((Some(id), input))) =>
-          (
-            next,
-            @http.put("/api/labels/\{id}")
-            .with_json(input)
-            .expect_json(emit.map(result => LabelSaved(Some(id), result))),
+            call(emit, () => save_label(id, input), result => {
+              LabelSaved(id, result)
+            }),
           )
         (next, None) => (next, @rabbita.none)
       }
@@ -127,33 +131,24 @@ fn transition(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
         Some(Labels({ id: Some(id), .. })) =>
           (
             model,
-            @http.delete("/api/labels/\{id}").expect_empty(
-              emit.map(error => LabelDeleted(id, error)),
-            ),
+            call(emit, () => delete_label(id), result => {
+              LabelDeleted(id, result)
+            }),
           )
         _ => (model, @rabbita.none)
       }
-    LabelDeleted(id, None) => (model.label_deleted(id), @rabbita.none)
-    LabelDeleted(id, Some(_)) =>
+    LabelDeleted(id, Ok(_)) => (model.label_deleted(id), @rabbita.none)
+    LabelDeleted(id, Err(_)) =>
       (
         model.label_error(Some(id), "Failed to delete. Please try again."),
         @rabbita.none,
       )
     Submit =>
       match model.submit_chore() {
-        (next, Some((None, input))) =>
+        (next, Some((id, input))) =>
           (
             next,
-            @http.post("/api/chores")
-            .with_json(input)
-            .expect_json(emit.map(result => Saved(None, result))),
-          )
-        (next, Some((Some(id), input))) =>
-          (
-            next,
-            @http.put("/api/chores/\{id}")
-            .with_json(input)
-            .expect_json(emit.map(result => Saved(Some(id), result))),
+            call(emit, () => save_chore(id, input), result => Saved(id, result)),
           )
         (next, None) => (next, @rabbita.none)
       }
@@ -168,14 +163,12 @@ fn transition(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
         Some({ id: Some(id), .. }) =>
           (
             model,
-            @http.delete("/api/chores/\{id}").expect_empty(
-              emit.map(error => Archived(id, error)),
-            ),
+            call(emit, () => archive_chore(id), result => Archived(id, result)),
           )
         _ => (model, @rabbita.none)
       }
-    Archived(id, None) => (model.archived(id), @rabbita.none)
-    Archived(id, Some(_)) =>
+    Archived(id, Ok(_)) => (model.archived(id), @rabbita.none)
+    Archived(id, Err(_)) =>
       (
         model.editor_error(Some(id), "Failed to archive. Please try again."),
         @rabbita.none,
@@ -188,9 +181,9 @@ fn transition(model : Model, msg : Msg, emit : Emit[Msg]) -> (Model, Cmd) {
         (next, Some(text)) =>
           (
             next,
-            @http.post("/api/chores/import")
-            .with_text(text)
-            .expect_json(emit.map(result => Imported(result))),
+            call(emit, () => import_definitions(text), result => {
+              Imported(result)
+            }),
           )
         (next, None) => (next, @rabbita.none)
       }

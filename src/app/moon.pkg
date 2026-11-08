@@ -1,10 +1,12 @@
 import {
   "internal/strawboar/core",
   "internal/strawboar/lib/ui",
+  "internal/strawboar/lib/web",
   "moonbit-community/rabbita",
   "moonbit-community/rabbita/dialog",
   "moonbit-community/rabbita/html",
-  "moonbit-community/rabbita/http",
+  "moonbitlang/core/json",
+  "moonbit-community/rabbita/cmd",
   "moonbit-community/rabbita/nav",
 }
 

@@ -33,7 +33,7 @@ src/
 ├── app/             # Rabbita frontend (components of lib/ui)
 ├── server/          # Worker fetch handler and API routes (exports `fetch`)
 ├── lib/             # Generic packages with no knowledge of this app
-│   ├── web/         # JS FFI for Web standard APIs (Fetch API, WebCrypto, base64, time)
+│   ├── web/         # JS FFI for Web standard APIs (Fetch API, WebCrypto, base64, time) and running async tasks
 │   ├── ui/          # Dark-themed UI components on Rabbita (buttons, tabs, sheet, dialog, menu, toast)
 │   └── cloudflare/  # Cloudflare specific: Worker env bindings, D1, Cloudflare Access JWT verification
 └── rules/           # Tests of the rules below that can be checked from the files (dependencies, FFI, ...)
