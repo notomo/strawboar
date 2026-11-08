@@ -251,11 +251,10 @@ fn Model::edit(self : Model, f : (Editor) -> Editor) -> Model {
 
 ///|
 /// Closes the panel if it is open for the chore `id` (`None` for a new one).
-fn Model::close_editor_of(self : Model, id : Int32?) -> (Model, Cmd) {
+fn Model::close_editor_of(self : Model, id : Int32?) -> Model {
   match (self.panel_open, self.editor()) {
-    (true, Some(editor)) if editor.id == id =>
-      ({ ..self, panel_open: false, }, @dialog.close(EDITOR_ID))
-    _ => (self, @rabbita.none)
+    (true, Some(editor)) if editor.id == id => { ..self, panel_open: false, }
+    _ => self
   }
 }
 
