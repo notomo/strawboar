@@ -22,13 +22,15 @@ test "raw JS FFI lives only in lib" {
 }
 
 ///|
-test "app avoids the escape hatches of Rabbita" {
-  let violations = ["@cmd.effect", "@dom."].map(needle => {
+test "app runs its effects only from the store" {
+  let violations = ["@cmd.", "@dom."].map(needle => {
     @rules.files_containing("src/app", suffix=".mbt", needle)
   })
   @rules.assert_none(
-    violations.fold(init=[], (all, more) => all + more),
-    reason="Keep the effects in update (Rabbita's state, the async functions of api.mbt) instead of @cmd.effect or @dom",
+    violations
+    .fold(init=[], (all, more) => all + more)
+    .filter(path => path != "src/app/store.mbt"),
+    reason="Effects run from the actions of src/app/store.mbt (with lib/ui and lib/web), so that the commands of Rabbita stay in one file",
   )
 }
 
