@@ -1,5 +1,5 @@
 ///|
-fn transfer_content(transfer : Transfer, emit : Emit[Msg]) -> Array[Html] {
+fn transfer_content(transfer : Transfer, store : Store) -> Array[Html] {
   [
     @ui.dialog_header([
       // Focusing the text area would put the caret at the end and scroll it
@@ -15,7 +15,7 @@ fn transfer_content(transfer : Transfer, emit : Emit[Msg]) -> Array[Html] {
       ),
     ]),
     @html.form(
-      on_submit=emit(Import),
+      on_submit=store.import_definitions(),
       style=[
         "display:flex;flex-direction:column;gap:1.25rem;padding-bottom:1rem;flex:1",
       ],
@@ -32,7 +32,9 @@ fn transfer_content(transfer : Transfer, emit : Emit[Msg]) -> Array[Html] {
             style=[
               "field-sizing:fixed;font-family:monospace;font-size:0.8125rem",
             ],
-            on_input=emit.map(value => TransferTextChanged(value)),
+            on_input=store.input((model, text) => {
+              model.edit_transfer(transfer => { ..transfer, text, })
+            }),
           ),
         ),
         if transfer.error == "" {

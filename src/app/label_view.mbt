@@ -46,16 +46,11 @@ fn label_badge(label : @core.Label) -> Html {
 
 ///|
 /// A label that can be turned on and off, used by the chore panel.
-fn label_toggle(
-  label : @core.Label,
-  pressed : Bool,
-  on_click : Msg,
-  emit : Emit[Msg],
-) -> Html {
+fn label_toggle(label : @core.Label, pressed : Bool, on_click : Cmd) -> Html {
   @ui.button(
     size=Sm,
     variant=Outline,
-    on_click=emit(on_click),
+    on_click~,
     attrs=@html.Attrs::build().aria_pressed(pressed.to_string()),
     style=[
       "flex-shrink:0;font-weight:400",

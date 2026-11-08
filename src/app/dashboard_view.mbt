@@ -15,7 +15,7 @@ fn tab_id(tab : Tab) -> String {
 ///|
 /// The tabs with their counts. They are in the header so that every tab can be
 /// reached however long the list of the selected one is.
-fn tabs_view(model : Model, today : @core.Date, emit : Emit[Msg]) -> Html {
+fn tabs_view(model : Model, today : @core.Date, store : Store) -> Html {
   let (dashboard, recent) = filtered(model, today)
   @ui.tabs_list(
     aria_label="Chores",
@@ -37,7 +37,7 @@ fn tabs_view(model : Model, today : @core.Date, emit : Emit[Msg]) -> Html {
         id="\{id}-tab",
         selected~,
         controls=id,
-        on_select=emit(TabSelected(tab)),
+        on_select=store.update(model => { ..model, tab, }),
         style=[
           "padding-block:0.375rem;padding-inline:1rem;justify-content:space-between",
           if selected {
@@ -148,12 +148,12 @@ fn card(state : RowState, content : Array[Html]) -> Html {
 fn edit_area(
   chore_id : Int32,
   state : RowState,
-  emit : Emit[Msg],
+  store : Store,
   content : Array[Html],
 ) -> Html {
   @ui.button(
     variant=Ghost,
-    on_click=emit(OpenEdit(chore_id)),
+    on_click=store.update(model => model.open_chore(chore_id)),
     style=[
       "flex:1;min-width:0;height:auto;justify-content:space-between;gap:0.75rem;padding:0.625rem 0.75rem;text-align:left;white-space:normal;font-weight:inherit",
       match state {
@@ -197,10 +197,10 @@ fn chore_row(
   today : @core.Date,
   state : RowState,
   completing : Bool,
-  emit : Emit[Msg],
+  store : Store,
 ) -> Html {
   card(state, [
-    edit_area(chore.id, state, emit, [
+    edit_area(chore.id, state, store, [
       title_text(chore.title, labels),
       div(
         style=[
@@ -225,7 +225,7 @@ fn chore_row(
     @ui.button(
       variant=Outline,
       disabled=completing,
-      on_click=emit(Complete(chore.id)),
+      on_click=store.complete(chore.id),
       attrs=@html.Attrs::build().aria_label("Done: \{chore.title}"),
       style=["flex-shrink:0;margin-right:0.25rem"],
       "✓ Done",
@@ -241,10 +241,10 @@ fn dated_row(
   labels : Array[@core.Label],
   date : @core.Date,
   state : RowState,
-  emit : Emit[Msg],
+  store : Store,
 ) -> Html {
   card(state, [
-    edit_area(chore_id, state, emit, [
+    edit_area(chore_id, state, store, [
       div(
         style=[
           "display:flex;align-items:baseline;justify-content:space-between;gap:0.75rem",
@@ -270,7 +270,7 @@ fn recent_view(
   recent : Array[@core.RecentDone],
   model : Model,
   today : @core.Date,
-  emit : Emit[Msg],
+  store : Store,
 ) -> Html {
   tab_panel(
     Done,
@@ -290,7 +290,7 @@ fn recent_view(
                 chore.labels_in(model.labels),
                 done.done_on,
                 row_state(model, chore.id),
-                emit,
+                store,
               )
             // An archived chore cannot be opened.
             None =>

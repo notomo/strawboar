@@ -116,3 +116,13 @@ pub fn close_dialog(id : String) -> Unit {
     dialog.close()
   }
 }
+
+///|
+/// Opens or closes the dialog `id` so that it is open only if `open`.
+pub fn sync_dialog(id : String, open~ : Bool, modal~ : Bool) -> Unit {
+  match (dialog_by_id(id), open) {
+    (Some(dialog), true) if !dialog.open() => show_dialog(id, modal~)
+    (Some(dialog), false) if dialog.open() => dialog.close()
+    _ => ()
+  }
+}

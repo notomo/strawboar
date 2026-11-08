@@ -201,6 +201,12 @@ fn Model::archived(self : Model, id : Int32) -> Model {
 }
 
 ///|
+/// Goes back to a new label in the labels panel.
+fn Model::new_label(self : Model) -> Model {
+  self.edit_label(_ => new_label_form(self.labels))
+}
+
+///|
 fn Model::open_labels(self : Model) -> Model {
   {
     ..self,

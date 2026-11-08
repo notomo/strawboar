@@ -37,13 +37,13 @@ fn[T] keyed(
 }
 
 ///|
-fn view(model : Model, emit : Emit[Msg]) -> Html {
+fn view(model : Model, store : Store) -> Html {
   @ui.theme(
     style=[
       "height:100dvh;display:flex;flex-direction:column;background:var(--ui-background);color:var(--ui-foreground)",
     ],
     [
-      div(style=["flex-shrink:0;padding:0 1rem"], [sticky_view(model, emit)]),
+      div(style=["flex-shrink:0;padding:0 1rem"], [sticky_view(model, store)]),
       // Scrolled instead of the page, so that the header and the tabs stay
       // at the top whatever their height is.
       div(
@@ -53,13 +53,13 @@ fn view(model : Model, emit : Emit[Msg]) -> Html {
           style=[
             "box-sizing:border-box;max-width:40rem;margin:0 auto;padding:1rem 0 1.25rem",
           ],
-          content_view(model, emit),
+          content_view(model, store),
         ),
       ),
-      backdrop_view(model.panel_open, emit),
-      panel_view(model.panel, model.labels, emit),
-      confirm_view(model, emit),
-      undo_view(model.undo, emit),
+      backdrop_view(model.panel_open, store),
+      panel_view(model.panel, model.labels, store),
+      confirm_view(model, store),
+      undo_view(model.undo, store),
     ],
   )
 }
@@ -68,19 +68,19 @@ fn view(model : Model, emit : Emit[Msg]) -> Html {
 /// The header, the label filter and the tabs, kept at the top while scrolling.
 /// It is above the backdrop like the rows raised while the panel is open,
 /// so that its shadow is not hidden by them, and has its own backdrop instead.
-fn sticky_view(model : Model, emit : Emit[Msg]) -> Html {
+fn sticky_view(model : Model, store : Store) -> Html {
   div(
     style=[
       "box-sizing:border-box;max-width:40rem;margin:0 auto;position:relative;z-index:12;display:flex;flex-direction:column;gap:0.75rem;padding:1.25rem 0 0.75rem;border-bottom:1px solid var(--ui-input);box-shadow:0 8px 12px -8px rgb(0 0 0 / 0.8);background:var(--ui-background)",
     ],
     [
-      header_view(model, emit),
-      label_filter_view(model.labels, model.label_filter, emit),
+      header_view(model, store),
+      label_filter_view(model.labels, model.label_filter, store),
       match (model.load, model.today) {
-        (Ready, Some(today)) => tabs_view(model, today, emit)
+        (Ready, Some(today)) => tabs_view(model, today, store)
         _ => @html.nothing
       },
-      raised_backdrop_view(model.panel_open, emit),
+      raised_backdrop_view(model.panel_open, store),
     ],
   )
 }
@@ -88,7 +88,7 @@ fn sticky_view(model : Model, emit : Emit[Msg]) -> Html {
 ///|
 /// Closes the panel when tapping an element raised above the backdrop,
 /// like `backdrop_view`. The element must be positioned.
-fn raised_backdrop_view(panel_open : Bool, emit : Emit[Msg]) -> Html {
+fn raised_backdrop_view(panel_open : Bool, store : Store) -> Html {
   if !panel_open {
     return @html.nothing
   }
@@ -96,13 +96,13 @@ fn raised_backdrop_view(panel_open : Bool, emit : Emit[Msg]) -> Html {
     style=[
       "position:absolute;inset:0;background:rgb(0 0 0 / 0.4);cursor:pointer",
     ],
-    on_click=emit(ClosePanel),
+    on_click=store.update(model => { ..model, panel_open: false, }),
     "",
   )
 }
 
 ///|
-fn header_view(model : Model, emit : Emit[Msg]) -> Html {
+fn header_view(model : Model, store : Store) -> Html {
   div(
     style=[
       "display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.5rem",
@@ -119,10 +119,10 @@ fn header_view(model : Model, emit : Emit[Msg]) -> Html {
         @ui.button(
           size=Lg,
           disabled=model.today is None,
-          on_click=emit(OpenNew),
+          on_click=store.update(model => model.open_new()),
           "+ Add",
         ),
-        menu_view(emit),
+        menu_view(store),
       ]),
     ],
   )
@@ -150,7 +150,7 @@ fn filtered(
 }
 
 ///|
-fn content_view(model : Model, emit : Emit[Msg]) -> Html {
+fn content_view(model : Model, store : Store) -> Html {
   match (model.load, model.today) {
     (Ready, Some(today)) => {
       let (dashboard, recent) = filtered(model, today)
@@ -167,7 +167,7 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
                 today,
                 state_of(chore),
                 model.completing.contains(chore.id),
-                emit,
+                store,
               )
             })
           Later =>
@@ -178,10 +178,10 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
                 labels_of(chore),
                 chore.next_due,
                 state_of(chore),
-                emit,
+                store,
               )
             })
-          Done => recent_view(recent, model, today, emit)
+          Done => recent_view(recent, model, today, store)
         },
       ])
     }
@@ -195,7 +195,7 @@ fn content_view(model : Model, emit : Emit[Msg]) -> Html {
             style=["margin:0"],
             "Failed to load chores. Reloading the page also signs in again if the session has expired.",
           ),
-          @ui.button(variant=Outline, on_click=emit(ReloadPage), "Reload page"),
+          @ui.button(variant=Outline, on_click=run(@web.reload), "Reload page"),
         ],
       )
     _ =>
@@ -219,7 +219,7 @@ fn notice_view(notice : String) -> Html {
 fn label_filter_view(
   labels : Array[@core.Label],
   label_filter : Int32?,
-  emit : Emit[Msg],
+  store : Store,
 ) -> Html {
   if labels.is_empty() {
     return @html.nothing
@@ -240,9 +240,14 @@ fn label_filter_view(
       @ui.button(
         size=Sm,
         variant=Outline,
-        on_click=emit(
-          FilterByLabel(if pressed { None } else { Some(label.id) }),
-        ),
+        on_click=store.update(model => {
+          ..model,
+          label_filter: if pressed {
+            None
+          } else {
+            Some(label.id)
+          },
+        }),
         attrs=@html.Attrs::build().aria_pressed(pressed.to_string()),
         style=[
           "flex-shrink:0;font-weight:400",
@@ -261,7 +266,7 @@ fn label_filter_view(
 
 ///|
 /// The menu next to the add button, for actions used less often.
-fn menu_view(emit : Emit[Msg]) -> Html {
+fn menu_view(store : Store) -> Html {
   @ui.menu(
     id="app-menu",
     label="Menu",
@@ -270,23 +275,29 @@ fn menu_view(emit : Emit[Msg]) -> Html {
     trigger_style=["width:3rem;font-size:1.25rem"],
     "⋮",
     [
-      @ui.menu_item(on_select=emit(OpenTransfer), "Import / Export"),
-      @ui.menu_item(on_select=emit(OpenLabels), "Labels"),
+      @ui.menu_item(
+        on_select=store.update(model => model.open_transfer()),
+        "Import / Export",
+      ),
+      @ui.menu_item(
+        on_select=store.update(model => model.open_labels()),
+        "Labels",
+      ),
     ],
   )
 }
 
 ///|
 /// The menu next to the save button of the chore panel.
-fn chore_menu_view(emit : Emit[Msg]) -> Html {
+fn chore_menu_view(store : Store) -> Html {
   @ui.menu(
     id="chore-menu",
     label="Chore actions",
     trigger_style=["font-size:1.25rem"],
     "⋮",
     [
-      @ui.menu_item(on_select=emit(AskConfirm(ConfirmUndo)), "Undo last done"),
-      @ui.menu_item(on_select=emit(AskConfirm(ConfirmArchive)), "Archive"),
+      @ui.menu_item(on_select=store.ask_confirm(ConfirmUndo), "Undo last done"),
+      @ui.menu_item(on_select=store.ask_confirm(ConfirmArchive), "Archive"),
     ],
   )
 }
@@ -303,7 +314,7 @@ enum RowState {
 }
 
 ///|
-fn undo_view(undo : Undo?, emit : Emit[Msg]) -> Html {
+fn undo_view(undo : Undo?, store : Store) -> Html {
   match undo {
     None => @html.nothing
     Some(undo) =>
@@ -318,7 +329,7 @@ fn undo_view(undo : Undo?, emit : Emit[Msg]) -> Html {
           title="Done: \{undo.title}",
           action=@ui.button(
             size=Sm,
-            on_click=emit(UndoCompletion(undo.completion_id)),
+            on_click=store.undo_completion(undo.completion_id),
             "Undo",
           ),
           style=[
@@ -332,20 +343,20 @@ fn undo_view(undo : Undo?, emit : Emit[Msg]) -> Html {
 ///|
 /// Asks before an action that is hard to undo: archiving the chore or
 /// deleting the label open in the panel.
-fn confirm_view(model : Model, emit : Emit[Msg]) -> Html {
+fn confirm_view(model : Model, store : Store) -> Html {
   // `None` as the action only lets the dialog be closed.
   let (title, description, action) = match (model.confirm, model.panel) {
     (Some(ConfirmDeleteLabel), Some(Labels({ id: Some(_), name, .. }))) =>
       (
         "Delete label?",
         "\"\{name}\" is removed from every chore.",
-        Some(("Delete", DeleteLabel)),
+        Some(("Delete", store.delete_label())),
       )
     (Some(ConfirmArchive), Some(ChoreEditor({ id: Some(_), title, .. }))) =>
       (
         "Archive chore?",
         "\"\{title}\" is hidden from the dashboard.",
-        Some(("Archive", Archive)),
+        Some(("Archive", store.archive())),
       )
     (Some(ConfirmUndo), Some(ChoreEditor({ id: Some(_), title, .. }))) =>
       match model.latest_done() {
@@ -353,7 +364,7 @@ fn confirm_view(model : Model, emit : Emit[Msg]) -> Html {
           (
             "Undo last done?",
             "\"\{title}\" done on \{short_date(done.done_on)} is undone.",
-            Some(("Undo", UndoCompletion(done.completion_id))),
+            Some(("Undo", store.undo_completion(done.completion_id))),
           )
         None =>
           (
@@ -378,14 +389,14 @@ fn confirm_view(model : Model, emit : Emit[Msg]) -> Html {
       ]),
       @ui.dialog_footer(
         match action {
-          Some((text, msg)) =>
+          Some((text, action)) =>
             [
               @ui.dialog_cancel("Cancel"),
               // Submitting the form closes the dialog. Closing it otherwise does nothing.
               @ui.button(
                 type_="submit",
                 variant=Destructive,
-                on_click=emit(msg),
+                on_click=action,
                 text,
               ),
             ]

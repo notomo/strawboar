@@ -2,7 +2,7 @@
 fn labels_content(
   form : LabelForm,
   labels : Array[@core.Label],
-  emit : Emit[Msg],
+  store : Store,
 ) -> Array[Html] {
   let is_new = form.id is None
   [
@@ -28,13 +28,13 @@ fn labels_content(
             @ui.button(
               size=Sm,
               variant=Outline,
-              on_click=emit(
+              on_click=store.update(model => {
                 if current {
-                  NewLabel
+                  model.new_label()
                 } else {
-                  EditLabel(label.id)
-                },
-              ),
+                  model.select_label(label.id)
+                }
+              }),
               attrs=@html.Attrs::build()
                 .aria_label("Edit label: \{label.name}")
                 .aria_current(current.to_string()),
@@ -55,7 +55,7 @@ fn labels_content(
     },
     @html.form(
       id="label-form",
-      on_submit=emit(SubmitLabel),
+      on_submit=store.submit_label(),
       style=[
         "display:flex;flex-direction:column;gap:1.25rem;padding-bottom:1rem;flex:1",
       ],
@@ -76,7 +76,9 @@ fn labels_content(
             value=form.name,
             maxlength=@core.MAX_LABEL_LENGTH,
             placeholder="e.g. kitchen",
-            on_input=emit.map(value => LabelNameChanged(value)),
+            on_input=store.input((model, name) => {
+              model.edit_label(form => { ..form, name, })
+            }),
           ),
         ),
         @ui.field([
@@ -91,7 +93,9 @@ fn labels_content(
               @ui.button(
                 size=IconSm,
                 variant=Outline,
-                on_click=emit(LabelColorChanged(color)),
+                on_click=store.update(model => {
+                  model.edit_label(form => { ..form, color, })
+                }),
                 attrs=@html.Attrs::build()
                   .aria_label(color.name())
                   .aria_pressed(pressed.to_string()),
@@ -139,7 +143,7 @@ fn labels_content(
               @ui.button(
                 type_="button",
                 variant=Ghost,
-                on_click=emit(AskConfirm(ConfirmDeleteLabel)),
+                on_click=store.ask_confirm(ConfirmDeleteLabel),
                 "Delete",
               )
             },
@@ -150,7 +154,7 @@ fn labels_content(
                 @ui.button(
                   type_="button",
                   variant=Outline,
-                  on_click=emit(NewLabel),
+                  on_click=store.update(model => model.new_label()),
                   "Cancel",
                 )
               },

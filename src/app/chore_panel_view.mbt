@@ -2,7 +2,7 @@
 fn editor_content(
   editor : Editor,
   labels : Array[@core.Label],
-  emit : Emit[Msg],
+  store : Store,
 ) -> Array[Html] {
   let is_new = editor.id is None
   [
@@ -10,7 +10,7 @@ fn editor_content(
       @ui.dialog_title(id="panel-title", if is_new { "New" } else { "Edit" }),
     ]),
     @html.form(
-      on_submit=emit(Submit),
+      on_submit=store.submit_chore(),
       style=[
         "display:flex;flex-direction:column;gap:1.25rem;padding-bottom:1rem;flex:1",
       ],
@@ -22,7 +22,7 @@ fn editor_content(
             id="chore-title",
             value=editor.title,
             maxlength=@core.MAX_TITLE_LENGTH,
-            on_input=emit.map(value => TitleChanged(value)),
+            on_input=store.edit_input((editor, title) => { ..editor, title, }),
           ),
         ),
         field_view(
@@ -38,10 +38,13 @@ fn editor_content(
               // Grows with the content up to a limit, then scrolls.
               "max-height:12rem",
             ],
-            on_input=emit.map(value => DescriptionChanged(value)),
+            on_input=store.edit_input((editor, description) => {
+              ..editor,
+              description,
+            }),
           ),
         ),
-        label_picker(editor.labels, labels, emit),
+        label_picker(editor.labels, labels, store),
         repeat_tabs(
           editor.repeat,
           [
@@ -55,7 +58,7 @@ fn editor_content(
                   min=1,
                   max=@core.MAX_INTERVAL_DAYS,
                   editor.interval,
-                  emit.map(value => IntervalChanged(value)),
+                  store.edit_input((editor, interval) => { ..editor, interval, }),
                 ),
               ],
             ),
@@ -69,7 +72,7 @@ fn editor_content(
                   min=1,
                   max=@core.MAX_INTERVAL_MONTHS,
                   editor.months,
-                  emit.map(value => MonthsChanged(value)),
+                  store.edit_input((editor, months) => { ..editor, months, }),
                 ),
                 // A new chore is due on the day of its first due date.
                 if is_new {
@@ -81,7 +84,7 @@ fn editor_content(
                     min=1,
                     max=31,
                     editor.day,
-                    emit.map(value => DayChanged(value)),
+                    store.edit_input((editor, day) => { ..editor, day, }),
                   )
                 },
                 number_field(
@@ -90,12 +93,15 @@ fn editor_content(
                   min=0,
                   max=@core.MAX_INTERVAL_MONTHS * 28,
                   editor.lead_days,
-                  emit.map(value => LeadDaysChanged(value)),
+                  store.edit_input((editor, lead_days) => {
+                    ..editor,
+                    lead_days,
+                  }),
                 ),
               ],
             ),
           ],
-          emit,
+          store,
         ),
         if is_new {
           field_view(
@@ -105,7 +111,10 @@ fn editor_content(
               id="chore-next-due",
               input_type=Date,
               value=editor.next_due,
-              on_input=emit.map(value => NextDueChanged(value)),
+              on_input=store.edit_input((editor, next_due) => {
+                ..editor,
+                next_due,
+              }),
             ),
           )
         } else {
@@ -125,7 +134,7 @@ fn editor_content(
             if is_new {
               @html.nothing
             } else {
-              chore_menu_view(emit)
+              chore_menu_view(store)
             },
           ],
         ),
@@ -140,7 +149,7 @@ fn editor_content(
 fn repeat_tabs(
   selected : RepeatKind,
   kinds : Array[(RepeatKind, String, Array[Html])],
-  emit : Emit[Msg],
+  store : Store,
 ) -> Html {
   let value = (kind : RepeatKind) => {
     match kind {
@@ -162,7 +171,9 @@ fn repeat_tabs(
               id="chore-repeat-\{value(kind)}",
               selected=selected == kind,
               controls="chore-repeat-\{value(kind)}-panel",
-              on_select=emit(RepeatChanged(kind)),
+              on_select=store.update(model => {
+                model.edit(editor => { ..editor, repeat: kind, })
+              }),
               text,
             )
           }),
@@ -194,7 +205,7 @@ fn repeat_tabs(
 fn label_picker(
   selected : Array[Int32],
   labels : Array[@core.Label],
-  emit : Emit[Msg],
+  store : Store,
 ) -> Html {
   @ui.field([
     @ui.field_label(id="chore-labels-label", "Labels"),
@@ -213,8 +224,9 @@ fn label_picker(
           label_toggle(
             label,
             selected.contains(label.id),
-            ToggleLabel(label.id),
-            emit,
+            store.update(model => {
+              model.edit(editor => editor.toggle_label(label.id))
+            }),
           )
         }),
       )

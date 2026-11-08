@@ -113,56 +113,6 @@ struct Model {
 }
 
 ///|
-enum Msg {
-  Reload
-  /// Reloads the whole page, which signs in again when the Access session has
-  /// expired: its redirect makes every API request fail until then.
-  ReloadPage
-  Loaded(Result[@core.ChoreList, Error])
-  Complete(Int32)
-  Completed(Int32, Result[@core.Completed, Error])
-  UndoCompletion(Int32)
-  Undone(Result[@core.Chore, Error])
-  DismissUndo(Int32)
-  OpenNew
-  OpenEdit(Int32)
-  TitleChanged(String)
-  DescriptionChanged(String)
-  RepeatChanged(RepeatKind)
-  IntervalChanged(String)
-  MonthsChanged(String)
-  DayChanged(String)
-  LeadDaysChanged(String)
-  NextDueChanged(String)
-  ToggleLabel(Int32)
-  FilterByLabel(Int32?)
-  TabSelected(Tab)
-  OpenLabels
-  EditLabel(Int32)
-  NewLabel
-  LabelNameChanged(String)
-  LabelColorChanged(@core.LabelColor)
-  SubmitLabel
-  /// Responses carry the id they were sent for: the panel may show another
-  /// label or chore by the time they arrive.
-  LabelSaved(Int32?, Result[@core.Label, Error])
-  DeleteLabel
-  LabelDeleted(Int32, Result[Unit, Error])
-  OpenTransfer
-  TransferTextChanged(String)
-  Import
-  Imported(Result[@core.ImportResult, Error])
-  Submit
-  Saved(Int32?, Result[@core.Chore, Error])
-  Archive
-  Archived(Int32, Result[Unit, Error])
-  /// Opens the confirmation of an action of the panel.
-  AskConfirm(Confirm)
-  ClosePanel
-  PanelClosed
-}
-
-///|
 fn upsert(
   chores : Array[@core.Chore],
   chore : @core.Chore,
