@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "setup": "git config --local include.path ../.gitconfig",
-    "check_all": "node --run format && node --run check && node --run test && concurrently -g -n seed,e2e \"node --run db:seed:check\" \"node --run test:e2e\"",
+    "check_all": "node --run format && node --run check && node --run test && node --run db:seed:check && node --run test:e2e",
     "check": "moon check && moon fmt --check",
     "format": "moon fmt",
     "test": "moon test --target js",
@@ -24,7 +24,6 @@
     "@cloudflare/vite-plugin": "2.0.0-beta.v.8",
     "@playwright/test": "^1.64.1",
     "cf": "1.0.0-beta.26",
-    "concurrently": "^10.0.6",
     "vite": "^8.3.5"
   }
 }
