@@ -6,7 +6,7 @@ on:
   pull_request:
 
 env:
-  NODE_VERSION: '24'
+  NODE_VERSION: '26'
   CF_SEND_TELEMETRY: 'false'
 
 permissions:
