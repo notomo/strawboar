@@ -1,4 +1,4 @@
-import { bindings, defineConfig } from "cf/config";
+import { bindings, defineConfig, triggers } from "cf/config";
 
 /** The D1 database bound as `DB`. `cf d1` takes it only by ID (`db/d1.ts`). */
 export const databaseId = "a571afe0-a00d-4237-b107-a285f19264ac";
@@ -26,6 +26,8 @@ export default defineConfig(({ mode }) => ({
       // Skips Access for localhost: never part of a production build.
       DEV_AUTH_BYPASS_EMAIL: mode !== undefined && localModes.includes(mode) && bindings.secret(),
     },
+    // Deletes old completions (`scheduled` in src/server) daily at 4:00 in Asia/Tokyo (cron is in UTC).
+    triggers: [triggers.scheduled({ schedule: "0 19 * * *" })],
     workersDev: true,
     // Preview URLs per version would easily be left outside of Access.
     previewUrls: false,

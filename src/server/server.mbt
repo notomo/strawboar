@@ -8,6 +8,17 @@ pub fn fetch(
 }
 
 ///|
+/// Worker `scheduled` handler, called from `worker.js` by the daily cron of
+/// `cloudflare.config.ts`: deletes the completions that are no longer kept.
+pub fn scheduled(env : @cloudflare.Env) -> @js_async.Promise[Unit] {
+  @js_async.Promise::from_async(() => {
+    let before = @core.completion_retention_start(today())
+    let deleted = delete_completions_before(env.d1("DB"), before)
+    println("deleted \{deleted} completions done before \{before}")
+  })
+}
+
+///|
 async fn handle(request : @web.Request, env : @cloudflare.Env) -> @web.Response {
   let _identity = authenticate(request, env) catch {
     @cloudflare.AccessError(message) => {

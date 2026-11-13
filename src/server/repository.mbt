@@ -352,6 +352,18 @@ async fn list_recent_done(
 }
 
 ///|
+/// Deletes the completions done before `before` and returns how many.
+async fn delete_completions_before(
+  db : @cloudflare.D1Database,
+  before : @core.Date,
+) -> Int32 {
+  db
+  .prepare("DELETE FROM completions WHERE done_on < ?")
+  .bind([Text(before.to_string())])
+  .run()
+}
+
+///|
 let label_columns = "id, name, color"
 
 ///|

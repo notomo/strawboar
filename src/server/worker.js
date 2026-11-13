@@ -11,4 +11,8 @@ export default {
     handler ??= load();
     return handler.fetch(request, env);
   },
+  async scheduled(_controller, env) {
+    handler ??= load();
+    await handler.scheduled(env);
+  },
 };

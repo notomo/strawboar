@@ -9,6 +9,7 @@ and Cloudflare Workers.
 - Both the frontend and the API are written in MoonBit (JS target).
 - The frontend renders with its own small virtual DOM (`src/lib/html`), without a UI framework.
 - Data is stored in Cloudflare D1.
+- A daily Cron Trigger deletes completions older than 90 days.
 - Access is restricted by Cloudflare Access; the Worker also verifies the Access JWT.
 
 ## Development

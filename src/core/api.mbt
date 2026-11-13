@@ -14,6 +14,18 @@ pub(all) struct ChoreList {
 pub const RECENT_DAYS : Int32 = 7
 
 ///|
+/// Completions are kept for this many days, today included, and deleted
+/// afterwards by a daily cron. They are only read for `recent` and to undo one
+/// of them (the schedule is in `Chore`), so this must cover `RECENT_DAYS`.
+pub const COMPLETION_RETENTION_DAYS : Int32 = 90
+
+///|
+/// The date of the oldest completions kept on `today`.
+pub fn completion_retention_start(today : Date) -> Date {
+  today.add_days(1 - COMPLETION_RETENTION_DAYS)
+}
+
+///|
 #derive(Eq, ToJson, FromJson)
 pub(all) struct RecentDone {
   completion_id : Int32

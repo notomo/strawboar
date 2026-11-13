@@ -331,6 +331,16 @@ test "can_undo" {
 }
 
 ///|
+test "completion_retention_start" {
+  // Completions shown in `recent` can be undone, so they must be kept.
+  assert_true(@core.COMPLETION_RETENTION_DAYS >= @core.RECENT_DAYS)
+  inspect(
+    @core.completion_retention_start(date("2026-11-13")),
+    content="2026-08-16",
+  )
+}
+
+///|
 test "recent_monthly_first" {
   let done = (completion_id : Int32, chore_id : Int32) => {
     let r : @core.RecentDone = {

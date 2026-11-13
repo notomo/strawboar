@@ -11,5 +11,5 @@ supported_targets = "js"
 
 options(
   "allow-experimental-packages": [ "moonbitlang/core/async/js_async" ],
-  link: { "js": { "format": "esm", "exports": [ "fetch" ] } },
+  link: { "js": { "format": "esm", "exports": [ "fetch", "scheduled" ] } },
 )
