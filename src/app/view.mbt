@@ -289,11 +289,9 @@ fn menu_view(store : Store) -> Html {
         on_select=() => store.update(model => model.open_labels()),
         "Labels",
       ),
-      // Cloudflare Access handles this path itself and ends the session.
-      @ui.menu_item(
-        on_select=() => @web.navigate("/cdn-cgi/access/logout"),
-        "Log out",
-      ),
+      // Rarely used, so kept apart from the others.
+      @ui.menu_separator(),
+      @ui.menu_item(on_select=() => store.ask_confirm(ConfirmLogout), "Log out"),
     ],
   )
 }
@@ -359,10 +357,17 @@ fn undo_view(undo : Undo?, store : Store) -> Html {
 
 ///|
 /// Asks before an action that is hard to undo: archiving the chore or
-/// deleting the label open in the panel.
+/// deleting the label open in the panel, or logging out.
 fn confirm_view(model : Model, store : Store) -> Html {
   // `None` as the action only lets the dialog be closed.
   let (title, description, action) = match (model.confirm, model.panel) {
+    (Some(ConfirmLogout), _) =>
+      (
+        "Log out?",
+        "You need to sign in again to use the dashboard.",
+        // Cloudflare Access handles this path itself and ends the session.
+        Some(("Log out", () => @web.navigate("/cdn-cgi/access/logout"))),
+      )
     (Some(ConfirmDeleteLabel), Some(Labels({ id: Some(_), name, .. }))) =>
       (
         "Delete label?",

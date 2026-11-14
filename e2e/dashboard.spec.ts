@@ -364,6 +364,13 @@ test("logs out through Cloudflare Access", async ({ page }) => {
 
   await strawboar.getMenuButton().click();
   await strawboar.getMenuItem("Log out").click();
+  await strawboar.getConfirmCancelButton().click();
+  await expect(strawboar.getConfirmDialog()).toBeHidden();
+  await expect(strawboar.getToday()).toBeVisible();
+
+  await strawboar.getMenuButton().click();
+  await strawboar.getMenuItem("Log out").click();
+  await strawboar.getConfirmButton("Log out").click();
 
   await expect(page).toHaveURL(/\/cdn-cgi\/access\/logout$/);
 });

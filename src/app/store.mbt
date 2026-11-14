@@ -174,7 +174,7 @@ fn Store::import_definitions(self : Store) -> Unit {
 }
 
 ///|
-/// Asks before an action of the panel.
+/// Asks before an action.
 fn Store::ask_confirm(self : Store, confirm : Confirm) -> Unit {
   self.update(model => { ..model, confirm: Some(confirm), })
   self.app.after_render(() => @ui.show_dialog(CONFIRM_ID, modal=true))

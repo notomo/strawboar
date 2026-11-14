@@ -72,12 +72,14 @@ enum Tab {
 }
 
 ///|
-/// An action of the panel that asks for confirmation first.
+/// An action that asks for confirmation first. All but `ConfirmLogout` act
+/// on what the panel shows.
 #derive(Eq)
 enum Confirm {
   ConfirmArchive
   ConfirmUndo
   ConfirmDeleteLabel
+  ConfirmLogout
 }
 
 ///|

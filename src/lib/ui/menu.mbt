@@ -134,6 +134,16 @@ pub fn[C : @html.IsChildren] menu(
 }
 
 ///|
+/// A line between groups of items of a `menu`.
+pub fn menu_separator() -> @html.Html {
+  @html.div(
+    class="ui-menu-separator",
+    attrs=@html.Attrs::build().role("separator"),
+    ([] : Array[@html.Html]),
+  )
+}
+
+///|
 pub fn menu_item(on_select~ : () -> Unit, text : String) -> @html.Html {
   @html.button(
     class="ui-menu-item",
