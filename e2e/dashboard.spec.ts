@@ -357,6 +357,17 @@ test("serves the web app manifest", async ({ request }) => {
   expect((await request.get("/icon-192.png")).ok()).toBeTruthy();
 });
 
+test("logs out through Cloudflare Access", async ({ page }) => {
+  const strawboar = await openPage({ page });
+  // Access serves this path in production; locally it is answered here.
+  await page.route("**/cdn-cgi/access/logout", (route) => route.fulfill({ body: "logged out" }));
+
+  await strawboar.getMenuButton().click();
+  await strawboar.getMenuItem("Log out").click();
+
+  await expect(page).toHaveURL(/\/cdn-cgi\/access\/logout$/);
+});
+
 test("reloads the page when loading fails", async ({ page }) => {
   const strawboar = await openPage({ page, failFirstLoad: true });
   await expect(strawboar.getText("Failed to load chores.")).toBeVisible();

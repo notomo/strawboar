@@ -289,6 +289,11 @@ fn menu_view(store : Store) -> Html {
         on_select=() => store.update(model => model.open_labels()),
         "Labels",
       ),
+      // Cloudflare Access handles this path itself and ends the session.
+      @ui.menu_item(
+        on_select=() => @web.navigate("/cdn-cgi/access/logout"),
+        "Log out",
+      ),
     ],
   )
 }
