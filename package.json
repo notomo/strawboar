@@ -21,7 +21,7 @@
     "db:seed:check": "rm -rf .cloudflare/seed-check && node db/d1.ts migrations apply --local --persist-to .cloudflare/seed-check && node db/d1.ts raw --local --persist-to .cloudflare/seed-check --sql @db/seed.sql"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "2.0.0-beta.v.8",
+    "@cloudflare/vite-plugin": "2.0.0-beta.v.12",
     "@playwright/test": "^1.64.1",
     "cf": "1.0.0-beta.28",
     "vite": "^8.3.5"
