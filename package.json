@@ -5,7 +5,7 @@
   "scripts": {
     "setup": "git config --local include.path ../.gitconfig",
     "check_all": "node --run format && node --run check && node --run test && node --run db:seed:check && node --run test:e2e",
-    "check": "moon check && moon fmt --check",
+    "check": "moon check && moon fmt --check && tsc",
     "format": "moon fmt",
     "test": "moon test --target js",
     "test:e2e": "playwright test",
@@ -23,7 +23,9 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "2.0.0-beta.v.12",
     "@playwright/test": "^1.65.0",
+    "@types/node": "^26.6.6",
     "cf": "1.0.0-beta.28",
+    "typescript": "^7.0.2",
     "vite": "^8.3.6"
   }
 }

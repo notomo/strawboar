@@ -15,7 +15,7 @@ node --run dev            # Vite with the Worker and a local D1 (5173)
 node --run db:seed:local  # Replace the local D1 data with test data (db/seed.sql, dates relative to today)
 node --run db:seed:check  # Apply the seed to a fresh local D1 to check it still works (in check_all and CI)
 node --run build          # cf build (vite build, which runs moon build for the Worker)
-node --run check          # Type check and format check
+node --run check          # Type check (MoonBit, TypeScript) and format check
 node --run format         # Format MoonBit code
 node --run test           # MoonBit tests (js target)
 node --run test:e2e       # Playwright (desktop, mobile, tablet/WebKit) in parallel, each against its own vite preview (8788-8790) with a fresh local D1 (requires .dev.vars)

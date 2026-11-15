@@ -5,7 +5,11 @@
     "moduleResolution": "bundler",
     "noEmit": true,
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "types": ["node"]
   },
   "include": ["*.ts", "db/*.ts", "e2e/**/*.ts"]
 }
