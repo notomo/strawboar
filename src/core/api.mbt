@@ -17,6 +17,7 @@ pub const RECENT_DAYS : Int32 = 7
 /// Completions are kept for this many days, today included, and deleted
 /// afterwards by a daily cron. They are only read for `recent` and to undo one
 /// of them (the schedule is in `Chore`), so this must cover `RECENT_DAYS`.
+/// Those of chores due once are kept, as they are the record of the chore.
 pub const COMPLETION_RETENTION_DAYS : Int32 = 90
 
 ///|
@@ -32,6 +33,9 @@ pub(all) struct RecentDone {
   chore_id : Int32
   title : String
   done_on : Date
+  /// Whether the chore was due once, so that it is archived now. Undoing the
+  /// completion brings it back.
+  once : Bool
 }
 
 ///|

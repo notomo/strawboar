@@ -5,6 +5,16 @@ fn editor_content(
   store : Store,
 ) -> Array[Html] {
   let is_new = editor.id is None
+  let lead_days_field = (max : Int32) => {
+    number_field(
+      "chore-lead-days",
+      "Soon from (days before)",
+      min=0,
+      max~,
+      editor.lead_days,
+      store.edit_input((editor, lead_days) => { ..editor, lead_days, }),
+    )
+  }
   [
     @ui.dialog_header([
       @ui.dialog_title(id="panel-title", if is_new { "New" } else { "Edit" }),
@@ -87,26 +97,23 @@ fn editor_content(
                     store.edit_input((editor, day) => { ..editor, day, }),
                   )
                 },
-                number_field(
-                  "chore-lead-days",
-                  "Soon from (days before)",
-                  min=0,
-                  max=@core.MAX_INTERVAL_MONTHS * 28,
-                  editor.lead_days,
-                  store.edit_input((editor, lead_days) => {
-                    ..editor,
-                    lead_days,
-                  }),
-                ),
+                lead_days_field(@core.MAX_INTERVAL_MONTHS * 28),
               ],
             ),
+            (Once, "Once", [lead_days_field(@core.MAX_INTERVAL_DAYS)]),
           ],
           store,
         ),
-        if is_new {
+        // The due date of an existing chore follows its completions, unless
+        // it is due once.
+        if is_new || editor.repeat == Once {
           field_view(
             "chore-next-due",
-            "First due",
+            if editor.repeat == Once {
+              "Due"
+            } else {
+              "First due"
+            },
             @ui.input(
               id="chore-next-due",
               input_type=Date,
@@ -144,8 +151,8 @@ fn editor_content(
 }
 
 ///|
-/// Chooses whether the chore is due after it was done or on a fixed day,
-/// showing the fields of the selected kind.
+/// Chooses whether the chore is due after it was done, on a fixed day or only
+/// once, showing the fields of the selected kind.
 fn repeat_tabs(
   selected : RepeatKind,
   kinds : Array[(RepeatKind, String, Array[Html])],
@@ -155,6 +162,7 @@ fn repeat_tabs(
     match kind {
       AfterDone => "after-done"
       Monthly => "monthly"
+      Once => "once"
     }
   }
   @ui.field([

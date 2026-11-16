@@ -63,6 +63,12 @@ INSERT INTO chores (id, title, interval_days, next_due, last_done, labels) VALUE
 INSERT INTO chores (id, title, interval_days, next_due, archived) VALUES
   (9, 'Archived chore', 7, date('now', '+9 hours'), 1);
 
+-- Chores due once: a soon one, a later one and a done one, which is archived.
+INSERT INTO chores (id, title, interval_days, once_lead_days, next_due, last_done, archived, labels) VALUES
+  (34, 'Renew the passport', 1, 14, date('now', '+9 hours', '+6 days'), NULL, 0, '[]'),
+  (35, 'Book the car inspection', 1, 7, date('now', '+9 hours', '+30 days'), NULL, 0, '[4]'),
+  (36, 'File the tax return', 1, 7, date('now', '+9 hours', '+3 days'), date('now', '+9 hours', '-1 days'), 1, '[3]');
+
 -- Done: completions of the last 7 days. The latest of each chore can be undone.
 INSERT INTO completions (chore_id, done_on, previous_next_due, previous_last_done) VALUES
   (1, date('now', '+9 hours', '-6 days'), date('now', '+9 hours', '-5 days'), date('now', '+9 hours', '-8 days')),
@@ -74,4 +80,5 @@ INSERT INTO completions (chore_id, done_on, previous_next_due, previous_last_don
   (28, date('now', '+9 hours', '-2 days'), date('now', '+9 hours', '-2 days'), date('now', '+9 hours', '-16 days')),
   (31, date('now', '+9 hours', '-1 days'), date('now', '+9 hours', '-1 days'), date('now', '+9 hours', '-15 days')),
   (32, date('now', '+9 hours', '-2 days'), date('now', '+9 hours', '-2 days'), date('now', '+9 hours', '-62 days')),
-  (33, date('now', '+9 hours', '-5 days'), date('now', '+9 hours', '-5 days'), date('now', '+9 hours', '-185 days'));
+  (33, date('now', '+9 hours', '-5 days'), date('now', '+9 hours', '-5 days'), date('now', '+9 hours', '-185 days')),
+  (36, date('now', '+9 hours', '-1 days'), date('now', '+9 hours', '+3 days'), NULL);

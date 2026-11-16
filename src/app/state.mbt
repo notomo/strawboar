@@ -45,17 +45,24 @@ fn Model::start_completing(self : Model, id : Int32) -> Model? {
 
 ///|
 /// The chore is done: it can be undone from the toast for a while, and it is
-/// added to the recent completions.
+/// added to the recent completions. A chore due once is over, so it is removed
+/// like an archived one.
 fn Model::completed(
   self : Model,
   id : Int32,
   completed : @core.Completed,
 ) -> Model {
   let chore = completed.chore
+  let once = chore.repeat.is_once()
+  let model = if once { self.archived(id) } else { self }
   {
-    ..self,
+    ..model,
     completing: self.completing.filter(c => c != id),
-    chores: upsert(self.chores, chore),
+    chores: if once {
+      model.chores
+    } else {
+      upsert(self.chores, chore)
+    },
     undo: Some({ completion_id: completed.completion_id, title: chore.title, }),
     recent: match chore.last_done {
       Some(done_on) =>
@@ -65,6 +72,7 @@ fn Model::completed(
             chore_id: chore.id,
             title: chore.title,
             done_on,
+            once,
           },
           ..self.recent,
         ]
@@ -139,18 +147,22 @@ fn Model::open_chore(self : Model, id : Int32) -> Model {
     repeat: match chore.repeat {
       AfterDone(_) => AfterDone
       Monthly(_) => Monthly
+      Once(..) => Once
     },
-    interval: chore.repeat.approx_days().to_string(),
+    interval: match chore.repeat {
+      AfterDone(_) | Monthly(_) => chore.repeat.approx_days().to_string()
+      Once(..) => "7"
+    },
     months: match chore.repeat {
       Monthly({ months, .. }) => months.to_string()
-      AfterDone(_) => "1"
+      AfterDone(_) | Once(..) => "1"
     },
     day: match chore.repeat {
       Monthly({ day, .. }) => day.to_string()
-      AfterDone(_) => chore.next_due.ymd().2.to_string()
+      AfterDone(_) | Once(..) => chore.next_due.ymd().2.to_string()
     },
     lead_days: match chore.repeat {
-      Monthly({ lead_days, .. }) => lead_days.to_string()
+      Monthly({ lead_days, .. }) | Once(lead_days~) => lead_days.to_string()
       AfterDone(_) => "7"
     },
     next_due: chore.next_due.to_string(),

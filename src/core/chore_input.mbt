@@ -1,6 +1,7 @@
 ///|
 /// Fields a user can edit on a chore. `next_due` is the first due date and is
 /// only used when creating a chore; afterwards it follows the completions.
+/// A chore due once has no completions to follow, so it is its due date.
 pub(all) struct ChoreInput {
   title : String
   description : String

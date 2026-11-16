@@ -1,5 +1,5 @@
 ///|
-/// Short, e.g. `14d` or `monthly 5th`, because every row shows one.
+/// Short, e.g. `14d`, `monthly 5th` or `once`, because every row shows one.
 /// The panel has the full settings.
 fn interval_text(repeat : @core.Repeat) -> String {
   match repeat {
@@ -8,6 +8,7 @@ fn interval_text(repeat : @core.Repeat) -> String {
     AfterDone(days) => "\{days}d"
     Monthly({ months: 1, day, .. }) => "monthly \{ordinal(day)}"
     Monthly({ months, day, .. }) => "\{months}mo \{ordinal(day)}"
+    Once(..) => "once"
   }
 }
 

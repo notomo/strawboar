@@ -217,7 +217,14 @@ fn chore_row(
           ),
           span(
             style=[muted],
-            with_numbers(last_done_text(chore.last_done, today)),
+            with_numbers(
+              match chore.repeat {
+                // Its last done says nothing, as it is over when done.
+                Once(..) => "due \{short_date(chore.next_due)}"
+                AfterDone(_) | Monthly(_) =>
+                  last_done_text(chore.last_done, today)
+              },
+            ),
           ),
         ],
       ),
@@ -292,7 +299,8 @@ fn recent_view(
                 row_state(model, chore.id),
                 store,
               )
-            // An archived chore cannot be opened.
+            // An archived chore cannot be opened. One that was due once is
+            // archived by its completion, which can be undone from the menu.
             None =>
               li(style=[card_style()], [
                 div(
@@ -301,6 +309,24 @@ fn recent_view(
                   ],
                   [title_text(done.title, []), date_text(done.done_on)],
                 ),
+                if done.once {
+                  @ui.menu(
+                    id="completion-menu-\{done.completion_id}",
+                    label="Actions: \{done.title}",
+                    trigger_style=["font-size:1.25rem"],
+                    "⋮",
+                    [
+                      @ui.menu_item(
+                        on_select=() => {
+                          store.ask_confirm(ConfirmUndoDone(done.completion_id))
+                        },
+                        "Undo",
+                      ),
+                    ],
+                  )
+                } else {
+                  @html.nothing
+                },
               ])
           }
         },

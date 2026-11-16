@@ -31,6 +31,45 @@ test "decode_chore" {
       #|{"id":2,"title":"Rent","description":"Transfer.","monthly":{"months":1,"day":27,"lead_days":21},"next_due":"2026-10-27","last_done":"2026-09-27","labels":[]}
     ),
   )
+  // A chore due once has `once_lead_days`.
+  inspect(
+    decode(
+      (
+        #|{"id":3,"title":"Passport","description":"","interval_days":1,"monthly_months":null,"monthly_day":null,"monthly_lead_days":null,"once_lead_days":14,"next_due":"2026-12-01","last_done":null,"labels":"[]"}
+      ),
+    ),
+    content=(
+      #|{"id":3,"title":"Passport","description":"","once":{"lead_days":14},"next_due":"2026-12-01","last_done":null,"labels":[]}
+    ),
+  )
+}
+
+///|
+test "decode_recent_done" {
+  let once = (row : String) => {
+    try decode_recent_done(@json.parse(row)) catch {
+      _ => "error"
+    } noraise {
+      done => done.once.to_string()
+    }
+  }
+  inspect(
+    once(
+      (
+        #|{"completion_id":1,"chore_id":2,"title":"Bath","done_on":"2026-10-01","once_lead_days":null}
+      ),
+    ),
+    content="false",
+  )
+  inspect(
+    once(
+      (
+        #|{"completion_id":1,"chore_id":2,"title":"Passport","done_on":"2026-10-01","once_lead_days":0}
+      ),
+    ),
+    content="true",
+  )
+  inspect(once("[]"), content="error")
 }
 
 ///|
@@ -66,7 +105,14 @@ test "repeat_params" {
       }
     })
   }
-  assert_eq(show(AfterDone(7)), ["7", "null", "null", "null"])
+  assert_eq(show(AfterDone(7)), ["7", "null", "null", "null", "null"])
   let monthly : @core.Repeat = Monthly({ months: 2, day: 27, lead_days: 21, })
-  assert_eq(show(monthly), [monthly.approx_days().to_string(), "2", "27", "21"])
+  assert_eq(show(monthly), [
+    monthly.approx_days().to_string(),
+    "2",
+    "27",
+    "21",
+    "null",
+  ])
+  assert_eq(show(Once(lead_days=14)), ["1", "null", "null", "null", "14"])
 }

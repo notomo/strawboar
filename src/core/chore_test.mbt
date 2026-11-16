@@ -323,6 +323,7 @@ test "can_undo" {
       chore_id,
       title: "chore",
       done_on: date("2026-09-24"),
+      once: false,
     }
     r
   }
@@ -348,6 +349,7 @@ test "recent_monthly_first" {
       chore_id,
       title: "chore",
       done_on: date("2026-09-24"),
+      once: false,
     }
     r
   }
@@ -521,4 +523,88 @@ test "dashboard puts monthly chores first in each section" {
     "rent due", "rent soon", "weekly due", "weekly soon",
   ])
   assert_eq(titles(dashboard.later), ["rent later", "weekly later"])
+}
+
+///|
+test "a chore due once is soon from its lead days and keeps its due date" {
+  let c = chore(repeat=Once(lead_days=3), next_due="2026-10-10")
+  inspect(urgency_label(c, "2026-10-06"), content="later")
+  inspect(urgency_label(c, "2026-10-07"), content="soon")
+  inspect(urgency_label(c, "2026-10-12"), content="soon")
+  let done = c.complete(date("2026-10-08"))
+  inspect(done.next_due, content="2026-10-10")
+  assert_eq(done.last_done.map(d => d.to_string()), Some("2026-10-08"))
+  assert_true(done.repeat.is_once())
+  assert_false(chore().repeat.is_once())
+}
+
+///|
+test "edit moves a chore due once to the given due date" {
+  let once = edit_repeat(Once(lead_days=3))
+  let c = chore(repeat=Once(lead_days=0), next_due="2026-10-10")
+  inspect(c.edit(once).next_due, content="2026-10-10")
+  let moved = c.edit({ ..once, next_due: Some(date("2026-11-05")), })
+  inspect(moved.next_due, content="2026-11-05")
+  assert_true(moved.repeat == Once(lead_days=3))
+  // A recurring chore can become due once, and the other way around.
+  let c = chore(interval_days=7, next_due="2026-09-27", last_done="2026-09-20")
+  inspect(c.edit(once).next_due, content="2026-09-27")
+  let c = chore(repeat=Once(lead_days=0), next_due="2026-10-10")
+  inspect(c.edit(edit_input(7)).next_due, content="2026-10-10")
+}
+
+///|
+test "once json" {
+  let c = chore(repeat=Once(lead_days=3), next_due="2026-10-10")
+  inspect(
+    c.to_json().stringify(),
+    content=(
+      #|{"id":1,"title":"chore","description":"","once":{"lead_days":3},"next_due":"2026-10-10","last_done":null,"labels":[]}
+    ),
+  )
+  let decoded : @core.Chore = @json.from_json(c.to_json())
+  assert_true(decoded == c)
+}
+
+///|
+test "validate once" {
+  let error = (lead_days : Int32) => {
+    try
+      edit_repeat(Once(lead_days~)).validate([label(1, "bath")], chores=[])
+    catch {
+      ValidationError(message) => message
+    } noraise {
+      _ => "ok"
+    }
+  }
+  inspect(error(0), content="ok")
+  inspect(error(@core.MAX_INTERVAL_DAYS), content="ok")
+  inspect(error(-1), content="Lead days must be between 0 and 3650.")
+  inspect(error(3651), content="Lead days must be between 0 and 3650.")
+}
+
+///|
+test "dashboard puts chores due once first, by due date" {
+  let once = (id : Int32, title : String, next_due : String) => {
+    chore(id~, title~, repeat=Once(lead_days=3), next_due~)
+  }
+  let chores = [
+    chore(id=1, title="weekly due", interval_days=7, next_due="2026-10-09"),
+    chore(
+      id=2,
+      title="rent due",
+      repeat=monthly(lead_days=3),
+      next_due="2026-10-11",
+    ),
+    once(3, "once soon", "2026-10-13"),
+    once(4, "once overdue", "2026-10-01"),
+    once(5, "once later 2", "2026-12-01"),
+    once(6, "once later 1", "2026-11-01"),
+  ]
+  let dashboard = @core.Dashboard::new(chores, date("2026-10-11"))
+  let titles = (chores : Array[@core.Chore]) => chores.map(c => c.title)
+  assert_eq(titles(dashboard.soon), [
+    "once overdue", "once soon", "rent due", "weekly due",
+  ])
+  assert_eq(titles(dashboard.later), ["once later 1", "once later 2"])
 }

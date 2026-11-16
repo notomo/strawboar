@@ -27,6 +27,9 @@ pub(all) enum Repeat {
   AfterDone(Int32)
   /// Due on a fixed day, whenever it was done.
   Monthly(Monthly)
+  /// Due only once, on the due date of the chore, and finished when done.
+  /// The chore is `Soon` from this many days before it is due.
+  Once(lead_days~ : Int32)
 }
 
 ///|
@@ -36,34 +39,45 @@ pub extend Repeat with Eq::{equal, not_equal}
 pub const MAX_INTERVAL_MONTHS : Int32 = 120
 
 ///|
-/// The approximate number of days between due dates.
+/// The approximate number of days between due dates. A chore due once has
+/// none, so it is a day.
 pub fn Repeat::approx_days(self : Repeat) -> Int32 {
   match self {
     AfterDone(days) => days
     Monthly({ months, .. }) => months * 30
+    Once(..) => 1
   }
+}
+
+///|
+/// Whether a chore is over once done, instead of being due again. The Worker
+/// archives it then, and unarchives it when the completion is undone.
+pub fn Repeat::is_once(self : Repeat) -> Bool {
+  self is Once(..)
 }
 
 ///|
 /// The due date in the month of `date` for a monthly chore, otherwise `date`.
 pub fn Repeat::align(self : Repeat, date : Date) -> Date {
   match self {
-    AfterDone(_) => date
+    AfterDone(_) | Once(..) => date
     Monthly({ day, .. }) => date.add_months(0, day~)
   }
 }
 
 ///|
-/// The field of a chore JSON object: `interval_days` or `monthly`.
+/// The field of a chore JSON object: `interval_days`, `monthly` or `once`.
 fn Repeat::json_field(self : Repeat) -> (String, Json) {
   match self {
     AfterDone(days) => ("interval_days", Json(days))
     Monthly(monthly) => ("monthly", monthly.to_json())
+    Once(lead_days~) => ("once", { "lead_days": Json(lead_days) })
   }
 }
 
 ///|
-/// Reads the repeat of a chore JSON object. `monthly` takes precedence.
+/// Reads the repeat of a chore JSON object. `monthly` takes precedence, then
+/// `once`.
 fn Repeat::read_json(
   json : Json,
   path : @json.JsonPath,
@@ -71,10 +85,12 @@ fn Repeat::read_json(
   match json {
     { "monthly": Object(_) as monthly, .. } =>
       Monthly(@json.from_json(monthly, path=path.add_key("monthly")))
+    { "once": { "lead_days": Number(lead_days, ..), .. }, .. } =>
+      Once(lead_days=lead_days.to_int())
     { "interval_days": Number(days, ..), .. } => AfterDone(days.to_int())
     _ =>
       raise @json.JsonDecodeError(
-        (path, "interval_days or monthly is required"),
+        (path, "interval_days, monthly or once is required"),
       )
   }
 }
@@ -97,6 +113,13 @@ fn Repeat::validate(self : Repeat) -> Unit raise ValidationError {
       guard lead_days >= 0 && lead_days <= max_lead_days else {
         raise ValidationError(
           "Lead days must be between 0 and \{max_lead_days}.",
+        )
+      }
+    }
+    Once(lead_days~) => {
+      guard lead_days is (0..<=MAX_INTERVAL_DAYS) else {
+        raise ValidationError(
+          "Lead days must be between 0 and \{MAX_INTERVAL_DAYS}.",
         )
       }
     }

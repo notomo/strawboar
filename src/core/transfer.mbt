@@ -128,7 +128,7 @@ pub fn parse_definitions(text : String) -> Definitions raise ValidationError {
       let definition : ChoreDefinition = @json.from_json(item) catch {
         _ =>
           raise ValidationError(
-            "Chore #\{i + 1}: title, interval_days or monthly, and labels are required.",
+            "Chore #\{i + 1}: title, interval_days, monthly or once, and labels are required.",
           )
       }
       definition
@@ -217,7 +217,7 @@ pub(all) struct ChoreChanges {
 ///|
 /// Resolves the chores of the plan once its labels are saved. A new chore
 /// without `next_due` is due `today` (see `ChoreInput::first_due`). Existing chores keep their schedule like
-/// when edited, so their `next_due` is ignored.
+/// when edited, so their `next_due` is ignored unless they are due once.
 pub fn ImportPlan::chore_changes(
   self : ImportPlan,
   existing : Array[Chore],

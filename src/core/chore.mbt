@@ -1,5 +1,5 @@
 ///|
-/// A recurring chore. See `Repeat` for when it is due again.
+/// A chore, recurring or due once. See `Repeat` for when it is due again.
 #derive(Eq)
 pub(all) struct Chore {
   id : Int32
@@ -34,12 +34,13 @@ pub fn Chore::days_left(self : Chore, today : Date) -> Int32 {
 
 ///|
 /// `Soon` covers the last 20% of the interval (at least one day for long
-/// intervals), or the lead days of a monthly chore, and anything overdue.
+/// intervals), or the lead days of a monthly chore or one due once, and
+/// anything overdue.
 pub fn Chore::urgency(self : Chore, today : Date) -> Urgency {
   let days_left = self.days_left(today)
   let soon = match self.repeat {
     AfterDone(days) => days_left * 5 <= days
-    Monthly({ lead_days, .. }) => days_left <= lead_days
+    Monthly({ lead_days, .. }) | Once(lead_days~) => days_left <= lead_days
   }
   match soon {
     true => Soon
@@ -48,8 +49,21 @@ pub fn Chore::urgency(self : Chore, today : Date) -> Urgency {
 }
 
 ///|
-/// Orders by elapsed fraction of the interval, most elapsed first.
+/// Orders by due date, earliest first.
+fn Chore::compare_due(self : Chore, other : Chore) -> Int32 {
+  match self.next_due.compare(other.next_due) {
+    0 => self.title.compare(other.title)
+    order => order
+  }
+}
+
+///|
+/// Orders by elapsed fraction of the interval, most elapsed first. Chores due
+/// once have no interval and are ordered by due date.
 fn Chore::compare_progress(self : Chore, other : Chore, today : Date) -> Int32 {
+  if self.repeat.is_once() && other.repeat.is_once() {
+    return self.compare_due(other)
+  }
   // (interval - left) / interval, compared without division
   let (self_days, other_days) = (
     self.repeat.approx_days(),
@@ -66,6 +80,7 @@ fn Chore::compare_progress(self : Chore, other : Chore, today : Date) -> Int32 {
 ///|
 /// Returns the chore after being done on `today`. A monthly chore moves to its
 /// next due date even when done late or early, so that none is skipped.
+/// A chore due once keeps its due date (see `Repeat::is_once`).
 pub fn Chore::complete(self : Chore, today : Date) -> Chore {
   {
     ..self,
@@ -73,6 +88,7 @@ pub fn Chore::complete(self : Chore, today : Date) -> Chore {
     next_due: match self.repeat {
       AfterDone(days) => today.add_days(days)
       Monthly({ months, day, .. }) => self.next_due.add_months(months, day~)
+      Once(..) => self.next_due
     },
   }
 }
@@ -82,7 +98,8 @@ pub fn Chore::complete(self : Chore, today : Date) -> Chore {
 /// right away. Once done, it is due `days` after the last completion; a chore
 /// never done keeps its due date. A monthly chore is due on its day in the
 /// month it is due. A chore that becomes monthly is not due earlier than
-/// before, so that it does not become soon right after it was done.
+/// before, so that it does not become soon right after it was done. A chore
+/// due once is due on the `next_due` of the input if given.
 pub fn Chore::edit(self : Chore, input : ChoreInput) -> Chore {
   {
     ..self,
@@ -101,6 +118,7 @@ pub fn Chore::edit(self : Chore, input : ChoreInput) -> Chore {
           _ => next_due
         }
       }
+      (Once(..), _) => input.next_due.unwrap_or(self.next_due)
     },
   }
 }
@@ -123,20 +141,23 @@ pub(all) struct Dashboard {
 }
 
 ///|
-/// Monthly chores come first, as they are of a different nature.
+/// Chores due once come first and then monthly ones, as they are of a
+/// different nature.
 fn Chore::compare_kind(self : Chore, other : Chore) -> Int32 {
   let rank = (chore : Chore) => {
     match chore.repeat {
-      Monthly(_) => 0
-      AfterDone(_) => 1
+      Once(..) => 0
+      Monthly(_) => 1
+      AfterDone(_) => 2
     }
   }
   rank(self).compare(rank(other))
 }
 
 ///|
-/// Each section puts monthly chores first. Soon chores are then ordered by
-/// progress, so overdue ones come first, and later chores by due date.
+/// Each section puts chores due once first and then monthly ones. Soon chores
+/// are then ordered by progress, so overdue ones come first, and later chores
+/// by due date.
 pub fn Dashboard::new(chores : Array[Chore], today : Date) -> Dashboard {
   let then_by = (a : Chore, b : Chore, compare : (Chore, Chore) -> Int32) => {
     match a.compare_kind(b) {
@@ -153,14 +174,7 @@ pub fn Dashboard::new(chores : Array[Chore], today : Date) -> Dashboard {
   let soon = pick(Soon)
   soon.sort_by(by_progress)
   let later = pick(Later)
-  later.sort_by((a, b) => {
-    then_by(a, b, (a, b) => {
-      match a.next_due.compare(b.next_due) {
-        0 => a.title.compare(b.title)
-        order => order
-      }
-    })
-  })
+  later.sort_by((a, b) => then_by(a, b, (a, b) => a.compare_due(b)))
   { soon, later, }
 }
 

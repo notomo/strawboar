@@ -120,7 +120,7 @@ test "parse_definitions errors" {
         ),
       )
     }),
-    content="Chore #1: title, interval_days or monthly, and labels are required.",
+    content="Chore #1: title, interval_days, monthly or once, and labels are required.",
   )
 }
 
@@ -256,6 +256,34 @@ test "monthly definitions" {
     #|{"labels":[],"chores":[{"title":"Rent","monthly":{"months":1},"labels":[]}]}
   inspect(
     import_error(() => ignore(@core.parse_definitions(invalid))),
-    content="Chore #1: title, interval_days or monthly, and labels are required.",
+    content="Chore #1: title, interval_days, monthly or once, and labels are required.",
+  )
+}
+
+///|
+test "once definitions" {
+  let text =
+    #|{"labels":[],"chores":[
+    #|  {"title":"Passport","once":{"lead_days":14},"next_due":"2026-12-01","labels":[]},
+    #|  {"title":"Tires","once":{"lead_days":0},"labels":[]}
+    #|]}
+  let defs = @core.parse_definitions(text)
+  assert_true(
+    defs.chores.map(c => c.repeat) == [Once(lead_days=14), Once(lead_days=0)],
+  )
+  // Unlike a recurring chore, an existing one moves to the imported due date.
+  let existing = chore(id=1, title="Passport", next_due="2026-11-01")
+  let changes = @core.ImportPlan::new([], defs).chore_changes(
+    [existing],
+    [],
+    date("2026-09-30"),
+  )
+  assert_eq(changes.updates.map(c => c.next_due.to_string()), ["2026-12-01"])
+  assert_eq(changes.creates.map(c => c.1.to_string()), ["2026-09-30"])
+  inspect(
+    defs.chores[0].to_json().stringify(),
+    content=(
+      #|{"title":"Passport","once":{"lead_days":14},"labels":[],"next_due":"2026-12-01"}
+    ),
   )
 }

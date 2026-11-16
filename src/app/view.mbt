@@ -357,7 +357,7 @@ fn undo_view(undo : Undo?, store : Store) -> Html {
 
 ///|
 /// Asks before an action that is hard to undo: archiving the chore or
-/// deleting the label open in the panel, or logging out.
+/// deleting the label open in the panel, undoing a completion, or logging out.
 fn confirm_view(model : Model, store : Store) -> Html {
   // `None` as the action only lets the dialog be closed.
   let (title, description, action) = match (model.confirm, model.panel) {
@@ -394,6 +394,17 @@ fn confirm_view(model : Model, store : Store) -> Html {
             "\"\{title}\" was not done in the last 7 days.",
             None,
           )
+      }
+    (Some(ConfirmUndoDone(completion_id)), _) =>
+      match
+        model.recent.iter().find_first(r => r.completion_id == completion_id) {
+        Some(done) =>
+          (
+            "Undo done?",
+            "\"\{done.title}\" done on \{short_date(done.done_on)} is back on the dashboard.",
+            Some(("Undo", () => store.undo_completion(completion_id))),
+          )
+        None => ("", "", None)
       }
     _ => ("", "", None)
   }

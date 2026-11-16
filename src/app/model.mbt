@@ -11,6 +11,7 @@ enum Load {
 enum RepeatKind {
   AfterDone
   Monthly
+  Once
 }
 
 ///|
@@ -27,7 +28,9 @@ struct Editor {
   months : String
   /// Day of the month. A new chore uses the day of `next_due` instead.
   day : String
+  /// Of a monthly chore or one due once.
   lead_days : String
+  /// The first due date of a new chore, or the due date of one due once.
   next_due : String
   /// Selected label ids.
   labels : Array[Int32]
@@ -72,12 +75,15 @@ enum Tab {
 }
 
 ///|
-/// An action that asks for confirmation first. All but `ConfirmLogout` act
-/// on what the panel shows.
+/// An action that asks for confirmation first. All but `ConfirmLogout` and
+/// `ConfirmUndoDone` act on what the panel shows.
 #derive(Eq)
 enum Confirm {
   ConfirmArchive
   ConfirmUndo
+  /// Undoes the completion of this id, of a chore that was due once: it is
+  /// archived, so it cannot be opened in the panel.
+  ConfirmUndoDone(Int32)
   ConfirmDeleteLabel
   ConfirmLogout
 }
@@ -132,10 +138,11 @@ fn Editor::input(
   labels : Array[@core.Label],
   chores : Array[@core.Chore],
 ) -> @core.ChoreInput raise @core.ValidationError {
-  // The due date of an existing chore follows its completions.
-  let next_due = match self.id {
-    Some(_) => None
-    None =>
+  // The due date of an existing chore follows its completions, unless it is
+  // due once.
+  let next_due = match (self.id, self.repeat) {
+    (Some(_), AfterDone | Monthly) => None
+    (None, _) | (_, Once) =>
       Some(
         @core.Date::parse(self.next_due) catch {
           _ => raise ValidationError("Next due must be a date.")
@@ -163,6 +170,8 @@ fn Editor::input(
         },
         lead_days: number(self.lead_days, "Lead days must be a number."),
       })
+    Once =>
+      Once(lead_days=number(self.lead_days, "Lead days must be a number."))
   }
   let input : @core.ChoreInput = {
     title: self.title,

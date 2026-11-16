@@ -70,6 +70,7 @@ export async function openPage({ page, failFirstLoad = false }: { page: Page; fa
     getLabelToggle: (name: string) =>
       editor.getByRole("group", { name: "Labels" }).getByRole("button", { name, exact: true }),
     getFirstDueInput: () => editor.getByLabel("First due"),
+    getDueInput: () => editor.getByLabel("Due", { exact: true }),
     getEditorError: () => editor.locator("#chore-editor-error"),
     getSaveButton: () => editor.getByRole("button", { name: "Save" }),
     getCloseButton: () => editor.getByRole("button", { name: "Close" }),
@@ -122,6 +123,16 @@ export async function openPage({ page, failFirstLoad = false }: { page: Page; fa
       await strawboarPage.getMonthsInput().fill("1");
       await strawboarPage.getLeadDaysInput().fill(leadDays);
       await strawboarPage.getFirstDueInput().fill(firstDue);
+      await strawboarPage.getSaveButton().click();
+      await expect(editor).toBeHidden();
+    },
+
+    addOnceChore: async (title: string, { due, leadDays }: { due: string; leadDays: string }) => {
+      await strawboarPage.getAddButton().click();
+      await strawboarPage.getTitleInput().fill(title);
+      await strawboarPage.getRepeatTab("Once").click();
+      await strawboarPage.getLeadDaysInput().fill(leadDays);
+      await strawboarPage.getDueInput().fill(due);
       await strawboarPage.getSaveButton().click();
       await expect(editor).toBeHidden();
     },
@@ -198,6 +209,13 @@ export async function openPage({ page, failFirstLoad = false }: { page: Page; fa
       await strawboarPage.askUndoLastDone();
       await strawboarPage.getConfirmButton("Undo").click();
       await expect(confirmDialog).toBeHidden();
+    },
+
+    // Asks to undo the completion of a chore that was due once, from its row in Done.
+    askUndoRecent: async (title: string) => {
+      await strawboarPage.getRecentRow(title).getByRole("button", { name: `Actions: ${title}` }).click();
+      await strawboarPage.getMenuItem("Undo").click();
+      await expect(confirmDialog).toBeVisible();
     },
 
     toggleLabelFilter: async (name: string) => {

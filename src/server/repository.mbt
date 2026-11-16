@@ -1,9 +1,9 @@
 ///|
-let chore_columns = "id, title, description, interval_days, monthly_months, monthly_day, monthly_lead_days, next_due, last_done, labels"
+let chore_columns = "id, title, description, interval_days, monthly_months, monthly_day, monthly_lead_days, once_lead_days, next_due, last_done, labels"
 
 ///|
-/// `labels` is stored as a JSON text column of label ids, and a monthly chore
-/// has the `monthly_*` columns set.
+/// `labels` is stored as a JSON text column of label ids, a monthly chore
+/// has the `monthly_*` columns set, and one due once `once_lead_days`.
 fn decode_chore(row : Json) -> @core.Chore raise ApiError {
   guard row is Object(fields) && fields.get("labels") is Some(String(labels)) else {
     raise InternalError("invalid chore row: labels")
@@ -20,6 +20,9 @@ fn decode_chore(row : Json) -> @core.Chore raise ApiError {
       ..
     } {
     fields["monthly"] = { "months": months, "day": day, "lead_days": lead_days }
+  }
+  if row is { "once_lead_days": Number(_) as lead_days, .. } {
+    fields["once"] = { "lead_days": lead_days }
   }
   @json.from_json(Json::object(fields)) catch {
     error => raise InternalError("invalid chore row: \{error}")
@@ -48,17 +51,21 @@ fn labels_param(labels : Array[Int32]) -> @cloudflare.D1Param {
 }
 
 ///|
-/// Parameters of `interval_days, monthly_months, monthly_day, monthly_lead_days`.
+/// Parameters of `interval_days, monthly_months, monthly_day,
+/// monthly_lead_days, once_lead_days`.
 fn repeat_params(repeat : @core.Repeat) -> Array[@cloudflare.D1Param] {
   match repeat {
-    AfterDone(days) => [Integer(days), Null, Null, Null]
+    AfterDone(days) => [Integer(days), Null, Null, Null, Null]
     Monthly({ months, day, lead_days, }) =>
       [
         Integer(repeat.approx_days()),
         Integer(months),
         Integer(day),
         Integer(lead_days),
+        Null,
       ]
+    Once(lead_days~) =>
+      [Integer(repeat.approx_days()), Null, Null, Null, Integer(lead_days)]
   }
 }
 
@@ -105,7 +112,7 @@ fn insert_chore_statement(
 ) -> @cloudflare.D1PreparedStatement {
   db
   .prepare(
-    "INSERT INTO chores (title, description, interval_days, monthly_months, monthly_day, monthly_lead_days, next_due, labels) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING \{chore_columns}",
+    "INSERT INTO chores (title, description, interval_days, monthly_months, monthly_day, monthly_lead_days, once_lead_days, next_due, labels) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING \{chore_columns}",
   )
   .bind(
     [
@@ -125,7 +132,7 @@ fn update_chore_statement(
 ) -> @cloudflare.D1PreparedStatement {
   db
   .prepare(
-    "UPDATE chores SET title = ?, description = ?, interval_days = ?, monthly_months = ?, monthly_day = ?, monthly_lead_days = ?, next_due = ?, labels = ? WHERE id = ? AND archived = 0 RETURNING \{chore_columns}",
+    "UPDATE chores SET title = ?, description = ?, interval_days = ?, monthly_months = ?, monthly_day = ?, monthly_lead_days = ?, once_lead_days = ?, next_due = ?, labels = ? WHERE id = ? AND archived = 0 RETURNING \{chore_columns}",
   )
   .bind(
     [
@@ -203,6 +210,7 @@ async fn archive_chore(db : @cloudflare.D1Database, id : Int32) -> Unit {
 ///|
 /// Raises `Conflict` when the chore was completed or edited after it was read,
 /// e.g. by a second press of the button, so that it is not completed twice.
+/// A chore due once is archived, as it is over (see `@core.Repeat::is_once`).
 async fn complete_chore(
   db : @cloudflare.D1Database,
   id : Int32,
@@ -232,12 +240,13 @@ async fn complete_chore(
     ),
     db
     .prepare(
-      "UPDATE chores SET next_due = ?, last_done = ? WHERE \{unchanged} RETURNING \{chore_columns}",
+      "UPDATE chores SET next_due = ?, last_done = ?, archived = ? WHERE \{unchanged} RETURNING \{chore_columns}",
     )
     .bind(
       [
         date_param(Some(after.next_due)),
         date_param(after.last_done),
+        Integer(if after.repeat.is_once() { 1 } else { 0 }),
         ..unchanged_params,
       ],
     ),
@@ -260,14 +269,16 @@ async fn complete_chore(
 ///|
 /// Deletes the completion and restores the chore to the state before it.
 /// Only the latest completion of a chore can be undone (see `@core.RecentDone::can_undo`),
-/// and `Conflict` is raised if another one is added meanwhile.
+/// and `Conflict` is raised if another one is added meanwhile. A chore due
+/// once was archived by the completion, so it is unarchived, unless its title
+/// was taken by another chore since.
 async fn undo_completion(
   db : @cloudflare.D1Database,
   completion_id : Int32,
 ) -> @core.Chore {
   let rows = db
     .prepare(
-      "SELECT chore_id, previous_next_due, previous_last_done, (SELECT MAX(latest.id) FROM completions AS latest WHERE latest.chore_id = completions.chore_id) AS latest_id FROM completions WHERE id = ?",
+      "SELECT chore_id, previous_next_due, previous_last_done, (SELECT MAX(latest.id) FROM completions AS latest WHERE latest.chore_id = completions.chore_id) AS latest_id, (SELECT chores.title FROM chores JOIN chores AS other ON other.title = chores.title AND other.archived = 0 AND other.id != chores.id WHERE chores.id = completions.chore_id AND chores.once_lead_days IS NOT NULL) AS taken_title FROM completions WHERE id = ?",
     )
     .bind([Integer(completion_id)])
     .all()
@@ -278,10 +289,14 @@ async fn undo_completion(
         "previous_next_due": String(_) as previous_next_due,
         "previous_last_done": previous_last_done,
         "latest_id": Number(latest_id, ..),
+        "taken_title": taken_title,
         ..
       }
     ) else {
     raise NotFound
+  }
+  if taken_title is String(title) {
+    raise BadRequest("A chore titled \{title} already exists.")
   }
   guard latest_id.to_int() == completion_id else {
     raise BadRequest("Only the latest completion of a chore can be undone.")
@@ -296,7 +311,7 @@ async fn undo_completion(
   let results = db.batch([
     db
     .prepare(
-      "UPDATE chores SET next_due = ?, last_done = ? WHERE id = ? AND \{latest} RETURNING \{chore_columns}",
+      "UPDATE chores SET next_due = ?, last_done = ?, archived = CASE WHEN once_lead_days IS NULL THEN archived ELSE 0 END WHERE id = ? AND \{latest} RETURNING \{chore_columns}",
     )
     .bind(
       [
@@ -340,25 +355,39 @@ async fn list_recent_done(
 ) -> Array[@core.RecentDone] {
   let rows = db
     .prepare(
-      "SELECT completions.id AS completion_id, completions.chore_id, chores.title, completions.done_on FROM completions JOIN chores ON chores.id = completions.chore_id WHERE completions.done_on >= ? ORDER BY completions.done_on DESC, completions.id DESC",
+      "SELECT completions.id AS completion_id, completions.chore_id, chores.title, completions.done_on, chores.once_lead_days FROM completions JOIN chores ON chores.id = completions.chore_id WHERE completions.done_on >= ? ORDER BY completions.done_on DESC, completions.id DESC",
     )
     .bind([Text(since.to_string())])
     .all()
-  decode_rows(rows).map(row => {
-    @json.from_json(row) catch {
-      error => raise InternalError("invalid completion row: \{error}")
-    }
-  })
+  decode_rows(rows).map(decode_recent_done)
 }
 
 ///|
-/// Deletes the completions done before `before` and returns how many.
+/// `once` is whether the chore has `once_lead_days`.
+fn decode_recent_done(row : Json) -> @core.RecentDone raise ApiError {
+  guard row is Object(fields) else {
+    raise InternalError("invalid completion row")
+  }
+  let fields = fields.copy()
+  fields["once"] = Json::boolean(
+    fields.get("once_lead_days") is Some(Number(_)),
+  )
+  @json.from_json(Json::object(fields)) catch {
+    error => raise InternalError("invalid completion row: \{error}")
+  }
+}
+
+///|
+/// Deletes the completions done before `before` and returns how many. Those
+/// of chores due once are kept (see `@core.COMPLETION_RETENTION_DAYS`).
 async fn delete_completions_before(
   db : @cloudflare.D1Database,
   before : @core.Date,
 ) -> Int32 {
   db
-  .prepare("DELETE FROM completions WHERE done_on < ?")
+  .prepare(
+    "DELETE FROM completions WHERE done_on < ? AND chore_id NOT IN (SELECT id FROM chores WHERE once_lead_days IS NOT NULL)",
+  )
   .bind([Text(before.to_string())])
   .run()
 }

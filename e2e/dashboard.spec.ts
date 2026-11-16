@@ -290,7 +290,7 @@ test("exports and imports definitions", async ({ page }, testInfo) => {
 
   await strawboar.importDefinitions(JSON.stringify({ labels: [], chores: [{}] }));
   await expect(strawboar.getTransferError()).toHaveText(
-    "Chore #1: title, interval_days or monthly, and labels are required.",
+    "Chore #1: title, interval_days, monthly or once, and labels are required.",
   );
 
   // Matched by name and title: existing ones are updated and others are added.
@@ -436,6 +436,49 @@ test("keeps a monthly chore on its day", async ({ page }, testInfo) => {
   await expect(strawboar.getEditor()).toBeHidden();
   await strawboar.openLater();
   await expect(strawboar.getLaterRow(title)).toContainText(shortDate(10));
+});
+
+test("finishes a chore due once and brings it back", async ({ page }, testInfo) => {
+  const title = uniqueTitle(testInfo, "Renew passport");
+  const strawboar = await openPage({ page });
+
+  await strawboar.addOnceChore(title, { due: isoDate(10), leadDays: "3" });
+  await expect(strawboar.getSoonRow(title)).toHaveCount(0);
+  await strawboar.openLater();
+  await expect(strawboar.getLaterRow(title)).toContainText(shortDate(10));
+
+  // Its due date can be edited, as it does not follow completions.
+  await strawboar.openChore(title);
+  await expect(strawboar.getRepeatTab("Once")).toHaveAttribute("aria-selected", "true");
+  await expect(strawboar.getDueInput()).toHaveValue(isoDate(10));
+  await strawboar.getDueInput().fill(isoDate(2));
+  await strawboar.save();
+  await expect(strawboar.getEditor()).toBeHidden();
+  await strawboar.openSoon();
+  await expect(strawboar.getSoonRow(title)).toContainText("once");
+  await expect(strawboar.getSoonRow(title)).toContainText(`due ${shortDate(2)}`);
+
+  // Done, it is over instead of being due again.
+  await strawboar.complete(title);
+  await expect(strawboar.getUndoToast()).toContainText(`Done: ${title}`);
+  await expect(strawboar.getSoonRow(title)).toHaveCount(0);
+  await strawboar.reload();
+  await expect(strawboar.getToday()).not.toBeEmpty();
+  await expect(strawboar.getSoonRow(title)).toHaveCount(0);
+  await strawboar.openLater();
+  await expect(strawboar.getLaterRow(title)).toHaveCount(0);
+  await strawboar.openRecent();
+  await expect(strawboar.getRecentRow(title)).toBeVisible();
+
+  await strawboar.askUndoRecent(title);
+  await expect(strawboar.getConfirmDialog()).toContainText(`done on ${shortDate(0)}`);
+  await strawboar.getConfirmButton("Undo").click();
+  await expect(strawboar.getRecentRow(title)).toHaveCount(0);
+  await strawboar.openSoon();
+  await expect(strawboar.getSoonRow(title)).toBeVisible();
+
+  await strawboar.reload();
+  await expect(strawboar.getSoonRow(title)).toContainText(`due ${shortDate(2)}`);
 });
 
 test("edits and archives a chore", async ({ page }, testInfo) => {

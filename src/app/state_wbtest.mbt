@@ -45,13 +45,57 @@ test "a completed chore can be undone and is recent" {
   assert_true(model.undo == Some({ completion_id: 10, title: "chore 1", }))
   assert_true(
     model.recent ==
-    [{ completion_id: 10, chore_id: 1, title: "chore 1", done_on, }],
+    [
+      {
+        completion_id: 10,
+        chore_id: 1,
+        title: "chore 1",
+        done_on,
+        once: false,
+      },
+    ],
   )
 
   // Undoing removes it before the response.
   let undone = model.start_undo(10)
   assert_true(undone.undo == None)
   assert_true(undone.recent == [])
+}
+
+///|
+test "a completed chore due once is removed and can be undone" {
+  let done_on = test_date("2026-09-24")
+  let once = { ..test_chore(1), repeat: Once(lead_days=3), }
+  let model = { ..test_model(), chores: [once, test_chore(2)], }.open_chore(1)
+  let chore = { ..once, last_done: Some(done_on), }
+  let model = model.completed(1, { completion_id: 10, chore, })
+  assert_eq(model.chores.map(c => c.id), [2])
+  assert_false(model.panel_open)
+  assert_true(model.undo == Some({ completion_id: 10, title: "chore 1", }))
+  assert_true(
+    model.recent ==
+    [{ completion_id: 10, chore_id: 1, title: "chore 1", done_on, once: true, }],
+  )
+  // Undoing brings it back.
+  assert_eq(model.start_undo(10).undone(once).chores.map(c => c.id), [2, 1])
+}
+
+///|
+test "a chore due once sends its due date when edited" {
+  let once = { ..test_chore(1), repeat: Once(lead_days=3), }
+  let model = { ..test_model(), chores: [once], }.open_chore(1)
+  let editor = model.editor().unwrap()
+  assert_true(editor.repeat == Once)
+  assert_eq((editor.lead_days, editor.next_due), ("3", "2026-09-30"))
+  let (_, request) = model
+    .edit(editor => { ..editor, next_due: "2026-10-05", lead_days: "0", })
+    .submit_chore()
+  guard request is Some((Some(1), input)) else { fail("no request") }
+  assert_true(input.repeat == Once(lead_days=0))
+  assert_eq(input.next_due.map(d => d.to_string()), Some("2026-10-05"))
+  // A recurring chore does not, as its due date follows the completions.
+  let (_, request) = test_model().open_chore(1).submit_chore()
+  assert_true(request is Some((Some(1), { next_due: None, .. })))
 }
 
 ///|
