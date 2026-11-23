@@ -7,5 +7,5 @@ preferred_target = "js"
 source = "src"
 
 import {
-  "moonbitlang/x@0.5.1",
+  "moonbitlang/x@0.5.8",
 }
