@@ -23,5 +23,10 @@ updates:
     assignees:
       - "notomo"
     open-pull-requests-limit: 10
+    groups:
+      cloudflare:
+        patterns:
+          - "cf"
+          - "@cloudflare/vite-plugin"
     cooldown:
       default-days: 7
